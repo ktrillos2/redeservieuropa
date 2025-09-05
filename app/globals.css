@@ -1,0 +1,426 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color tokens to match REDESERVI PARIS brand colors */
+  --background: #fffdf0; /* Cream background */
+  --foreground: #021e29; /* Dark Blue for primary text */
+  --card: #ffffff; /* White for card backgrounds */
+  --card-foreground: #021e29; /* Dark Blue for text within cards */
+  --popover: #ffffff; /* White for popover backgrounds */
+  --popover-foreground: #021e29; /* Dark Blue for popover text */
+  --primary: #021e29; /* Dark Blue for call-to-action buttons */
+  --primary-foreground: #ffffff; /* White text on primary buttons */
+  --secondary: #875417; /* Gold for secondary buttons or accents */
+  --secondary-foreground: #ffffff; /* White text on secondary buttons */
+  --muted: #f1f5f9; /* Light gray for muted text */
+  --muted-foreground: #334155; /* Darker slate gray for better contrast */
+  --accent: #875417; /* Gold for highlights */
+  --accent-foreground: #fffdf0; /* Cream for text on accent backgrounds */
+  --destructive: #e53e3e; /* Error color */
+  --destructive-foreground: #ffffff; /* White text for destructive actions */
+  --border: #e2e8f0; /* Light gray for borders */
+  --input: #ffffff; /* White for input fields */
+  --ring: rgba(135, 84, 23, 0.2); /* Gold ring for focus states */
+  --chart-1: #021e29; /* Dark Blue for chart elements */
+  --chart-2: #875417; /* Gold for chart elements */
+  --chart-3: #f1f5f9; /* Light gray for chart elements */
+  --chart-4: #ffffff; /* White for chart elements */
+  --chart-5: #fffdf0; /* Cream for chart elements */
+  --radius: 0.5rem; /* Rounded corners */
+  --sidebar: #fffdf0; /* Cream for sidebar background */
+  --sidebar-foreground: #021e29; /* Dark Blue for sidebar text */
+  --sidebar-primary: #021e29; /* Dark Blue for primary sidebar elements */
+  --sidebar-primary-foreground: #ffffff; /* White for primary sidebar text */
+  --sidebar-accent: #875417; /* Gold for accent elements in sidebar */
+  --sidebar-accent-foreground: #fffdf0; /* Cream for text on sidebar accents */
+  --sidebar-border: #e2e8f0; /* Light gray for sidebar borders */
+  --sidebar-ring: rgba(135, 84, 23, 0.2); /* Gold ring for sidebar focus states */
+}
+
+.dark {
+  --background: #021e29; /* Dark Blue background */
+  --foreground: #fffdf0; /* Cream text */
+  --card: #0f2937; /* Darker blue for cards */
+  --card-foreground: #fffdf0; /* Cream text in cards */
+  --popover: #0f2937; /* Darker blue for popovers */
+  --popover-foreground: #fffdf0; /* Cream text in popovers */
+  --primary: #875417; /* Gold for primary buttons in dark mode */
+  --primary-foreground: #fffdf0; /* Cream text on primary buttons */
+  --secondary: #374151; /* Gray for secondary elements */
+  --secondary-foreground: #fffdf0; /* Cream text on secondary elements */
+  --muted: #374151; /* Gray for muted elements */
+  --muted-foreground: #9ca3af; /* Light gray for muted text */
+  --accent: #875417; /* Gold for accents */
+  --accent-foreground: #fffdf0; /* Cream text on accents */
+  --destructive: #ef4444; /* Red for errors */
+  --destructive-foreground: #fffdf0; /* Cream text for destructive actions */
+  --border: #374151; /* Gray borders */
+  --input: #0f2937; /* Dark blue for inputs */
+  --ring: rgba(135, 84, 23, 0.3); /* Gold ring for focus */
+  --chart-1: #875417; /* Gold for charts */
+  --chart-2: #fffdf0; /* Cream for charts */
+  --chart-3: #374151; /* Gray for charts */
+  --chart-4: #0f2937; /* Dark blue for charts */
+  --chart-5: #021e29; /* Darkest blue for charts */
+  --sidebar: #021e29; /* Dark blue sidebar */
+  --sidebar-foreground: #fffdf0; /* Cream sidebar text */
+  --sidebar-primary: #875417; /* Gold primary sidebar elements */
+  --sidebar-primary-foreground: #fffdf0; /* Cream text on primary sidebar */
+  --sidebar-accent: #374151; /* Gray sidebar accents */
+  --sidebar-accent-foreground: #fffdf0; /* Cream text on sidebar accents */
+  --sidebar-border: #374151; /* Gray sidebar borders */
+  --sidebar-ring: rgba(135, 84, 23, 0.3); /* Gold sidebar ring */
+}
+
+@theme inline {
+  /* Cambiando la fuente principal a Jost */
+  --font-sans: var(--font-jost);
+  --font-mono: var(--font-jost);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Added higher z-index for select dropdowns to prevent overlap with header */
+[data-radix-popper-content-wrapper] {
+  z-index: 200 !important;
+}
+
+[data-slot="select-content"] {
+  z-index: 200 !important;
+}
+
+/* Added z-index fix for contact section to prevent overlap with header */
+#contacto {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure contact cards don't overlap with header */
+#contacto .bg-card {
+  position: relative;
+  z-index: 2;
+}
+
+/* Fix for any modal or overlay content that might overlap with header */
+[data-radix-dialog-content],
+[data-radix-popover-content],
+[data-radix-tooltip-content] {
+  z-index: 300 !important;
+}
+
+/* Added custom animations for luxury feel */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(135, 84, 23, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(135, 84, 23, 0.6), 0 0 30px rgba(135, 84, 23, 0.4);
+  }
+}
+
+@keyframes rotateIn {
+  from {
+    opacity: 0;
+    transform: rotate(-200deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 1s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.8s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.8s ease-out;
+}
+
+.animate-bounce-in {
+  animation: bounceIn 1s ease-out;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(135, 84, 23, 0.2), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.animate-rotate-in {
+  animation: rotateIn 0.8s ease-out;
+}
+
+.animate-zoom-in {
+  animation: zoomIn 0.8s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.9s ease-out;
+}
+
+/* Animation delay utilities */
+.animation-delay-100 {
+  animation-delay: 0.1s;
+}
+
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animation-delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animation-delay-400 {
+  animation-delay: 0.4s;
+}
+
+.animation-delay-500 {
+  animation-delay: 0.5s;
+}
+
+.animation-delay-600 {
+  animation-delay: 0.6s;
+}
+
+.animation-delay-700 {
+  animation-delay: 0.7s;
+}
+
+.animation-delay-800 {
+  animation-delay: 0.8s;
+}
+
+/* Hover effects */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(135, 84, 23, 0.4);
+}
+
+/* Stagger animation utility */
+.stagger-animation > * {
+  opacity: 0;
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.stagger-animation > *:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.stagger-animation > *:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.stagger-animation > *:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.stagger-animation > *:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.stagger-animation > *:nth-child(5) {
+  animation-delay: 0.5s;
+}
+.stagger-animation > *:nth-child(6) {
+  animation-delay: 0.6s;
+}
+.stagger-animation > *:nth-child(7) {
+  animation-delay: 0.7s;
+}
+.stagger-animation > *:nth-child(8) {
+  animation-delay: 0.8s;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Enhanced focus states */
+.focus-glow:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(135, 84, 23, 0.3);
+}
+
+/* Agregando estilos específicos para el header con alta especificidad */
+.header-dark-text {
+  color: #1e293b !important;
+}
+
+.header-dark-text:hover {
+  color: #334155 !important;
+}
+
+.header-light-text {
+  color: #ffffff !important;
+}
+
+.header-light-text:hover {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.header-logo-dark {
+  color: #1e293b !important;
+}
+
+.header-logo-light {
+  color: #ffffff !important;
+}
+
+.header-subtext-dark {
+  color: #475569 !important;
+}
+
+.header-subtext-light {
+  color: rgba(255, 255, 255, 0.9) !important;
+}

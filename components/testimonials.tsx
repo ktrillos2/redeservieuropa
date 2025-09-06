@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Star, Quote } from "lucide-react"
 import { useState, useEffect } from "react"
 
@@ -13,7 +13,7 @@ const testimonials = [
     comment:
       "Servicio excepcional. El conductor fue muy puntual y el vehículo impecable. Definitivamente lo recomiendo para traslados en París.",
     service: "CDG → París",
-    avatar: "/placeholder.svg?height=120&width=120",
+    avatar: "/placeholder.svg?height=200&width=300",
   },
   {
     id: 2,
@@ -23,7 +23,7 @@ const testimonials = [
     comment:
       "Perfecto para familias. Nos llevaron a Disneyland sin problemas, el conductor conocía muy bien la ruta y fue muy amable con los niños.",
     service: "París → Disneyland",
-    avatar: "/placeholder.svg?height=120&width=120",
+    avatar: "/placeholder.svg?height=200&width=300",
   },
   {
     id: 3,
@@ -33,7 +33,7 @@ const testimonials = [
     comment:
       "El tour nocturno por París fue increíble. Vimos todos los monumentos iluminados y el conductor nos dio excelentes recomendaciones.",
     service: "Tour Nocturno",
-    avatar: "/placeholder.svg?height=120&width=120",
+    avatar: "/placeholder.svg?height=200&width=300",
   },
   {
     id: 4,
@@ -43,7 +43,7 @@ const testimonials = [
     comment:
       "Muy profesional y confiable. Llegué tarde por el vuelo y me esperaron sin costo adicional. Excelente servicio al cliente.",
     service: "Orly → París",
-    avatar: "/placeholder.svg?height=120&width=120",
+    avatar: "/placeholder.svg?height=200&width=300",
   },
   {
     id: 5,
@@ -53,7 +53,7 @@ const testimonials = [
     comment:
       "Comodidad y elegancia en cada detalle. El vehículo era muy limpio y cómodo. Una experiencia de lujo a precio justo.",
     service: "Beauvais → París",
-    avatar: "/placeholder.svg?height=120&width=120",
+    avatar: "/placeholder.svg?height=200&width=300",
   },
 ]
 
@@ -90,9 +90,19 @@ export function Testimonials() {
             {getVisibleTestimonials().map((testimonial, index) => (
               <Card
                 key={testimonial.id}
-                className="bg-card border-border shadow-lg transform hover:scale-105 transition-all duration-500 animate-fade-in-up"
+                className="bg-card border-border shadow-lg transform hover:scale-105 transition-all duration-500 animate-fade-in-up overflow-hidden"
                 style={{ animationDelay: `${index * 0.2}s` }}
               >
+                <CardHeader className="p-0">
+                  <div className="h-48 w-full overflow-hidden">
+                    <img
+                      src={testimonial.avatar || "/placeholder.svg"}
+                      alt={testimonial.name}
+                      className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500"
+                    />
+                  </div>
+                </CardHeader>
+
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4 mb-6">
                     <Quote className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
@@ -107,18 +117,9 @@ export function Testimonials() {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-md overflow-hidden bg-accent/10 flex-shrink-0">
-                        <img
-                          src={testimonial.avatar || "/placeholder.svg"}
-                          alt={testimonial.name}
-                          className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-300"
-                        />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground text-sm">{testimonial.name}</p>
-                        <p className="text-xs text-muted-foreground">{testimonial.location}</p>
-                      </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">{testimonial.name}</p>
+                      <p className="text-xs text-muted-foreground">{testimonial.location}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-medium text-accent">{testimonial.service}</p>

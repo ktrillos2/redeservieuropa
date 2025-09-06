@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Jost } from "next/font/google"
 import { Suspense } from "react"
+import { ScrollToTopButton } from "@/components/scroll-to-top-button"
 import "./globals.css"
 
 const jost = Jost({
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="es" className={`${jost.variable} antialiased`}>
       <body className="font-sans">
         <Suspense fallback={null}>{children}</Suspense>
+        <ScrollToTopButton />
       </body>
     </html>
   )

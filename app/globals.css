@@ -424,3 +424,61 @@ html {
 .header-subtext-light {
   color: rgba(255, 255, 255, 0.9) !important;
 }
+
+/* Corrigiendo selectores CSS para contraste correcto */
+/* Estilos por defecto: texto oscuro para mejor contraste */
+header nav a,
+header .container nav a,
+header div nav a,
+.fixed.top-0 nav a,
+header h1,
+header .container h1,
+.fixed.top-0 h1,
+header p,
+header .container p,
+.fixed.top-0 p {
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+header nav a:hover,
+header .container nav a:hover,
+header div nav a:hover,
+.fixed.top-0 nav a:hover {
+  color: #374151 !important;
+}
+
+/* Solo aplicar texto blanco en home sin scroll Y con fondo realmente oscuro */
+body[data-page="home"][data-scrolled="false"] header:has(.bg-transparent) nav a,
+body[data-page="home"][data-scrolled="false"] header:has(.bg-transparent) h1,
+body[data-page="home"][data-scrolled="false"] header:has(.bg-transparent) p {
+  color: #ffffff !important;
+}
+
+body[data-page="home"][data-scrolled="false"] header:has(.bg-transparent) nav a:hover {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+body[data-page="home"][data-scrolled="false"] header:has(.bg-transparent) p {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Forzar texto oscuro cuando hay scroll o no es home */
+body[data-scrolled="true"] header nav a,
+body[data-scrolled="true"] header h1,
+body[data-scrolled="true"] header p,
+body:not([data-page="home"]) header nav a,
+body:not([data-page="home"]) header h1,
+body:not([data-page="home"]) header p {
+  color: #000000 !important;
+}
+
+body[data-scrolled="true"] header nav a:hover,
+body:not([data-page="home"]) header nav a:hover {
+  color: #374151 !important;
+}
+
+body[data-scrolled="true"] header p,
+body:not([data-page="home"]) header p {
+  color: #475569 !important;
+}

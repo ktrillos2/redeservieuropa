@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -49,7 +48,14 @@ const tourData: Record<string, any> = {
       "Pago con tarjeta o efectivo",
       "Cancelación gratuita hasta 24h antes",
     ],
-    included: ["Recogida en terminal", "Espera gratuita 60 min", "Peajes incluidos", "Seguro completo"],
+    included: [
+      "Recogida en terminal",
+      "Espera gratuita 60 min",
+      "Peajes incluidos",
+      "Seguro completo",
+      "Conductor de habla hispana o inglesa o francés",
+      "Vehículo amplio",
+    ],
     pricing: {
       1: 65,
       2: 65,
@@ -79,7 +85,14 @@ const tourData: Record<string, any> = {
       "Servicio 24/7",
       "Confirmación inmediata",
     ],
-    included: ["Recogida en terminal", "Espera gratuita 45 min", "Peajes incluidos", "Limpieza del vehículo"],
+    included: [
+      "Recogida en terminal",
+      "Espera gratuita 45 min",
+      "Peajes incluidos",
+      "Limpieza del vehículo",
+      "Conductor de habla hispana o inglesa o francés",
+      "Vehículo cómodo",
+    ],
     pricing: {
       1: 60,
       2: 60,
@@ -109,7 +122,14 @@ const tourData: Record<string, any> = {
       "Fotos de recuerdo",
       "Horarios flexibles",
     ],
-    included: ["Recogida en hotel", "Entrada directa al parque", "Mapa del parque", "Recomendaciones VIP"],
+    included: [
+      "Recogida en hotel",
+      "Entrada directa al parque",
+      "Mapa del parque",
+      "Recomendaciones VIP",
+      "Conductor de habla hispana o inglesa o francés",
+      "Vehículo amplio",
+    ],
     pricing: {
       1: 70,
       2: 70,
@@ -121,12 +141,43 @@ const tourData: Record<string, any> = {
       8: 134,
     },
   },
+  "tour-paris": {
+    title: "Tour por París",
+    description:
+      "Descubre la Ciudad de la Luz con nuestro tour personalizado. Recorre los monumentos más emblemáticos de París con un conductor profesional que te contará la historia de cada lugar.",
+    basePriceDay: 55,
+    basePriceNight: 65,
+    duration: "Mínimo 2 horas",
+    distance: "Personalizable",
+    image: "/vehicles/stepway-paris-4.jpg",
+    features: [
+      "Tour personalizable",
+      "Paradas en monumentos principales",
+      "Conductor guía profesional",
+      "Vehículo cómodo y amplio",
+      "Fotos en lugares emblemáticos",
+      "Información histórica",
+      "Flexibilidad de horarios",
+      "Rutas adaptadas a tus intereses",
+    ],
+    included: [
+      "Conductor de habla hispana o inglesa o francés",
+      "Vehículo cómodo",
+      "Combustible incluido",
+      "Estacionamiento incluido",
+    ],
+    pricing: {
+      day: 55, // por hora
+      night: 65, // por hora
+      minHours: 2,
+    },
+  },
 }
 
 export function TourDetail({ tourId }: TourDetailProps) {
   const tour = tourData[tourId]
   const router = useRouter()
-  const [passengers, setPassengers] = useState("2")
+  const [passengers, setPassengers] = useState(2)
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [isNightTime, setIsNightTime] = useState(false)
@@ -134,11 +185,15 @@ export function TourDetail({ tourId }: TourDetailProps) {
   const [pickupAddress, setPickupAddress] = useState("")
   const [dropoffAddress, setDropoffAddress] = useState("")
   const [flightNumber, setFlightNumber] = useState("")
-  const [luggageCount, setLuggageCount] = useState("2")
+  const [luggage23kg, setLuggage23kg] = useState(0)
+  const [luggage10kg, setLuggage10kg] = useState(0)
+  const [babyStrollers, setBabyStrollers] = useState(0)
+  const [childrenAges, setChildrenAges] = useState("")
   const [specialRequests, setSpecialRequests] = useState("")
   const [contactName, setContactName] = useState("")
   const [contactPhone, setContactPhone] = useState("")
   const [contactEmail, setContactEmail] = useState("")
+  const [tourHours, setTourHours] = useState(2)
 
   if (!tour) {
     return (
@@ -154,7 +209,12 @@ export function TourDetail({ tourId }: TourDetailProps) {
   }
 
   const calculatePrice = () => {
-    let basePrice = tour.pricing[Number.parseInt(passengers)] || tour.basePrice
+    if (tourId === "tour-paris") {
+      const hourlyRate = isNightTime ? tour.basePriceNight : tour.basePriceDay
+      return hourlyRate * tourHours
+    }
+
+    let basePrice = tour.pricing[passengers] || tour.basePrice
     if (isNightTime) basePrice += 5
     if (extraLuggage) basePrice += 10
     return basePrice
@@ -175,7 +235,11 @@ export function TourDetail({ tourId }: TourDetailProps) {
       pickupAddress,
       dropoffAddress,
       flightNumber,
-      luggageCount,
+      luggage23kg,
+      luggage10kg,
+      babyStrollers,
+      childrenAges,
+      tourHours: tourId === "tour-paris" ? tourHours : undefined,
       specialRequests,
       contactName,
       contactPhone,
@@ -230,7 +294,13 @@ export function TourDetail({ tourId }: TourDetailProps) {
                   </div>
                   <div className="flex items-center gap-1">
                     <Euro className="w-4 h-4" />
-                    <span>Desde {tour.basePrice}€</span>
+                    {tourId === "tour-paris" ? (
+                      <span>
+                        Diurno {tour.basePriceDay}€/h - Nocturno {tour.basePriceNight}€/h
+                      </span>
+                    ) : (
+                      <span>Desde {tour.basePrice}€</span>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -294,7 +364,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                   </div>
                   <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
                     <Car className="w-6 h-6 text-accent animate-pulse" />
-                    <span className="text-sm text-center">Vehículo Premium</span>
+                    <span className="text-sm text-center">Vehículo Cómodo</span>
                   </div>
                   <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
                     <Shield className="w-6 h-6 text-accent animate-pulse" />
@@ -312,7 +382,9 @@ export function TourDetail({ tourId }: TourDetailProps) {
                 <CardTitle className="text-2xl text-primary text-center">Reservar Ahora</CardTitle>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-accent animate-pulse">{calculatePrice()}€</div>
-                  <p className="text-sm text-muted-foreground">por trayecto</p>
+                  <p className="text-sm text-muted-foreground">
+                    {tourId === "tour-paris" ? `por ${tourHours} hora${tourHours > 1 ? "s" : ""}` : "por trayecto"}
+                  </p>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -362,19 +434,32 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     <Users className="w-4 h-4 text-accent" />
                     Número de Pasajeros
                   </label>
-                  <Select value={passengers} onValueChange={setPassengers}>
-                    <SelectTrigger className="transform focus:scale-105 transition-all duration-300">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                        <SelectItem key={num} value={num.toString()}>
-                          {num} {num === 1 ? "Pasajero" : "Pasajeros"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={passengers}
+                    onChange={(e) => setPassengers(Number(e.target.value))}
+                    className="transform focus:scale-105 transition-all duration-300"
+                  />
                 </div>
+
+                {tourId === "tour-paris" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-accent" />
+                      Duración del Tour (mínimo 2 horas)
+                    </label>
+                    <Input
+                      type="number"
+                      min="2"
+                      max="12"
+                      value={tourHours}
+                      onChange={(e) => setTourHours(Number(e.target.value))}
+                      className="transform focus:scale-105 transition-all duration-300"
+                    />
+                  </div>
+                )}
 
                 {/* Date of Travel */}
                 <div className="space-y-2">
@@ -403,8 +488,13 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     onChange={(e) => handleTimeChange(e.target.value)}
                     className="transform focus:scale-105 transition-all duration-300"
                   />
-                  {isNightTime && (
+                  {isNightTime && tourId !== "tour-paris" && (
                     <p className="text-xs text-accent animate-pulse">* Recargo nocturno: +5€ (después de las 21:00)</p>
+                  )}
+                  {isNightTime && tourId === "tour-paris" && (
+                    <p className="text-xs text-accent animate-pulse">
+                      * Tour nocturno: {tour.basePriceNight}€/h (después de las 21:00)
+                    </p>
                   )}
                 </div>
 
@@ -423,18 +513,20 @@ export function TourDetail({ tourId }: TourDetailProps) {
                 </div>
 
                 {/* Dropoff Address */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-accent" />
-                    Dirección de Destino
-                  </label>
-                  <Input
-                    placeholder="Dirección completa de destino"
-                    value={dropoffAddress}
-                    onChange={(e) => setDropoffAddress(e.target.value)}
-                    className="transform focus:scale-105 transition-all duration-300"
-                  />
-                </div>
+                {tourId !== "tour-paris" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-accent" />
+                      Dirección de Destino
+                    </label>
+                    <Input
+                      placeholder="Dirección completa de destino"
+                      value={dropoffAddress}
+                      onChange={(e) => setDropoffAddress(e.target.value)}
+                      className="transform focus:scale-105 transition-all duration-300"
+                    />
+                  </div>
+                )}
 
                 {/* Flight Number */}
                 {(tourId.includes("cdg") || tourId.includes("orly") || tourId.includes("beauvais")) && (
@@ -452,40 +544,81 @@ export function TourDetail({ tourId }: TourDetailProps) {
                   </div>
                 )}
 
-                {/* Luggage Count */}
-                <div className="space-y-2">
+                <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <Luggage className="w-4 h-4 text-accent" />
-                    Cantidad de Equipaje
+                    Equipaje
                   </label>
-                  <Select value={luggageCount} onValueChange={setLuggageCount}>
-                    <SelectTrigger className="transform focus:scale-105 transition-all duration-300">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Maleta</SelectItem>
-                      <SelectItem value="2">2 Maletas</SelectItem>
-                      <SelectItem value="3">3 Maletas</SelectItem>
-                      <SelectItem value="4">4+ Maletas (cargo extra)</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium"># Maletas 23kg</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={luggage23kg}
+                        onChange={(e) => setLuggage23kg(Number(e.target.value))}
+                        className="transform focus:scale-105 transition-all duration-300"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium"># Maletas 10kg</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={luggage10kg}
+                        onChange={(e) => setLuggage10kg(Number(e.target.value))}
+                        className="transform focus:scale-105 transition-all duration-300"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Carritos de bebé</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="5"
+                      value={babyStrollers}
+                      onChange={(e) => setBabyStrollers(Number(e.target.value))}
+                      className="transform focus:scale-105 transition-all duration-300"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+                  <label className="text-sm font-medium">Edades niños menores de 8 años</label>
+                  <Input
+                    placeholder="Ej: 3 años, 5 años"
+                    value={childrenAges}
+                    onChange={(e) => setChildrenAges(e.target.value)}
+                    className="transform focus:scale-105 transition-all duration-300"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Para sillas de niño o bebé que se requieran (sin costo adicional)
+                  </p>
                 </div>
 
                 {/* Additional Services */}
-                <div className="space-y-3">
-                  <label className="text-sm font-medium">Servicios Adicionales</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={extraLuggage}
-                        onChange={(e) => setExtraLuggage(e.target.checked)}
-                        className="rounded border-border"
-                      />
-                      <span className="text-sm">Equipaje voluminoso (+10€)</span>
-                    </label>
+                {tourId !== "tour-paris" && (
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Servicios Adicionales</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={extraLuggage}
+                          onChange={(e) => setExtraLuggage(e.target.checked)}
+                          className="rounded border-border"
+                        />
+                        <span className="text-sm">Equipaje voluminoso (+10€)</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Special Requests */}
                 <div className="space-y-2">
@@ -502,21 +635,38 @@ export function TourDetail({ tourId }: TourDetailProps) {
 
                 {/* Price Breakdown */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Precio base ({passengers} pax)</span>
-                    <span>{tour.pricing[Number.parseInt(passengers)] || tour.basePrice}€</span>
-                  </div>
-                  {isNightTime && (
-                    <div className="flex justify-between text-sm">
-                      <span>Recargo nocturno</span>
-                      <span>+5€</span>
-                    </div>
-                  )}
-                  {extraLuggage && (
-                    <div className="flex justify-between text-sm">
-                      <span>Equipaje extra</span>
-                      <span>+10€</span>
-                    </div>
+                  {tourId === "tour-paris" ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span>Precio por hora ({isNightTime ? "nocturno" : "diurno"})</span>
+                        <span>{isNightTime ? tour.basePriceNight : tour.basePriceDay}€</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Duración</span>
+                        <span>
+                          {tourHours} hora{tourHours > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span>Precio base ({passengers} pax)</span>
+                        <span>{tour.pricing[passengers] || tour.basePrice}€</span>
+                      </div>
+                      {isNightTime && (
+                        <div className="flex justify-between text-sm">
+                          <span>Recargo nocturno</span>
+                          <span>+5€</span>
+                        </div>
+                      )}
+                      {extraLuggage && (
+                        <div className="flex justify-between text-sm">
+                          <span>Equipaje extra</span>
+                          <span>+10€</span>
+                        </div>
+                      )}
+                    </>
                   )}
                   <Separator />
                   <div className="flex justify-between font-semibold">

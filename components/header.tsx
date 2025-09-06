@@ -54,30 +54,14 @@ export function Header() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  const shouldUseDarkText = !isHomePage || isScrolled
-
-  console.log(
-    "[v0] Header render - pathname:",
-    pathname,
-    "isHomePage:",
-    isHomePage,
-    "isScrolled:",
-    isScrolled,
-    "shouldUseDarkText:",
-    shouldUseDarkText,
-  )
-
-  const textStyle = shouldUseDarkText
-    ? { color: "#1e293b", fontWeight: "600" }
-    : { color: "#ffffff", fontWeight: "600" }
-
-  const logoStyle = shouldUseDarkText ? { color: "#1e293b" } : { color: "#ffffff" }
-
-  const subtextStyle = shouldUseDarkText ? { color: "#475569" } : { color: "rgba(255, 255, 255, 0.9)" }
+  useEffect(() => {
+    document.body.setAttribute("data-page", isHomePage ? "home" : "other")
+    document.body.setAttribute("data-scrolled", isScrolled.toString())
+  }, [isHomePage, isScrolled])
 
   return (
     <header
-      className={`fixed top-0 w-full z-[100] transition-all duration-500 ease-in-out ${
+      className={`fixed top-0 w-full z-[100] transition-all duration-500 ease-in-out h-auto ${
         isScrolled ? "bg-background/95 backdrop-blur-sm border-b border-border py-2" : "bg-transparent py-3"
       }`}
     >
@@ -87,37 +71,33 @@ export function Header() {
             <Image
               src="/images/logo.png"
               alt="REDESERVI PARIS"
-              width={isScrolled ? 50 : 60}
-              height={isScrolled ? 50 : 60}
+              width={isScrolled ? 70 : 60}
+              height={isScrolled ? 70 : 60}
               className="animate-float transition-all duration-300"
             />
             <div className="hidden md:block">
               <h1
                 className={`font-bold transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-xl"}`}
-                style={logoStyle}
               >
                 REDESERVI
               </h1>
-              <p
-                className={`transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-sm"}`}
-                style={subtextStyle}
-              >
+              <p className={`transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-sm"}`}>
                 PARIS
               </p>
             </div>
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="#servicios" className="transition-colors drop-shadow-lg hover:opacity-80" style={textStyle}>
+            <Link href="#servicios" className="transition-colors drop-shadow-lg hover:opacity-80">
               Servicios
             </Link>
-            <Link href="#traslados" className="transition-colors drop-shadow-lg hover:opacity-80" style={textStyle}>
+            <Link href="#traslados" className="transition-colors drop-shadow-lg hover:opacity-80">
               Traslados
             </Link>
-            <Link href="#testimonios" className="transition-colors drop-shadow-lg hover:opacity-80" style={textStyle}>
+            <Link href="#testimonios" className="transition-colors drop-shadow-lg hover:opacity-80">
               Testimonios
             </Link>
-            <Link href="#contacto" className="transition-colors drop-shadow-lg hover:opacity-80" style={textStyle}>
+            <Link href="#contacto" className="transition-colors drop-shadow-lg hover:opacity-80">
               Contacto
             </Link>
           </nav>
@@ -125,10 +105,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className={`md:hidden transition-colors ${
-              shouldUseDarkText ? "hover:bg-muted" : "hover:bg-white/10 drop-shadow-lg"
-            }`}
-            style={textStyle}
+            className="md:hidden transition-colors hover:bg-muted drop-shadow-lg"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <XIcon /> : <MenuIcon />}
@@ -136,22 +113,34 @@ export function Header() {
         </div>
 
         {isMenuOpen && (
-          <div
-            className={`md:hidden mt-4 pb-4 border-t animate-fade-in-up ${
-              shouldUseDarkText ? "border-border bg-background/95" : "border-white/30 bg-white/10 backdrop-blur-sm"
-            }`}
-          >
+          <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 animate-fade-in-up">
             <nav className="flex flex-col space-y-4 pt-4">
-              <Link href="#servicios" className="transition-colors drop-shadow-lg hover:opacity-75" style={textStyle}>
+              <Link
+                href="#servicios"
+                className="transition-colors drop-shadow-lg hover:opacity-75"
+                style={{ color: "#000000", fontWeight: "600" }}
+              >
                 Servicios
               </Link>
-              <Link href="#traslados" className="transition-colors drop-shadow-lg hover:opacity-75" style={textStyle}>
+              <Link
+                href="#traslados"
+                className="transition-colors drop-shadow-lg hover:opacity-75"
+                style={{ color: "#000000", fontWeight: "600" }}
+              >
                 Traslados
               </Link>
-              <Link href="#testimonios" className="transition-colors drop-shadow-lg hover:opacity-75" style={textStyle}>
+              <Link
+                href="#testimonios"
+                className="transition-colors drop-shadow-lg hover:opacity-75"
+                style={{ color: "#000000", fontWeight: "600" }}
+              >
                 Testimonios
               </Link>
-              <Link href="#contacto" className="transition-colors drop-shadow-lg hover:opacity-75" style={textStyle}>
+              <Link
+                href="#contacto"
+                className="transition-colors drop-shadow-lg hover:opacity-75"
+                style={{ color: "#000000", fontWeight: "600" }}
+              >
                 Contacto
               </Link>
             </nav>

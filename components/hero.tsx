@@ -37,13 +37,12 @@ export function Hero() {
           {/* Hero Content */}
           <AnimatedSection animation="slide-left">
             <div className="text-white">
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 text-balance text-white drop-shadow-lg">
-                Transporte de
-                <span className="text-accent block animate-pulse drop-shadow-lg">Lujo en París</span>
+              <h1 className="font-bold mb-6 text-balance text-white drop-shadow-lg text-5xl">
+                Transporte 
+                <span className="text-accent block animate-pulse drop-shadow-lg">Comodo y Seguro</span>
               </h1>
               <p className="text-xl mb-8 text-white/95 text-pretty drop-shadow-md">
-                Servicio premium de traslados privados a aeropuertos y Disneyland. Comodidad, puntualidad y elegancia en
-                cada viaje.
+                {"✈🚖 Transporte Privado en París\nConfort, seguridad y puntualidad.\n📍 Traslados desde/hacia aeropuertos (CDG, ORY, BVA),🎢 Viajes a Disneyland, 🏰 Tours privados por la ciudad,\nExcursiones a Brujas y mucho más. \n✨ Vive París sin preocupaciones."}
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button

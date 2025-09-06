@@ -3,77 +3,93 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plane, MapPin, Clock, Users, Star, Euro } from "lucide-react"
+import { Plane, MapPin, Clock, Users, Star } from "lucide-react"
 import Link from "next/link"
 import { AnimatedSection } from "@/components/animated-section"
 
-const services = [
-  {
-    id: "cdg-paris",
-    title: "CDG ↔ París",
-    description: "Traslado cómodo desde/hacia el aeropuerto Charles de Gaulle",
-    icon: Plane,
-    price: "65€",
-    duration: "45-60 min",
-    passengers: "1-4",
-    features: ["Vehículo premium", "Conductor profesional", "Seguimiento de vuelo"],
-    popular: true,
-  },
-  {
-    id: "orly-paris",
-    title: "Orly ↔ París",
-    description: "Servicio directo desde/hacia el aeropuerto de Orly",
-    icon: Plane,
-    price: "60€",
-    duration: "35-45 min",
-    passengers: "1-4",
-    features: ["Puntualidad garantizada", "WiFi gratuito", "Agua embotellada"],
-  },
-  {
-    id: "beauvais-paris",
-    title: "Beauvais ↔ París",
-    description: "Traslado desde el aeropuerto más alejado de París",
-    icon: Plane,
-    price: "125€",
-    duration: "75-90 min",
-    passengers: "1-4",
-    features: ["Viaje cómodo", "Asientos de cuero", "Aire acondicionado"],
-  },
-  {
-    id: "paris-disneyland",
-    title: "París ↔ Disneyland",
-    description: "Traslado mágico hacia el parque de diversiones",
-    icon: MapPin,
-    price: "70€",
-    duration: "45-60 min",
-    passengers: "1-4",
-    features: ["Perfecto para familias", "Espacio para equipaje", "Entretenimiento"],
-    popular: true,
-  },
-  {
-    id: "orly-disneyland",
-    title: "Orly ↔ Disneyland",
-    description: "Directo del aeropuerto a la magia de Disney",
-    icon: Plane,
-    price: "73€",
-    duration: "50-65 min",
-    passengers: "1-4",
-    features: ["Sin escalas", "Servicio directo", "Comodidad total"],
-  },
-  {
-    id: "tour-nocturno",
-    title: "Tour Nocturno París",
-    description: "Descubre París iluminado con nuestro tour privado",
-    icon: Clock,
-    price: "65€/h",
-    duration: "Mín. 2h",
-    passengers: "1-4",
-    features: ["Guía incluido", "Ruta personalizable", "Fotos incluidas"],
-    special: true,
-  },
-]
+// Cards personalizadas con la información proporcionada
 
 export function Services() {
+  // Cards por ruta/tour; variaciones (2h/3h/Eiffel+Arco) se detallan en el Tour específico
+  const cards = [
+    {
+      id: "paris-dl-dl",
+      title: "Disneyland ➡ Paris Tour ➡ Disneyland",
+      desc: "Tour por París saliendo y regresando a Disneyland.",
+      icon: <MapPin className="w-8 h-8 text-accent" />,
+      price: "Desde 200€",
+  link: "/tour/paris-dl-dl",
+  popular: true,
+  note: "Disponible en 2h, 3h o circuito Torre Eiffel + Arco del Triunfo (ver detalles)",
+    },
+    {
+      id: "paris-dl-air",
+      title: "Disneyland ➡ Paris Tour ➡ Aeropuerto (CDG/Orly)",
+      desc: "Aprovecha el camino al aeropuerto para un tour inolvidable.",
+      icon: <Plane className="w-8 h-8 text-accent" />,
+      price: "Desde 180€",
+      link: "/tour/tour-paris",
+  note: "Disponible en 2h, 3h o circuito Torre Eiffel + Arco del Triunfo (ver detalles)",
+    },
+    {
+      id: "paris-air-dl",
+      title: "Aeropuerto (CDG/Orly) ➡ Paris Tour ➡ Disneyland",
+      desc: "Comienza tu viaje con un tour por París en tránsito a Disney.",
+      icon: <Plane className="w-8 h-8 text-accent" />,
+      price: "Desde 180€",
+      link: "/tour/tour-paris",
+  note: "Disponible en 2h, 3h o circuito Torre Eiffel + Arco del Triunfo (ver detalles)",
+    },
+    {
+      id: "paris-hotel-center",
+      title: "Hôtel Paris ➡ Paris Tour ➡ Hôtel/centro",
+      desc: "Tour personalizado iniciando y terminando en su hotel o centro.",
+      icon: <MapPin className="w-8 h-8 text-accent" />,
+      price: "Desde 130€",
+      link: "/tour/tour-paris",
+  note: "Disponible en 2h o 3h (ver detalles)",
+    },
+    {
+      id: "paris-hotel-air",
+      title: "Hôtel Paris ➡ Paris Tour ➡ Aeropuerto (CDG/Orly)",
+      desc: "Cierre perfecto de su estadía con un tour antes del vuelo.",
+      icon: <Plane className="w-8 h-8 text-accent" />,
+      price: "Desde 160€",
+      link: "/tour/tour-paris",
+  note: "Disponible en 2h o 3h (ver detalles)",
+    },
+    {
+      id: "tour-versailles",
+      title: "Tour Versailles",
+      desc: "Castillo, jardines, Trianon y aldea de la reina.",
+      icon: <MapPin className="w-8 h-8 text-accent" />,
+      price: "Desde 290€",
+      link: "/tour/tour-paris",
+      special: true,
+      note: "Hasta 3 personas; adicional 90€/persona",
+    },
+    {
+      id: "tour-brujas",
+      title: "Tour Brujas (Bélgica)",
+      desc: "Guía 2h, degustación de chocolates, recomendaciones locales.",
+      icon: <MapPin className="w-8 h-8 text-accent" />,
+      price: "Desde 520€",
+      link: "/tour/tour-paris",
+      special: true,
+      note: "Hasta 3 personas; 4º+ 140€/persona",
+    },
+    {
+      id: "tour-brujas-amsterdam",
+      title: "Brujas y Amsterdam",
+      desc: "París → Brujas (noche) → Amsterdam.",
+      icon: <MapPin className="w-8 h-8 text-accent" />,
+  price: "Desde 1.100€",
+      link: "/tour/tour-paris",
+      special: true,
+      note: "Hasta 5 personas; Van 8p: 1.450€",
+    },
+  ]
+
   return (
     <section id="servicios" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -84,78 +100,39 @@ export function Services() {
           </p>
         </AnimatedSection>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {services.map((service, index) => {
-            const IconComponent = service.icon
-            return (
-              <AnimatedSection key={service.id} animation="zoom-in" delay={index * 100}>
-                <Card
-                  className={`relative transition-all duration-500 hover-lift hover-glow ${
-                    service.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : "overflow-hidden"
-                  } ${service.special ? "border-2 border-accent shadow-lg shadow-accent/20" : ""}`}
-                >
-                  {service.popular && (
-                    <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
-                      <Star className="w-3 h-3 mr-1" />
-                      Popular
-                    </Badge>
-                  )}
-                  {service.special && (
-                    <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white font-semibold z-10">
-                      Especial
-                    </Badge>
-                  )}
-
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="animate-rotate-in">
-                        <IconComponent className="w-8 h-8 text-accent" />
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-primary flex items-center">
-                          <Euro className="w-5 h-5 mr-1" />
-                          {service.price}
-                        </div>
-                      </div>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {cards.map((c, idx) => (
+            <AnimatedSection key={c.id} animation="zoom-in" delay={idx * 100}>
+              <Card className={`relative transition-all duration-500 hover-lift hover-glow ${c.popular ? "border-2 border-accent/60" : ""}`}>
+                {c.popular && (
+                  <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
+                    <Star className="w-3 h-3 mr-1" /> Popular
+                  </Badge>
+                )}
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="animate-rotate-in">{c.icon}</div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-primary">{c.price}</div>
                     </div>
-                    <CardTitle className="text-xl text-primary">{service.title}</CardTitle>
-                    <p className="text-muted-foreground text-sm">{service.description}</p>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between text-sm">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4 text-accent" />
-                        <span>{service.duration}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4 text-accent" />
-                        <span>{service.passengers}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {service.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-                          <span>{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <Link href={`/tour/${service.id}`}>
-                      <Button className="w-full bg-primary hover:bg-primary/90 transform hover:scale-105 transition-all duration-300">
-                        Ver Detalles y Reservar
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              </AnimatedSection>
-            )
-          })}
+                  </div>
+                  <CardTitle className="text-xl text-primary">{c.title}</CardTitle>
+                  <p className="text-muted-foreground text-sm">{c.desc}</p>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {c.note && <p className="text-muted-foreground">{c.note}</p>}
+                  <Link href={c.link}>
+                    <Button className="w-full bg-primary hover:bg-primary/90 transform hover:scale-105 transition-all duration-300">
+                      Ver Detalles y Reservar
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </AnimatedSection>
+          ))}
         </div>
 
-        <AnimatedSection animation="slide-up" delay={600} className="mt-12 text-center">
+  <AnimatedSection animation="zoom-in" delay={600} className="mt-12 text-center">
           <div className="bg-primary p-6 rounded-lg border border-border max-w-4xl mx-auto hover-lift">
             <h3 className="text-lg font-semibold mb-4 text-white">Cargos Adicionales</h3>
             <div className="grid md:grid-cols-2 gap-4 text-sm text-white">
@@ -178,6 +155,7 @@ export function Services() {
             </div>
           </div>
         </AnimatedSection>
+
       </div>
     </section>
   )

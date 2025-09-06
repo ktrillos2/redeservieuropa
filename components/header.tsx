@@ -45,6 +45,7 @@ export function Header() {
   const pathname = usePathname()
 
   const isHomePage = pathname === "/"
+  const useDarkText = !isHomePage || isScrolled
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,27 +78,27 @@ export function Header() {
             />
             <div className="hidden md:block">
               <h1
-                className={`font-bold transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-xl"}`}
+                className={`font-bold transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
               >
                 REDESERVI
               </h1>
-              <p className={`transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-sm"}`}>
+              <p className={`transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-sm"} ${useDarkText ? "!text-black" : "!text-white"}`}>
                 PARIS
               </p>
             </div>
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="#servicios" className="transition-colors drop-shadow-lg hover:opacity-80">
+            <Link href="#servicios" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
               Servicios
             </Link>
-            <Link href="#traslados" className="transition-colors drop-shadow-lg hover:opacity-80">
+            <Link href="#traslados" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
               Traslados
             </Link>
-            <Link href="#testimonios" className="transition-colors drop-shadow-lg hover:opacity-80">
+            <Link href="#testimonios" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
               Testimonios
             </Link>
-            <Link href="#contacto" className="transition-colors drop-shadow-lg hover:opacity-80">
+            <Link href="#contacto" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
               Contacto
             </Link>
           </nav>

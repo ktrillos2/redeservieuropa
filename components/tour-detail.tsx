@@ -1,7 +1,9 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -172,10 +174,38 @@ const tourData: Record<string, any> = {
       minHours: 2,
     },
   },
+  "paris-dl-dl": {
+    title: "Disneyland ➡ Paris Tour ➡ Disneyland",
+    description:
+      "Disfruta un recorrido por París saliendo desde Disneyland y regresando al mismo punto. Ideal para conocer lo imprescindible en un solo trayecto con paradas para fotos.",
+    basePrice: 200,
+    duration: "2h · 3h o circuito Eiffel + Arco",
+    distance: "Circuito en París",
+    image: "/vehicles/stepway-paris-1.jpg",
+    features: [
+      "Salida y regreso a Disneyland",
+      "Paradas en puntos icónicos",
+      "Conductor guía profesional",
+      "Vehículo cómodo y amplio",
+      "Itinerario optimizado según tráfico",
+      "Flexibilidad de horarios",
+      "Fotos en lugares emblemáticos",
+      "Servicio privado",
+    ],
+    included: [
+      "Conductor de habla hispana o inglesa o francés",
+      "Vehículo cómodo",
+      "Combustible y peajes",
+      "Estacionamiento incluido",
+    ],
+    pricingP4: { threeH: 300, twoH: 245, eiffelArco: 200 },
+    pricingP5: { threeH: 340, twoH: 315, eiffelArco: 245 },
+  },
 }
 
 export function TourDetail({ tourId }: TourDetailProps) {
-  const tour = tourData[tourId]
+  const effectiveTourId = tourId === "tour-nocturno" ? "tour-paris" : tourId
+  const tour = tourData[effectiveTourId]
   const router = useRouter()
   const [passengers, setPassengers] = useState(2)
   const [date, setDate] = useState("")
@@ -194,6 +224,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
   const [contactPhone, setContactPhone] = useState("")
   const [contactEmail, setContactEmail] = useState("")
   const [tourHours, setTourHours] = useState(2)
+  const [routeOption, setRouteOption] = useState<"threeH" | "twoH" | "eiffelArco" | undefined>(undefined)
 
   if (!tour) {
     return (
@@ -209,9 +240,22 @@ export function TourDetail({ tourId }: TourDetailProps) {
   }
 
   const calculatePrice = () => {
-    if (tourId === "tour-paris") {
+    if (effectiveTourId === "tour-paris") {
       const hourlyRate = isNightTime ? tour.basePriceNight : tour.basePriceDay
       return hourlyRate * tourHours
+    }
+
+    if (effectiveTourId === "paris-dl-dl") {
+      if (!routeOption) return NaN
+      if (passengers >= 1 && passengers <= 4) {
+        const map = tour.pricingP4
+        return routeOption === "threeH" ? map.threeH : routeOption === "twoH" ? map.twoH : map.eiffelArco
+      }
+      if (passengers === 5) {
+        const map = tour.pricingP5
+        return routeOption === "threeH" ? map.threeH : routeOption === "twoH" ? map.twoH : map.eiffelArco
+      }
+      return NaN
     }
 
     let basePrice = tour.pricing[passengers] || tour.basePrice
@@ -227,6 +271,29 @@ export function TourDetail({ tourId }: TourDetailProps) {
   }
 
   const handleBookingSubmit = () => {
+    // Validaciones requeridos
+    const errors: string[] = []
+    if (!contactName.trim()) errors.push("Nombre completo")
+    if (!contactPhone.trim()) errors.push("Teléfono")
+    if (!contactEmail.trim()) errors.push("Email")
+    if (!date) errors.push("Fecha del viaje")
+    if (!time) errors.push("Hora de recogida")
+    if (!pickupAddress.trim()) errors.push("Dirección de recogida")
+    if (passengers < 1) errors.push("Número de pasajeros")
+    if (effectiveTourId !== "tour-paris" && effectiveTourId !== "paris-dl-dl" && !dropoffAddress.trim()) {
+      errors.push("Dirección de destino")
+    }
+    if (effectiveTourId === "tour-paris" && tourHours < 2) {
+      errors.push("Duración del tour (mínimo 2h)")
+    }
+    if (effectiveTourId === "paris-dl-dl" && !routeOption) {
+      errors.push("Opción del tour")
+    }
+
+    if (errors.length > 0) {
+      alert(`Por favor completa: ${errors.join(", ")}.`)
+      return
+    }
     const bookingData = {
       tourId,
       passengers,
@@ -239,7 +306,8 @@ export function TourDetail({ tourId }: TourDetailProps) {
       luggage10kg,
       babyStrollers,
       childrenAges,
-      tourHours: tourId === "tour-paris" ? tourHours : undefined,
+  tourHours: tourId === "tour-paris" ? tourHours : undefined,
+  routeOption: effectiveTourId === "paris-dl-dl" ? routeOption : undefined,
       specialRequests,
       contactName,
       contactPhone,
@@ -294,11 +362,13 @@ export function TourDetail({ tourId }: TourDetailProps) {
                   </div>
                   <div className="flex items-center gap-1">
                     <Euro className="w-4 h-4" />
-                    {tourId === "tour-paris" ? (
+                      {effectiveTourId === "tour-paris" ? (
                       <span>
                         Diurno {tour.basePriceDay}€/h - Nocturno {tour.basePriceNight}€/h
                       </span>
-                    ) : (
+                      ) : effectiveTourId === "paris-dl-dl" ? (
+                        <span>Desde 200€</span>
+                      ) : (
                       <span>Desde {tour.basePrice}€</span>
                     )}
                   </div>
@@ -373,6 +443,327 @@ export function TourDetail({ tourId }: TourDetailProps) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Tarifas y Tours personalizados - tour de París y primera tarjeta dedicada */}
+            {effectiveTourId === "tour-paris" && (
+              <Card className="transform hover:scale-105 transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-primary">Tarifas y Tours</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 text-sm md:text-base">
+                  <div>
+                    <h3 className="text-xl font-semibold text-primary mb-2">Tarifas Tour: hasta 4 pasajeros</h3>
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="dl-dl-4">
+                        <AccordionTrigger>Disneyland ➡ Paris Tour ➡ Disneyland</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">300€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">245€</span></li>
+                            <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">200€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="dl-air-4">
+                        <AccordionTrigger>Disneyland ➡ Paris Tour ➡ Aeropuerto CDG u Orly</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">270€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">235€</span></li>
+                            <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">180€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="air-dl-4">
+                        <AccordionTrigger>Aeropuerto CDG u Orly ➡ Paris Tour ➡ Disneyland</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">270€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">235€</span></li>
+                            <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">180€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="hotel-center-4">
+                        <AccordionTrigger>Hôtel Paris ➡ Paris Tour ➡ Hôtel París o centro</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">160€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">130€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="hotel-air-4">
+                        <AccordionTrigger>Hôtel Paris ➡ Paris Tour ➡ Aeropuerto CDG u Orly</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">210€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">160€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <p>El tiempo de tour cuenta desde el momento que estamos en el primer lugar emblemático de París.</p>
+                    <p>La hora adicional tiene un valor de 55€.</p>
+                    <p>
+                      En cada uno de los lugares que visitamos pueden bajar del vehículo por 15 min para tomar fotos y conocer
+                      un poco el lugar.
+                    </p>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-primary mb-2">Tour de 3 horas – lugares visitados</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Iglesia del Sagrado Corazón (Montmartre) ⛪</li>
+                        <li>Cafetería de Ladybug 🐞</li>
+                        <li>Molino Rojo</li>
+                        <li>Museo de Louvre 🔼</li>
+                        <li>Notre Dame de París ⛪</li>
+                        <li>Campos Elíseos y Arco del triunfo ⛩🌅</li>
+                        <li>Trocadero 🏛</li>
+                        <li>Torre Eiffel 🗼</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-primary mb-2">Tour de 2 horas – lugares visitados</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Museo de Louvre 🔼</li>
+                        <li>Campos Elíseos y Arco del triunfo ⛩🌅</li>
+                        <li>Trocadero 🏛</li>
+                        <li>Torre Eiffel 🗼</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-primary mb-2">Tarifas Tour: hasta 5 pasajeros</h3>
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="dl-dl">
+                        <AccordionTrigger>Disneyland ➡ Paris Tour ➡ Disneyland</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">340€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">315€</span></li>
+                            <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">245€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="dl-air">
+                        <AccordionTrigger>Disneyland ➡ Paris Tour ➡ Aeropuerto CDG u Orly</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">320€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">300€</span></li>
+                            <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">230€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="air-dl">
+                        <AccordionTrigger>Aeropuerto CDG u Orly ➡ Paris Tour ➡ Disneyland</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">320€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">300€</span></li>
+                            <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">230€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="hotel-center">
+                        <AccordionTrigger>Hôtel Paris ➡ Paris Tour ➡ Hôtel París o centro</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">190€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">145€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="hotel-air">
+                        <AccordionTrigger>Hôtel Paris ➡ Paris Tour ➡ Aeropuerto CDG u Orly</AccordionTrigger>
+                        <AccordionContent>
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Paris Tour (3h): <span className="font-semibold">230€</span></li>
+                            <li>Paris Tour (2h): <span className="font-semibold">210€</span></li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <p>El tiempo de tour cuenta desde el momento que estamos en el primer lugar emblemático de París.</p>
+                    <p>La hora adicional tiene un valor de 55€.</p>
+                    <p>
+                      En cada uno de los lugares que visitamos pueden bajar del vehículo por 15 min para tomar fotos y conocer
+                      un poco el lugar.
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-primary">Tour Versailles</h3>
+                    <p>
+                      Tiene un costo mínimo de <span className="font-semibold">290€</span> hasta 3 personas, persona adicional
+                      tiene un valor de <span className="font-semibold">90€</span>.
+                    </p>
+                    <div>
+                      <p className="font-medium">Incluye:</p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Transporte de ida y regreso a su hotel en París.</li>
+                        <li>Acompañamiento durante todo el recorrido (6h en promedio).</li>
+                        <li>Entrada a todo el dominio de Versailles (Castillo, jardines, Trianon de María Antonieta y aldea de la reina).</li>
+                        <li>Transporte de ida y regreso a su hotel en París.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="font-medium">En los traslados colocar:</p>
+                    <p>Origen o Destino:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>
+                        <span className="font-semibold">Versailles:</span> 65€ hasta 4 pasajeros. Después aumenta 10€ cada
+                        pasajero. Valor desde París.
+                      </li>
+                      <li>
+                        <span className="font-semibold">Parque Asterix:</span> 70€ desde Paris o aeropuerto Orly. Persona adicional
+                        +17€.
+                      </li>
+                      <li>
+                        <span className="font-semibold">Casa de Monet (Giverny):</span> 100€ desde París. Hasta 4 pasajeros, persona
+                        adicional 12€.
+                      </li>
+                    </ul>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-primary">Tour Brujas</h3>
+                    <p>
+                      Tiene un costo mínimo de <span className="font-semibold">520€</span> hasta 3 pasajeros. A partir del 4º
+                      pasajero el valor sería de <span className="font-semibold">140€</span> por pasajero.
+                    </p>
+                    <div>
+                      <p className="font-medium">Incluye:</p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Transporte de ida y regreso a su hotel en París*</li>
+                        <li>Guía en la ciudad por 2 horas.</li>
+                        <li>Degustación de chocolates 🍫</li>
+                        <li>Recomendaciones para comer y tomar una cerveza 🍺</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-medium">Itinerario Tour Brujas:</p>
+                      <ol className="list-decimal pl-5 space-y-1">
+                        <li>Recogida pasajeros en París 6:30am a 7:00am</li>
+                        <li>Salida de París hacia Brujas 6:45 a 7:15</li>
+                        <li>Parada desayuno: 8:30am</li>
+                        <li>Retoma de trayecto hacia Brujas: 9:00am</li>
+                        <li>Llegada a Brujas: 11:00am</li>
+                        <li>Encuentro con el guía 11:30am (Recorrido 2 horas)</li>
+                        <li>Visita libre por la ciudad de Brujas: 13:30 a 17:30</li>
+                        <li>Si el cliente no quiere guía se resta 10€ por persona</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-primary">Transporte Brujas y Amsterdam</h3>
+                    <p>
+                      <span className="font-semibold">1.100€</span>
+                    </p>
+                    <div>
+                      <p className="font-medium">Incluye:</p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Transporte desde París hasta Amsterdam, con escala intermedia de una noche en Brujas (Bélgica).</li>
+                        <li>
+                          Hospedaje del conductor a cargo del cliente y comidas a cargo del cliente, tarifa hasta grupo de 5 personas.
+                          Valor por Van de 8 personas: <span className="font-semibold">1450€</span>.
+                        </li>
+                      </ul>
+                    </div>
+                    <p className="text-muted-foreground">
+                      En este tour de Amsterdam, es mejor priorizar el contacto directo con nosotros para coordinar detalles.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {effectiveTourId === "paris-dl-dl" && (
+              <Card className="transform hover:scale-105 transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-primary">Opciones y Tarifas</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 text-sm md:text-base">
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground">Tarifas según número de pasajeros:</p>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h5 className="font-semibold text-primary mb-1">Hasta 4 pasajeros</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Paris Tour (3h): <span className="font-semibold">300€</span></li>
+                          <li>Paris Tour (2h): <span className="font-semibold">245€</span></li>
+                          <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">200€</span></li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h5 className="font-semibold text-primary mb-1">Hasta 5 pasajeros</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Paris Tour (3h): <span className="font-semibold">340€</span></li>
+                          <li>Paris Tour (2h): <span className="font-semibold">315€</span></li>
+                          <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">245€</span></li>
+                        </ul>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Para más de 5 pasajeros, consultar por Van (8p).</p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-primary mb-2">Qué visitamos</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Museo del Louvre</li>
+                        <li>Campos Elíseos y Arco del Triunfo</li>
+                        <li>Trocadero</li>
+                        <li>Torre Eiffel</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-primary mb-2">Notas</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Paradas de 15 min para fotos</li>
+                        <li>Itinerario ajustable según tráfico</li>
+                        <li>Servicio privado puerta a puerta</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Booking Form */}
@@ -381,9 +772,9 @@ export function TourDetail({ tourId }: TourDetailProps) {
               <CardHeader>
                 <CardTitle className="text-2xl text-primary text-center">Reservar Ahora</CardTitle>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-accent animate-pulse">{calculatePrice()}€</div>
+                  <div className="text-3xl font-bold text-accent animate-pulse">{Number.isNaN(calculatePrice()) ? "…€" : `${calculatePrice()}€`}</div>
                   <p className="text-sm text-muted-foreground">
-                    {tourId === "tour-paris" ? `por ${tourHours} hora${tourHours > 1 ? "s" : ""}` : "por trayecto"}
+                    {effectiveTourId === "tour-paris" ? `por ${tourHours} hora${tourHours > 1 ? "s" : ""}` : "por trayecto"}
                   </p>
                 </div>
               </CardHeader>
@@ -401,6 +792,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                       placeholder="Tu nombre completo"
                       value={contactName}
                       onChange={(e) => setContactName(e.target.value)}
+                      required
                       className="transform focus:scale-105 transition-all duration-300"
                     />
                   </div>
@@ -412,6 +804,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                         placeholder="+33 1 23 45 67 89"
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}
+                        required
                         className="transform focus:scale-105 transition-all duration-300"
                       />
                     </div>
@@ -422,6 +815,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                         placeholder="tu@email.com"
                         value={contactEmail}
                         onChange={(e) => setContactEmail(e.target.value)}
+                        required
                         className="transform focus:scale-105 transition-all duration-300"
                       />
                     </div>
@@ -437,14 +831,36 @@ export function TourDetail({ tourId }: TourDetailProps) {
                   <Input
                     type="number"
                     min="1"
-                    max="8"
+                    max={effectiveTourId === "paris-dl-dl" ? 5 : 8}
                     value={passengers}
                     onChange={(e) => setPassengers(Number(e.target.value))}
+                    required
                     className="transform focus:scale-105 transition-all duration-300"
                   />
                 </div>
 
-                {tourId === "tour-paris" && (
+                {effectiveTourId === "paris-dl-dl" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-accent" />
+                      Opción de Tour
+                    </label>
+                    <div className="max-w-xs">
+                      <Select value={routeOption} onValueChange={(v: any) => setRouteOption(v)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecciona una opción" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="threeH">Paris Tour (3h)</SelectItem>
+                          <SelectItem value="twoH">Paris Tour (2h)</SelectItem>
+                          <SelectItem value="eiffelArco">Torre Eiffel + Arco del Triunfo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {effectiveTourId === "tour-paris" && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <Clock className="w-4 h-4 text-accent" />
@@ -456,6 +872,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                       max="12"
                       value={tourHours}
                       onChange={(e) => setTourHours(Number(e.target.value))}
+                      required
                       className="transform focus:scale-105 transition-all duration-300"
                     />
                   </div>
@@ -472,6 +889,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     min={new Date().toISOString().split("T")[0]}
+                    required
                     className="transform focus:scale-105 transition-all duration-300"
                   />
                 </div>
@@ -486,12 +904,13 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     type="time"
                     value={time}
                     onChange={(e) => handleTimeChange(e.target.value)}
+                    required
                     className="transform focus:scale-105 transition-all duration-300"
                   />
-                  {isNightTime && tourId !== "tour-paris" && (
+                  {isNightTime && effectiveTourId !== "tour-paris" && (
                     <p className="text-xs text-accent animate-pulse">* Recargo nocturno: +5€ (después de las 21:00)</p>
                   )}
-                  {isNightTime && tourId === "tour-paris" && (
+                  {isNightTime && effectiveTourId === "tour-paris" && (
                     <p className="text-xs text-accent animate-pulse">
                       * Tour nocturno: {tour.basePriceNight}€/h (después de las 21:00)
                     </p>
@@ -508,12 +927,13 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     placeholder="Dirección completa de recogida"
                     value={pickupAddress}
                     onChange={(e) => setPickupAddress(e.target.value)}
+                    required
                     className="transform focus:scale-105 transition-all duration-300"
                   />
                 </div>
 
                 {/* Dropoff Address */}
-                {tourId !== "tour-paris" && (
+                {effectiveTourId !== "tour-paris" && effectiveTourId !== "paris-dl-dl" && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-accent" />
@@ -523,13 +943,14 @@ export function TourDetail({ tourId }: TourDetailProps) {
                       placeholder="Dirección completa de destino"
                       value={dropoffAddress}
                       onChange={(e) => setDropoffAddress(e.target.value)}
+                      required
                       className="transform focus:scale-105 transition-all duration-300"
                     />
                   </div>
                 )}
 
                 {/* Flight Number */}
-                {(tourId.includes("cdg") || tourId.includes("orly") || tourId.includes("beauvais")) && (
+                {(effectiveTourId.includes("cdg") || effectiveTourId.includes("orly") || effectiveTourId.includes("beauvais")) && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <Plane className="w-4 h-4 text-accent" />
@@ -603,7 +1024,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                 </div>
 
                 {/* Additional Services */}
-                {tourId !== "tour-paris" && (
+                {effectiveTourId !== "tour-paris" && effectiveTourId !== "paris-dl-dl" && (
                   <div className="space-y-3">
                     <label className="text-sm font-medium">Servicios Adicionales</label>
                     <div className="space-y-2">
@@ -635,7 +1056,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
 
                 {/* Price Breakdown */}
                 <div className="space-y-2">
-                  {tourId === "tour-paris" ? (
+                  {effectiveTourId === "tour-paris" ? (
                     <>
                       <div className="flex justify-between text-sm">
                         <span>Precio por hora ({isNightTime ? "nocturno" : "diurno"})</span>
@@ -646,6 +1067,25 @@ export function TourDetail({ tourId }: TourDetailProps) {
                         <span>
                           {tourHours} hora{tourHours > 1 ? "s" : ""}
                         </span>
+                      </div>
+                    </>
+                  ) : effectiveTourId === "paris-dl-dl" ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span>Opción</span>
+                        <span>
+                          {!routeOption
+                            ? "Selecciona"
+                            : routeOption === "threeH"
+                              ? "Paris Tour (3h)"
+                              : routeOption === "twoH"
+                                ? "Paris Tour (2h)"
+                                : "Torre Eiffel + Arco"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Pasajeros</span>
+                        <span>{passengers <= 5 ? `${passengers}` : "Consultar"}</span>
                       </div>
                     </>
                   ) : (
@@ -671,7 +1111,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                   <Separator />
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>
-                    <span className="text-accent animate-pulse">{calculatePrice()}€</span>
+                    <span className="text-accent animate-pulse">{Number.isNaN(calculatePrice()) ? "…€" : `${calculatePrice()}€`}</span>
                   </div>
                 </div>
 

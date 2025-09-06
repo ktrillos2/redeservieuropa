@@ -68,7 +68,7 @@ const transferRoutes = [
 ]
 
 const additionalCharges = [
-  { icon: <Clock className="w-5 h-5" />, text: "Recargo nocturno (después 21h)", price: "+3€" },
+  { icon: <Clock className="w-5 h-5" />, text: "Recargo nocturno (después 21h)", price: "+5€" },
   { icon: <Luggage className="w-5 h-5" />, text: "Equipaje voluminoso (+3 maletas 23kg)", price: "+10€" },
   { icon: <Users className="w-5 h-5" />, text: "Pasajero adicional", price: "+17€" },
 ]
@@ -159,6 +159,46 @@ export function TransfersSection() {
                 <strong>Nota:</strong> Para grupos de 5+ pasajeros, se combina la tarifa base + tarifa de vehículo
                 adicional. Ejemplo: 9 pasajeros = Tarifa de 5 + Tarifa de 4 adicionales.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Traslados Especiales */}
+        <Card className="bg-card border-border animate-slide-up animation-delay-900 hover-lift mt-10">
+          <CardHeader>
+            <CardTitle className="text-center text-primary">Traslados Especiales</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4 stagger-animation">
+              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
+                <div className="text-accent"><MapPin className="w-5 h-5" /></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Versailles</p>
+                  <p className="text-xs text-muted-foreground">Desde París. Hasta 4 pax</p>
+                </div>
+                <div className="text-accent font-bold">65€</div>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
+                <div className="text-accent"><Plane className="w-5 h-5" /></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Parque Asterix</p>
+                  <p className="text-xs text-muted-foreground">Desde París u Orly</p>
+                </div>
+                <div className="text-accent font-bold">70€</div>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
+                <div className="text-accent"><MapPin className="w-5 h-5" /></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Casa de Monet (Giverny)</p>
+                  <p className="text-xs text-muted-foreground">Desde París · hasta 4 pax</p>
+                </div>
+                <div className="text-accent font-bold">100€</div>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4 mt-3 text-xs text-muted-foreground">
+              <div className="text-center">+10€ por pasajero adicional (Versailles)</div>
+              <div className="text-center">+17€ por persona adicional (Asterix)</div>
+              <div className="text-center">Persona adicional 12€ (Giverny)</div>
             </div>
           </CardContent>
         </Card>

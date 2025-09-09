@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plane, MapPin, Clock, Users, Luggage, Euro } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AnimatedSection } from "@/components/animated-section"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -140,7 +141,7 @@ export function TransfersSection() {
           {transferRoutes.map((route, index) => (
             <AnimatedSection key={route.id} animation="zoom-in" delay={index * 100}>
               <Card
-                className={`relative bg-card border-border hover-lift hover-glow ${
+                className={`relative bg-card border-border hover-lift hover-glow h-full flex flex-col ${
                   route.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : ""
                 }`}
               >
@@ -170,28 +171,29 @@ export function TransfersSection() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground animate-slide-in-left animation-delay-600">
-                      <Clock className="w-4 h-4 animate-pulse" />
-                      {route.duration}
-                    </div>
-                  </div>
-                </div>
+              <CardContent className="flex-1" />
 
-                {/* Botón de reserva simple: detalles se solicitan en pago */}
-                {(!/\/h/.test(route.price) && route.from !== "Tour") && (
-                  <div className="mt-4 flex justify-end">
-                    <Button
-                      onClick={() => handleReserve(route)}
-                      className="bg-accent text-accent-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
-                    >
-                      Reservar
+              {/* Footer fijo abajo con botón */}
+              <div className="mt-auto p-4 pt-0 space-y-3">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <Clock className="w-4 h-4" />
+                  <span>{route.duration}</span>
+                </div>
+                {/\/h/.test(route.price) || route.from === "Tour" ? (
+                  <Link href="/tour/tour-nocturno" className="block">
+                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md">
+                      Ver detalles y reservar
                     </Button>
-                  </div>
+                  </Link>
+                ) : (
+                  <Button
+                    onClick={() => handleReserve(route)}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
+                  >
+                    Reservar
+                  </Button>
                 )}
-              </CardContent>
+              </div>
               </Card>
             </AnimatedSection>
           ))}

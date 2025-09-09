@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, MapPin, Users, Clock } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { AnimatedSection } from "@/components/animated-section"
 
 export function Hero() {
@@ -16,6 +16,79 @@ export function Hero() {
     hora: "",
     pasajeros: "",
   })
+
+  // Rutas disponibles y sus precios base (hasta 4 pasajeros)
+  const routePrices: Record<string, number> = useMemo(
+    () => ({
+      "cdg->paris": 65,
+      "orly->paris": 60,
+      "beauvais->paris": 125,
+      "paris->disneyland": 70,
+      "orly->disneyland": 73,
+    }),
+    []
+  )
+
+  const getBasePrice = (from?: string, to?: string) => {
+    if (!from || !to) return undefined
+    const key = `${from}->${to}`
+    return routePrices[key]
+  }
+
+  // Mapa de etiquetas amigables
+  const labelMap = useMemo(
+    () => ({
+      cdg: "Aeropuerto CDG",
+      orly: "Aeropuerto Orly",
+      beauvais: "Aeropuerto Beauvais",
+      paris: "París Centro",
+      disneyland: "Disneyland",
+    }),
+    []
+  )
+
+  // Destinos disponibles según el origen seleccionado
+  const availableDestinations = useMemo(() => {
+    if (!bookingData.origen) return [] as string[]
+    const prefix = `${bookingData.origen}->`
+    return Object.keys(routePrices)
+      .filter((k) => k.startsWith(prefix))
+      .map((k) => k.split("->")[1])
+  }, [bookingData.origen, routePrices])
+
+  const parsePassengers = (paxStr?: string) => {
+    const n = parseInt(paxStr || "", 10)
+    return Number.isFinite(n) && n > 0 ? n : 1
+  }
+
+  const isNightTime = (timeStr?: string) => {
+    if (!timeStr) return false
+    const [hh] = timeStr.split(":").map((x) => parseInt(x, 10))
+    if (!Number.isFinite(hh)) return false
+    // Considerar nocturno desde 21:00 hasta 05:59
+    return hh >= 21 || hh < 6
+  }
+
+  const quote = useMemo(() => {
+    const base = getBasePrice(bookingData.origen, bookingData.destino)
+    if (base == null) return null
+    const pax = parsePassengers(bookingData.pasajeros)
+    const night = isNightTime(bookingData.hora)
+
+    // Tarifas adicionales según la sección actual del sitio
+    const nightCharge = night ? 5 : 0
+    const extraPax = Math.max(0, pax - 4)
+    const extraPaxCharge = extraPax * 17
+
+    const total = base + nightCharge + extraPaxCharge
+    return {
+      base,
+      nightCharge,
+      extraPax,
+      extraPaxCharge,
+      total,
+    }
+  }, [bookingData.origen, bookingData.destino, bookingData.hora, bookingData.pasajeros])
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-primary pt-20">
@@ -75,17 +148,19 @@ export function Hero() {
                       </label>
                       <Select
                         value={bookingData.origen}
-                        onValueChange={(value) => setBookingData({ ...bookingData, origen: value })}
+                        onValueChange={(value) =>
+                          setBookingData({ ...bookingData, origen: value, destino: "" })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar origen" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="cdg">Aeropuerto CDG</SelectItem>
-                          <SelectItem value="orly">Aeropuerto Orly</SelectItem>
-                          <SelectItem value="beauvais">Aeropuerto Beauvais</SelectItem>
-                          <SelectItem value="paris">París Centro</SelectItem>
-                          <SelectItem value="disneyland">Disneyland</SelectItem>
+                          <SelectItem value="cdg">{labelMap.cdg}</SelectItem>
+                          <SelectItem value="orly">{labelMap.orly}</SelectItem>
+                          <SelectItem value="beauvais">{labelMap.beauvais}</SelectItem>
+                          <SelectItem value="paris">{labelMap.paris}</SelectItem>
+                          <SelectItem value="disneyland">{labelMap.disneyland}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -94,19 +169,22 @@ export function Hero() {
                         <MapPin className="w-4 h-4 text-accent" />
                         Destino
                       </label>
-                      <Select
-                        value={bookingData.destino}
-                        onValueChange={(value) => setBookingData({ ...bookingData, destino: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar destino" />
+                      <Select value={bookingData.destino} onValueChange={(value) => setBookingData({ ...bookingData, destino: value })}>
+                        <SelectTrigger disabled={!bookingData.origen}>
+                          <SelectValue placeholder={bookingData.origen ? "Seleccionar destino" : "Selecciona el origen primero"} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="cdg">Aeropuerto CDG</SelectItem>
-                          <SelectItem value="orly">Aeropuerto Orly</SelectItem>
-                          <SelectItem value="beauvais">Aeropuerto Beauvais</SelectItem>
-                          <SelectItem value="paris">París Centro</SelectItem>
-                          <SelectItem value="disneyland">Disneyland</SelectItem>
+                          {availableDestinations.length > 0 ? (
+                            availableDestinations.map((d) => (
+                              <SelectItem key={d} value={d}>
+                                {labelMap[d as keyof typeof labelMap] || d}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="-" disabled>
+                              {bookingData.origen ? "No hay destinos disponibles" : "Selecciona el origen primero"}
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -160,6 +238,30 @@ export function Hero() {
                         <SelectItem value="8">8 Pasajeros</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Resultado de cotización */}
+                  <div className="rounded-lg border border-border p-4 bg-muted/40">
+                    {!bookingData.origen || !bookingData.destino ? (
+                      <p className="text-sm text-muted-foreground">Selecciona origen y destino para ver el precio.</p>
+                    ) : quote ? (
+                      <div className="space-y-1">
+                        <p className="text-sm">
+                          Precio base: <span className="font-semibold">{quote.base}€</span> (hasta 4 pasajeros)
+                        </p>
+                        {quote.nightCharge > 0 && (
+                          <p className="text-xs text-muted-foreground">+{quote.nightCharge}€ recargo nocturno</p>
+                        )}
+                        {quote.extraPax > 0 && (
+                          <p className="text-xs text-muted-foreground">+{quote.extraPaxCharge}€ por {quote.extraPax} pasajero(s) extra</p>
+                        )}
+                        <p className="text-lg font-bold text-primary mt-1">
+                          Total estimado: {quote.total}€
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-destructive">Ruta no disponible. Revisa los traslados disponibles.</p>
+                    )}
                   </div>
 
                   <Button className="w-full bg-primary hover:bg-primary/90 shadow-lg" size="lg">

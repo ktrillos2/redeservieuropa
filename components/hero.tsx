@@ -163,7 +163,7 @@ export function Hero() {
                   </div>
 
                   <Button className="w-full bg-primary hover:bg-primary/90 shadow-lg" size="lg">
-                    Calcular Precio y Reservar
+                    Habla con Nosotros
                   </Button>
                 </div>
               </CardContent>

@@ -3,6 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plane, MapPin, Clock, Users, Luggage, Euro } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AnimatedSection } from "@/components/animated-section"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 const transferRoutes = [
   {
@@ -74,6 +78,53 @@ const additionalCharges = [
 ]
 
 export function TransfersSection() {
+  const router = useRouter()
+  // Captura mínima: la información detallada se pedirá en la página de pago
+
+  const parseBasePrice = (price: string) => {
+    const m = price.match(/\d+/)
+    return m ? Number(m[0]) : 0
+  }
+
+  const defaultPassengers = 1
+
+  const handleReserve = (route: (typeof transferRoutes)[number]) => {
+    const passengers = defaultPassengers
+    const base = parseBasePrice(route.price)
+    const isHourly = /\/h/.test(route.price) || route.from === "Tour"
+    if (isHourly) return
+    const total = base
+
+    const bookingData = {
+      isEvent: false,
+      tourId: `${route.from}-${route.to}`,
+      passengers,
+      date: "",
+      time: "",
+      pickupAddress: route.from,
+      dropoffAddress: route.to,
+      flightNumber: "",
+      luggageCount: 0,
+      luggage23kg: 0,
+      luggage10kg: 0,
+      extraLuggage: false,
+      isNightTime: false,
+      specialRequests: "",
+      contactName: "",
+      contactPhone: "",
+      contactEmail: "",
+      basePrice: base,
+      totalPrice: total,
+    }
+
+    try {
+      localStorage.setItem("bookingData", JSON.stringify(bookingData))
+      router.push("/pago")
+    } catch (e) {
+      console.error("No se pudo iniciar la reserva:", e)
+    }
+  }
+
   return (
     <section id="traslados" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -87,13 +138,12 @@ export function TransfersSection() {
         {/* Transfer Routes Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 stagger-animation">
           {transferRoutes.map((route, index) => (
-            <Card
-              key={route.id}
-              className={`relative bg-card border-border hover-lift hover-glow animate-zoom-in ${
-                route.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : ""
-              }`}
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
+            <AnimatedSection key={route.id} animation="zoom-in" delay={index * 100}>
+              <Card
+                className={`relative bg-card border-border hover-lift hover-glow ${
+                  route.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : ""
+                }`}
+              >
               {route.popular && (
                 <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
                   Popular
@@ -114,26 +164,36 @@ export function TransfersSection() {
                       </p>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-primary">{route.price}</div>
+                    <p className="text-xs text-muted-foreground">Hasta 4 pasajeros</p>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1 text-sm text-muted-foreground animate-slide-in-left animation-delay-600">
                       <Clock className="w-4 h-4 animate-pulse" />
                       {route.duration}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 text-2xl font-bold text-accent">
-                      <Euro className="w-5 h-5" />
-                      {route.price.replace("€", "")}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Hasta 4 pasajeros</p>
-                  </div>
                 </div>
+
+                {/* Botón de reserva simple: detalles se solicitan en pago */}
+                {(!/\/h/.test(route.price) && route.from !== "Tour") && (
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      onClick={() => handleReserve(route)}
+                      className="bg-accent text-accent-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
+                    >
+                      Reservar
+                    </Button>
+                  </div>
+                )}
               </CardContent>
-            </Card>
+              </Card>
+            </AnimatedSection>
           ))}
         </div>
 

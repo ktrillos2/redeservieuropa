@@ -79,6 +79,7 @@
   /* Cambiando la fuente principal a Jost */
   --font-sans: var(--font-jost);
   --font-mono: var(--font-jost);
+  --font-display: var(--font-playfair);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -123,6 +124,10 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6, [data-slot="card-title"] {
+    font-family: var(--font-display), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif !important;
+    letter-spacing: 0.01em;
   }
 }
 
@@ -390,6 +395,11 @@ html {
 .focus-glow:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(135, 84, 23, 0.3);
+}
+
+/* Utilidad para forzar la fuente display (Playfair) donde se necesite */
+.font-display {
+  font-family: var(--font-playfair), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif !important;
 }
 
 /* Agregando estilos específicos para el header con alta especificidad */

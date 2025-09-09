@@ -78,17 +78,20 @@ export function Header() {
             />
             <div className="hidden md:block">
               <h1
-                className={`font-bold transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
+                className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
               >
                 REDESERVI
               </h1>
-              <p className={`transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-sm"} ${useDarkText ? "!text-black" : "!text-white"}`}>
+              <p className={`font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-sm"} ${useDarkText ? "!text-black" : "!text-white"}`}>
                 PARIS
               </p>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-8 font-display">
+            <Link href="/eventos" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
+              Eventos
+            </Link>
             <Link href="#servicios" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
               Servicios
             </Link>
@@ -115,7 +118,14 @@ export function Header() {
 
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 animate-fade-in-up">
-            <nav className="flex flex-col space-y-4 pt-4">
+            <nav className="flex flex-col space-y-4 pt-4 font-display">
+              <Link
+                href="/eventos"
+                className="transition-colors drop-shadow-lg hover:opacity-75"
+                style={{ color: "#000000", fontWeight: "600" }}
+              >
+                Eventos
+              </Link>
               <Link
                 href="#servicios"
                 className="transition-colors drop-shadow-lg hover:opacity-75"

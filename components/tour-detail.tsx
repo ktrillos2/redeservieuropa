@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import {
   ArrowLeft,
   Clock,
@@ -24,7 +26,7 @@ import {
   Plane,
 } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
 interface TourDetailProps {
@@ -40,6 +42,13 @@ const tourData: Record<string, any> = {
     duration: "45-60 min",
     distance: "35 km",
     image: "/luxury-car-at-charles-de-gaulle-airport-paris.jpg",
+    gallery: [
+      "/luxury-car-at-charles-de-gaulle-airport-paris.jpg",
+      "/vehicles/stepway-paris-2.jpg",
+      "/vehicles/stepway-paris-3.jpg",
+      "/vehicles/stepway-paris-4.jpg",
+      "/vehicles/stepway-paris-5.jpg",
+    ],
     features: [
       "Seguimiento de vuelo en tiempo real",
       "Conductor profesional uniformado",
@@ -77,6 +86,12 @@ const tourData: Record<string, any> = {
     duration: "35-45 min",
     distance: "25 km",
     image: "/elegant-transport-service-orly-airport-paris.jpg",
+    gallery: [
+      "/elegant-transport-service-orly-airport-paris.jpg",
+      "/vehicles/stepway-paris-1.jpg",
+      "/vehicles/stepway-paris-6.jpg",
+      "/elegant-paris-skyline-with-eiffel-tower-and-luxury.jpg",
+    ],
     features: [
       "Servicio puerta a puerta",
       "Vehículos de lujo",
@@ -114,6 +129,11 @@ const tourData: Record<string, any> = {
     duration: "45-60 min",
     distance: "40 km",
     image: "/family-transport-to-disneyland-paris-castle.jpg",
+    gallery: [
+      "/family-transport-to-disneyland-paris-castle.jpg",
+      "/elegant-woman-smiling.png",
+      "/vehicles/stepway-paris-2.jpg",
+    ],
     features: [
       "Perfecto para familias",
       "Entretenimiento para niños",
@@ -152,6 +172,14 @@ const tourData: Record<string, any> = {
     duration: "Mínimo 2 horas",
     distance: "Personalizable",
     image: "/vehicles/stepway-paris-4.jpg",
+    gallery: [
+      "/vehicles/stepway-paris-1.jpg",
+      "/vehicles/stepway-paris-3.jpg",
+      "/vehicles/stepway-paris-4.jpg",
+      "/vehicles/stepway-paris-5.jpg",
+      "/vehicles/stepway-paris-6.jpg",
+      "/elegant-paris-skyline-with-eiffel-tower-and-luxury.jpg",
+    ],
     features: [
       "Tour personalizable",
       "Paradas en monumentos principales",
@@ -182,6 +210,14 @@ const tourData: Record<string, any> = {
     duration: "2h · 3h o circuito Eiffel + Arco",
     distance: "Circuito en París",
     image: "/vehicles/stepway-paris-1.jpg",
+    gallery: [
+      "/vehicles/stepway-paris-1.jpg",
+      "/vehicles/stepway-paris-2.jpg",
+      "/vehicles/stepway-paris-3.jpg",
+      "/vehicles/stepway-paris-4.jpg",
+      "/vehicles/stepway-paris-5.jpg",
+      "/vehicles/stepway-paris-6.jpg",
+    ],
     features: [
       "Salida y regreso a Disneyland",
       "Paradas en puntos icónicos",
@@ -225,6 +261,11 @@ export function TourDetail({ tourId }: TourDetailProps) {
   const [contactEmail, setContactEmail] = useState("")
   const [tourHours, setTourHours] = useState(2)
   const [routeOption, setRouteOption] = useState<"threeH" | "twoH" | "eiffelArco" | undefined>(undefined)
+
+  const galleryImages = useMemo<string[]>(() => {
+    const g = tour?.gallery as string[] | undefined
+    return Array.isArray(g) && g.length > 0 ? g : tour?.image ? [tour.image] : []
+  }, [tour])
 
   if (!tour) {
     return (
@@ -336,9 +377,48 @@ export function TourDetail({ tourId }: TourDetailProps) {
         <div className="grid lg:grid-cols-3 gap-8 py-3">
           {/* Tour Information */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Hero Image */}
-            <div className="relative rounded-lg overflow-hidden transform hover:scale-105 transition-all duration-500">
-              <img src={tour.image || "/placeholder.svg"} alt={tour.title} className="w-full h-64 object-cover" />
+            {/* Galería con carrusel + lightbox */}
+            <div className="relative rounded-lg overflow-hidden">
+              <Carousel className="animate-fade-in-up">
+                <CarouselContent className="">
+                  {galleryImages.map((src, idx) => (
+                    <CarouselItem key={idx} className="md:basis-1/1 lg:basis-1/1">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button
+                            aria-label="Ampliar imagen"
+                            className="relative group block w-full h-64 md:h-96 overflow-hidden"
+                          >
+                            <img
+                              src={src}
+                              alt={`${tour.title} - imagen ${idx + 1}`}
+                              className="w-full h-full object-cover transition-opacity duration-500 opacity-0 group-[data-state=open]:opacity-100"
+                              onLoad={(e) => {
+                                // fade-in suave al cargar
+                                e.currentTarget.classList.remove("opacity-0")
+                                e.currentTarget.classList.add("opacity-100")
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-5xl p-0 bg-transparent border-none shadow-none" showCloseButton>
+                          <div className="relative w-full h-[70vh]">
+                            <img
+                              src={src}
+                              alt={`${tour.title} - ampliada ${idx + 1}`}
+                              className="w-full h-full object-contain animate-fade-in"
+                            />
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="left-3 md:left-4 size-10 md:size-12 bg-black/50 text-white hover:bg-black/70 border-white/20 shadow-lg z-20" />
+                <CarouselNext className="right-3 md:right-4 size-10 md:size-12 bg-black/50 text-white hover:bg-black/70 border-white/20 shadow-lg z-20" />
+              </Carousel>
+
               <div className="absolute top-4 left-4">
                 <Badge className="bg-accent text-accent-foreground animate-pulse">
                   <Star className="w-3 h-3 mr-1" />

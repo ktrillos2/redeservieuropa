@@ -13,7 +13,7 @@ const testimonials = [
     comment:
       "Servicio excepcional. El conductor fue muy puntual y el vehículo impecable. Definitivamente lo recomiendo para traslados en París.",
     service: "CDG → París",
-    avatar: "/placeholder.svg?height=200&width=300",
+  avatar: "/business-man-smiling.jpg",
   },
   {
     id: 2,
@@ -23,7 +23,7 @@ const testimonials = [
     comment:
       "Perfecto para familias. Nos llevaron a Disneyland sin problemas, el conductor conocía muy bien la ruta y fue muy amable con los niños.",
     service: "París → Disneyland",
-    avatar: "/placeholder.svg?height=200&width=300",
+  avatar: "/family-transport-to-disneyland-paris-castle.jpg",
   },
   {
     id: 3,
@@ -33,7 +33,7 @@ const testimonials = [
     comment:
       "El tour nocturno por París fue increíble. Vimos todos los monumentos iluminados y el conductor nos dio excelentes recomendaciones.",
     service: "Tour Nocturno",
-    avatar: "/placeholder.svg?height=200&width=300",
+  avatar: "/elegant-paris-skyline-with-eiffel-tower-and-luxury.jpg",
   },
   {
     id: 4,
@@ -43,7 +43,7 @@ const testimonials = [
     comment:
       "Muy profesional y confiable. Llegué tarde por el vuelo y me esperaron sin costo adicional. Excelente servicio al cliente.",
     service: "Orly → París",
-    avatar: "/placeholder.svg?height=200&width=300",
+  avatar: "/professional-man-smiling.png",
   },
   {
     id: 5,
@@ -53,7 +53,7 @@ const testimonials = [
     comment:
       "Comodidad y elegancia en cada detalle. El vehículo era muy limpio y cómodo. Una experiencia de lujo a precio justo.",
     service: "Beauvais → París",
-    avatar: "/placeholder.svg?height=200&width=300",
+  avatar: "/professional-woman-smiling.png",
   },
 ]
 

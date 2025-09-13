@@ -80,7 +80,7 @@ export function Testimonials() {
     <section id="testimonios" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="fade-up" className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4 text-primary text-balance">Lo que Dicen Nuestros Clientes</h2>
+          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">Lo que Dicen Nuestros Clientes</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
             Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.
           </p>

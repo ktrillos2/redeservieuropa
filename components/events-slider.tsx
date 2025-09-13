@@ -168,7 +168,7 @@ export function EventsSlider({ className }: { className?: string }) {
               >
                 {/* Badge de Eventos */}
                 <div className="absolute top-2 left-2 z-10">
-                  <Badge className="bg-accent text-white shadow-sm">Eventos</Badge>
+                  <Badge className="bg-accent text-white shadow-sm text-xs sm:text-sm px-3 py-1.5 rounded-md font-display">Eventos</Badge>
                 </div>
                 {/* Fondo imagen */}
                 <div
@@ -186,7 +186,7 @@ export function EventsSlider({ className }: { className?: string }) {
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
                   <div className="flex items-end justify-between gap-3">
                     <div className="text-left">
-                      <div className="text-white text-sm sm:text-base font-semibold drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+                      <div className="text-white text-sm sm:text-base font-semibold drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-display">
                         {ev.title}
                       </div>
                     </div>

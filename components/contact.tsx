@@ -27,7 +27,7 @@ export function Contact() {
     <section id="contacto" className="py-16 bg-muted/30 relative z-0">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="fade-up" className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4 text-balance text-primary">Contáctanos</h2>
+          <h2 className="text-4xl font-bold mb-4 text-balance text-primary font-display">Contáctanos</h2>
           <p className="text-xl max-w-2xl mx-auto text-pretty text-muted-foreground">
             Estamos disponibles 24/7 para atender tus consultas y reservas.
           </p>
@@ -85,7 +85,7 @@ export function Contact() {
           <AnimatedSection animation="fade-up">
           <Card className="bg-card border-border transform hover:scale-105 transition-all duration-300">
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-foreground text-center justify-center">
+              <CardTitle className="flex items-center gap-3 text-foreground text-center justify-center font-display">
                 <MessageCircle className="w-6 h-6 text-accent" />
                 Envíanos un Mensaje
               </CardTitle>

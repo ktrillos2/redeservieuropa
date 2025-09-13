@@ -13,23 +13,7 @@ import { calcBaseTransferPrice, getAvailableDestinations as pricingGetAvailableD
 
 export function Hero() {
   const router = useRouter()
-  // Componente interno para un fade simple al montar (se reinicia con la prop key)
-  function FadeOnMount({ children, duration = 300 }: { children: React.ReactNode; duration?: number }) {
-    const [visible, setVisible] = useState(false)
-    useEffect(() => {
-      // Asegura transición después del primer paint
-      const id = requestAnimationFrame(() => setVisible(true))
-      return () => cancelAnimationFrame(id)
-    }, [])
-    return (
-      <div
-        className="transition-opacity"
-        style={{ opacity: visible ? 1 : 0, transitionDuration: `${duration}ms` }}
-      >
-        {children}
-      </div>
-    )
-  }
+  // Eliminado FadeOnMount para no ocultar contenido con opacity 0
 
   const [bookingData, setBookingData] = useState({
     origen: "cdg",
@@ -37,13 +21,15 @@ export function Hero() {
     fecha: "",
     hora: "",
     pasajeros: "1",
-    vehiculo: "",
+    vehiculo: "coche",
     flightNumber: "",
   tipoReserva: "traslado" as "" | "traslado" | "tour",
     tipoTour: "" as "diurno" | "nocturno" | "escala" | "",
     categoriaTour: "" as "" | "ciudad" | "escala",
     subtipoTour: "" as "" | "diurno" | "nocturno",
   })
+
+  const [formError, setFormError] = useState<string>("")
 
   // Helpers de precios desde módulo compartido
   const getBasePrice = (from?: string, to?: string, pax?: number) => calcBaseTransferPrice(from, to, pax)
@@ -73,6 +59,41 @@ export function Hero() {
     const n = parseInt(paxStr || "", 10)
     if (!Number.isFinite(n)) return 1
     return Math.min(56, Math.max(1, n))
+  }
+
+  // Lógicas de vehículo y capacidad
+  const vehicleCaps: Record<string, number> = {
+    coche: 4,
+    minivan: 6,
+    van: 8,
+  }
+  const getVehicleCap = (v?: string) => (v && vehicleCaps[v]) || 4
+
+  // Ajustar pasajeros al cambiar de vehículo
+  useEffect(() => {
+    if (!bookingData.vehiculo) return
+    const cap = getVehicleCap(bookingData.vehiculo)
+    const pax = parsePassengers(bookingData.pasajeros)
+    const clamped = Math.min(Math.max(pax, 1), cap)
+    if (clamped !== pax) {
+      setBookingData((bd) => ({ ...bd, pasajeros: String(clamped) }))
+    }
+  }, [bookingData.vehiculo])
+
+  const validateHard = (): boolean => {
+    const pax = parsePassengers(bookingData.pasajeros)
+    const cap = getVehicleCap(bookingData.vehiculo)
+    if (pax < 1) {
+      setFormError("Debes seleccionar al menos 1 pasajero.")
+      return false
+    }
+    if (pax > cap) {
+      const vehLabel = bookingData.vehiculo === 'coche' ? 'Coche (4)' : bookingData.vehiculo === 'minivan' ? 'Minivan (6)' : 'Van (8)'
+      setFormError(`Para ${vehLabel} el máximo es ${cap} pasajero(s).`)
+      return false
+    }
+    setFormError("")
+    return true
   }
 
   const isNightTime = (timeStr?: string) => {
@@ -137,6 +158,7 @@ export function Hero() {
   // Enviar a página de pago con un depósito de confirmación de 5€ (quick deposit)
   const goToPayment = () => {
     try {
+      if (!validateHard()) return
       const pax = parsePassengers(bookingData.pasajeros)
       const data: any = { quickDeposit: true }
 
@@ -197,7 +219,7 @@ export function Hero() {
           {/* Hero Content */}
           <AnimatedSection animation="slide-left">
             <div className="text-white">
-              <h1 className="font-bold mb-6 text-balance text-white drop-shadow-lg text-5xl">
+              <h1 className="font-bold mb-6 text-balance text-white drop-shadow-lg text-5xl font-display">
                 Transporte 
                 <span className="text-accent block animate-pulse drop-shadow-lg">Comodo y Seguro</span>
               </h1>
@@ -206,7 +228,7 @@ export function Hero() {
                 <EventsSlider />
               </div>
               <p className="text-xl mb-8 text-white/95 text-pretty drop-shadow-md">
-                {"✈🚖 Transporte Privado en París\nConfort, seguridad y puntualidad.\n📍 Traslados desde/hacia aeropuertos (CDG, ORY, BVA),🎢 Viajes a Disneyland, 🏰 Tours privados por la ciudad,\nExcursiones a Brujas y mucho más. \n✨ Vive París sin preocupaciones."}
+                {"Transporte Privado en París\nConfort, seguridad y puntualidad.\nTraslados desde/hacia aeropuertos (CDG, ORY, BVA), viajes a Disneyland, tours privados por la ciudad,\nexcursiones a Brujas y mucho más.\nVive París sin preocupaciones."}
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
@@ -229,7 +251,7 @@ export function Hero() {
           <AnimatedSection animation="fade-up" delay={300}>
             <Card className="bg-card/98 backdrop-blur-md transform hover:scale-102 transition-all duration-300 shadow-2xl border-white/20">
               <CardContent className="p-6">
-                <h3 className="text-2xl font-bold mb-6 text-center text-primary">Reserva tu Servicio</h3>
+                <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">Reserva tu Servicio</h3>
                 <div className="space-y-4">
                   {/* Tipo de reserva (botones) */}
                   <div className="space-y-2">
@@ -281,8 +303,8 @@ export function Hero() {
                             destino: "",
                             fecha: "",
                             hora: "",
-                            pasajeros: "",
-                            vehiculo: "",
+                            pasajeros: "1",
+                            vehiculo: "coche",
                             flightNumber: "",
                           })
                         }
@@ -371,10 +393,10 @@ export function Hero() {
                             onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
                           >
                             <SelectTrigger className="cursor-pointer">
-                              <SelectValue placeholder="Número de pasajeros (máx. 56)" />
+                              <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
                             </SelectTrigger>
                             <SelectContent className="max-h-72">
-                              {Array.from({ length: 56 }, (_, i) => i + 1).map((n) => (
+                              {Array.from({ length: getVehicleCap(bookingData.vehiculo) }, (_, i) => i + 1).map((n) => (
                                 <SelectItem key={n} value={String(n)}>
                                   {n} {n === 1 ? "Pasajero" : "Pasajeros"}
                                 </SelectItem>
@@ -389,19 +411,45 @@ export function Hero() {
                           </label>
                           <Select
                             value={bookingData.vehiculo}
-                            onValueChange={(value) => setBookingData({ ...bookingData, vehiculo: value })}
+                            onValueChange={(value) => {
+                              const cap = getVehicleCap(value)
+                              const pax = parsePassengers(bookingData.pasajeros)
+                              const clamped = Math.min(Math.max(pax, 1), cap)
+                              setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
+                            }}
                           >
                             <SelectTrigger className="cursor-pointer">
-                              <SelectValue placeholder="Selecciona: Vehículo, Minivan o Ambos" />
+                              <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="vehiculo">Vehículo</SelectItem>
+                              <SelectItem value="coche">Coche (4 personas)</SelectItem>
                               <SelectItem value="minivan">Minivan</SelectItem>
-                              <SelectItem value="ambos">Ambos</SelectItem>
+                              <SelectItem value="van">Van (8 pasajeros)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
+                      {/* Notas de equipaje para Minivan con 5 o 6 pasajeros */}
+                      {bookingData.vehiculo === "minivan" && (
+                        (() => {
+                          const pax = parsePassengers(bookingData.pasajeros)
+                          if (pax === 6) {
+                            return (
+                              <p className="text-xs text-muted-foreground text-center">
+                                Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.
+                              </p>
+                            )
+                          }
+                          if (pax === 5) {
+                            return (
+                              <p className="text-xs text-muted-foreground text-center">
+                                Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.
+                              </p>
+                            )
+                          }
+                          return null
+                        })()
+                      )}
                     </>
                   )}
                   {bookingData.tipoReserva === "traslado" && (
@@ -498,10 +546,10 @@ export function Hero() {
                         onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
                       >
                         <SelectTrigger className="cursor-pointer">
-                          <SelectValue placeholder="Número de pasajeros (máx. 56)" />
+                          <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
                         </SelectTrigger>
                         <SelectContent className="max-h-72">
-                          {Array.from({ length: 56 }, (_, i) => i + 1).map((n) => (
+                          {Array.from({ length: getVehicleCap(bookingData.vehiculo) }, (_, i) => i + 1).map((n) => (
                             <SelectItem key={n} value={String(n)}>
                               {n} {n === 1 ? "Pasajero" : "Pasajeros"}
                             </SelectItem>
@@ -518,20 +566,45 @@ export function Hero() {
                       </label>
                       <Select
                         value={bookingData.vehiculo}
-                        onValueChange={(value) => setBookingData({ ...bookingData, vehiculo: value })}
+                        onValueChange={(value) => {
+                          const cap = getVehicleCap(value)
+                          const pax = parsePassengers(bookingData.pasajeros)
+                          const clamped = Math.min(Math.max(pax, 1), cap)
+                          setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
+                        }}
                       >
                         <SelectTrigger className="cursor-pointer">
-                          <SelectValue placeholder="Selecciona: Vehículo, Minivan o Ambos" />
+                          <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="vehiculo">Vehículo</SelectItem>
-                          <SelectItem value="minivan">Minivan</SelectItem>
-                          <SelectItem value="ambos">Ambos</SelectItem>
+                          <SelectItem value="coche">Coche (4 personas)</SelectItem>
+                          <SelectItem value="minivan">Minivan (6 pasajeros)</SelectItem>
+                          <SelectItem value="van">Van (8 pasajeros)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   )}
+
+                  {/* Notas de equipaje para Minivan con 5 o 6 pasajeros (traslado) */}
+                  {bookingData.tipoReserva === "traslado" && bookingData.vehiculo === "minivan" && (() => {
+                    const pax = parsePassengers(bookingData.pasajeros)
+                    if (pax === 6) {
+                      return (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.
+                        </p>
+                      )
+                    }
+                    if (pax === 5) {
+                      return (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.
+                        </p>
+                      )
+                    }
+                    return null
+                  })()}
 
                   {/* Número de vuelo: última opción, centrada, siempre visible */}
                   <div className="flex justify-center">
@@ -552,9 +625,7 @@ export function Hero() {
 
                   {/* Resultado de cotización */}
                   <div className="rounded-lg border border-border p-4 bg-muted/40 text-foreground">
-                    <FadeOnMount
-                      key={`${bookingData.tipoReserva}-${bookingData.tipoTour}-${bookingData.origen}-${bookingData.destino}-${bookingData.hora}-${bookingData.pasajeros}-${bookingData.vehiculo}-${quote?.total ?? 'x'}`}
-                    >
+                    <div>
                       {bookingData.tipoReserva === "" ? (
                         <div className="space-y-1 text-center">
                           <p className="text-sm text-muted-foreground">Selecciona si deseas reservar un Traslado o un Tour.</p>
@@ -600,7 +671,7 @@ export function Hero() {
                           </p>
                           {bookingData.vehiculo && (
                             <p className="text-xs text-muted-foreground">
-                              Tipo de vehículo: {bookingData.vehiculo === "vehiculo" ? "Vehículo" : bookingData.vehiculo === "minivan" ? "Minivan" : "Ambos"}
+                              Tipo de vehículo: {bookingData.vehiculo === "coche" ? "Coche (4)" : bookingData.vehiculo === "minivan" ? "Minivan (6)" : "Van (8)"}
                             </p>
                           )}
                           {quote.nightCharge > 0 && (
@@ -619,8 +690,12 @@ export function Hero() {
                       ) : (
                         <p className="text-sm text-destructive text-center">Ruta no disponible. Revisa los traslados disponibles.</p>
                       )}
-                    </FadeOnMount>
+                    </div>
                   </div>
+
+                  {formError && (
+                    <p className="text-sm text-destructive text-center">{formError}</p>
+                  )}
 
                   <Button
                     className="w-full bg-accent hover:bg-accent/90 shadow-lg"

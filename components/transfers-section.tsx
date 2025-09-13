@@ -170,7 +170,7 @@ export function TransfersSection() {
     <section id="traslados" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="fade-up" className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4 text-primary text-balance">Nuestros Traslados</h2>
+          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">Nuestros Traslados</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
             Tarifas transparentes para todos nuestros servicios de transporte premium en París.
           </p>
@@ -250,7 +250,7 @@ export function TransfersSection() {
         <Card className="bg-card border-border hover-lift">
           <CardHeader>
             <AnimatedSection animation="fade-up">
-              <CardTitle className="text-center text-primary">Cargos Adicionales</CardTitle>
+              <CardTitle className="text-center text-primary font-display">Cargos Adicionales</CardTitle>
             </AnimatedSection>
           </CardHeader>
           <CardContent>
@@ -278,7 +278,7 @@ export function TransfersSection() {
         <Card className="bg-card border-border hover-lift mt-10">
           <CardHeader>
             <AnimatedSection animation="fade-up">
-              <CardTitle className="text-center text-primary">Traslados Especiales</CardTitle>
+              <CardTitle className="text-center text-primary font-display">Traslados Especiales</CardTitle>
             </AnimatedSection>
           </CardHeader>
           <CardContent>

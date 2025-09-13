@@ -144,7 +144,7 @@ export function Services() {
     <section id="servicios" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="bounce-in" className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4 text-primary text-balance">Nuestros Tours</h2>
+          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">Nuestros Tours</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
             Traslados cómodos con la máxima comodidad y puntualidad. Tarifas transparentes y servicio excepcional.
           </p>
@@ -169,7 +169,7 @@ export function Services() {
                             <div className="text-2xl font-bold text-primary">{c.price}</div>
                           </div>
                         </div>
-                        <CardTitle className="text-xl text-primary">{c.title}</CardTitle>
+                        <CardTitle className="text-xl text-primary font-display">{c.title}</CardTitle>
                         <p className="text-muted-foreground text-sm">{c.desc}</p>
                       </CardHeader>
                       <CardContent className="space-y-3 text-sm">
@@ -194,7 +194,7 @@ export function Services() {
         <AnimatedSection animation="zoom-in" delay={400} className="mt-8">
           <Card className="relative transition-all duration-500 hover-lift hover-glow">
             <CardHeader>
-              <CardTitle className="text-center text-primary">Cotiza a tu gusto</CardTitle>
+              <CardTitle className="text-center text-primary font-display">Cotiza a tu gusto</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
@@ -276,7 +276,7 @@ export function Services() {
 
   <AnimatedSection animation="zoom-in" delay={600} className="mt-12 text-center">
           <div className="bg-primary p-6 rounded-lg border border-border max-w-4xl mx-auto hover-lift">
-            <h3 className="text-lg font-semibold mb-4 text-white">Cargos Adicionales</h3>
+            <h3 className="text-lg font-semibold mb-4 text-white font-display">Cargos Adicionales</h3>
             <div className="grid md:grid-cols-2 gap-4 text-sm text-white">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-accent" />

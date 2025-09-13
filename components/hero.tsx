@@ -163,7 +163,8 @@ export function Hero() {
       const data: any = { quickDeposit: true }
 
       if (bookingData.tipoReserva === "traslado") {
-        const base = getBasePrice(bookingData.origen, bookingData.destino)
+        const pax = parsePassengers(bookingData.pasajeros)
+        const base = getBasePrice(bookingData.origen, bookingData.destino, pax)
         const total = quote?.total ?? base ?? 0
         Object.assign(data, {
           quickType: "traslado",

@@ -43,11 +43,23 @@ export default function PaymentPage() {
           return n
         }
 
-        // Traslados con base conocida
-        if (typeof n.basePrice === "number") {
-          const base = Number(n.basePrice)
-          const passengers = Number(n.passengers || 1)
-          const extraPax = Math.max(0, passengers - 4) * 20
+        // Traslados: calcular base por ruta y pax
+        if (n.pickupAddress && n.dropoffAddress) {
+          // Intentar deducir origen/destino a partir de etiquetas
+          const from = (n.pickupAddress || "").toLowerCase().includes("cdg") ? "cdg"
+            : (n.pickupAddress || "").toLowerCase().includes("orly") ? "orly"
+            : (n.pickupAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
+            : (n.pickupAddress || "").toLowerCase().includes("disney") ? "disneyland"
+            : (n.pickupAddress || "").toLowerCase().includes("parís") || (n.pickupAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
+          const to = (n.dropoffAddress || "").toLowerCase().includes("cdg") ? "cdg"
+            : (n.dropoffAddress || "").toLowerCase().includes("orly") ? "orly"
+            : (n.dropoffAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
+            : (n.dropoffAddress || "").toLowerCase().includes("disney") ? "disneyland"
+            : (n.dropoffAddress || "").toLowerCase().includes("parís") || (n.dropoffAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
+          const pax = Math.max(1, Number(n.passengers || 1))
+          const baseCalc = calcBaseTransferPrice(from, to, pax)
+          const base = typeof baseCalc === "number" ? baseCalc : Number(n.basePrice || 0)
+
           const isNight = (() => {
             if (!n.time) return false
             const [hh] = String(n.time).split(":").map(Number)
@@ -56,11 +68,12 @@ export default function PaymentPage() {
           })()
           // Equipaje voluminoso: más de 3 maletas de 23Kg
           const extraLuggage = Number(n.luggage23kg || 0) > 3
-          const extrasSum = extraPax + (isNight ? 5 : 0) + (extraLuggage ? 10 : 0)
+          const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0)
           n.isNightTime = isNight
           n.extraLuggage = extraLuggage
           n.luggageCount = Number(n.luggage23kg || 0) + Number(n.luggage10kg || 0)
           n.totalPrice = Number((base + extrasSum).toFixed(2))
+          n.basePrice = base
           return n
         }
 

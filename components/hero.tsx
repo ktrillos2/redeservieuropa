@@ -9,6 +9,7 @@ import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatedSection } from "@/components/animated-section"
 import EventsSlider from "@/components/events-slider"
+import { calcBaseTransferPrice, getAvailableDestinations as pricingGetAvailableDestinations, getGlobalMinBase as pricingGetGlobalMinBase, getMinBaseFromOrigin as pricingGetMinBaseFromOrigin } from "@/lib/pricing"
 
 export function Hero() {
   const router = useRouter()
@@ -44,41 +45,14 @@ export function Hero() {
     subtipoTour: "" as "" | "diurno" | "nocturno",
   })
 
-  // Rutas disponibles y sus precios base (hasta 4 pasajeros)
-  const routePrices: Record<string, number> = useMemo(
-    () => ({
-      "cdg->paris": 65,
-      "orly->paris": 60,
-      "beauvais->paris": 125,
-      "paris->disneyland": 70,
-      "orly->disneyland": 73,
-    }),
-    []
-  )
-
-  const getBasePrice = (from?: string, to?: string) => {
-    if (!from || !to) return undefined
-    const key = `${from}->${to}`
-    return routePrices[key]
-  }
+  // Helpers de precios desde módulo compartido
+  const getBasePrice = (from?: string, to?: string, pax?: number) => calcBaseTransferPrice(from, to, pax)
 
   // Precio mínimo global entre todas las rutas
-  const globalMinBase = useMemo(() => {
-    const values = Object.values(routePrices)
-    if (values.length === 0) return null
-    return Math.min(...values)
-  }, [routePrices])
+  const globalMinBase = useMemo(() => pricingGetGlobalMinBase(), [])
 
   // Precio mínimo "desde" según el origen (si aún no hay destino seleccionado)
-  const minBaseFromOrigin = useMemo(() => {
-    if (!bookingData.origen) return null
-    const prefix = `${bookingData.origen}->`
-    const values = Object.entries(routePrices)
-      .filter(([k]) => k.startsWith(prefix))
-      .map(([, v]) => v)
-    if (values.length === 0) return null
-    return Math.min(...values)
-  }, [bookingData.origen, routePrices])
+  const minBaseFromOrigin = useMemo(() => pricingGetMinBaseFromOrigin(bookingData.origen), [bookingData.origen])
 
   // Mapa de etiquetas amigables
   const labelMap = useMemo(
@@ -93,13 +67,7 @@ export function Hero() {
   )
 
   // Destinos disponibles según el origen seleccionado
-  const availableDestinations = useMemo(() => {
-    if (!bookingData.origen) return [] as string[]
-    const prefix = `${bookingData.origen}->`
-    return Object.keys(routePrices)
-      .filter((k) => k.startsWith(prefix))
-      .map((k) => k.split("->")[1])
-  }, [bookingData.origen, routePrices])
+  const availableDestinations = useMemo(() => pricingGetAvailableDestinations(bookingData.origen), [bookingData.origen])
 
   const parsePassengers = (paxStr?: string) => {
     const n = parseInt(paxStr || "", 10)
@@ -116,15 +84,16 @@ export function Hero() {
   }
 
   const quote = useMemo(() => {
-    const base = getBasePrice(bookingData.origen, bookingData.destino)
-    if (base == null) return null
     const pax = parsePassengers(bookingData.pasajeros)
+    const base = getBasePrice(bookingData.origen, bookingData.destino, pax)
+    if (base == null) return null
     const night = isNightTime(bookingData.hora)
 
     // Tarifas adicionales según la sección actual del sitio
     const nightCharge = night ? 5 : 0
-  const extraPax = Math.max(0, pax - 4)
-  const extraPaxCharge = extraPax * 20
+    // Nota: base ya incorpora precios hasta 8 pax; >8 pax se prorratea +20€/pax en el helper
+    const extraPax = Math.max(0, pax - 8)
+    const extraPaxCharge = extraPax * 20
 
     const total = base + nightCharge + extraPaxCharge
     return {
@@ -642,6 +611,9 @@ export function Hero() {
                           )}
                           <p className="text-lg font-bold text-primary mt-1">
                             Total estimado: {quote.total}€
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            * Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.
                           </p>
                         </div>
                       ) : (

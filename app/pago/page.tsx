@@ -11,6 +11,7 @@ import { useEffect, useState } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
+import { calcBaseTransferPrice, isNightTime as pricingIsNightTime } from "@/lib/pricing"
 
 export default function PaymentPage() {
   const [bookingData, setBookingData] = useState<any>(null)
@@ -53,7 +54,8 @@ export default function PaymentPage() {
             const h = hh || 0
             return h >= 21 || h < 6
           })()
-          const extraLuggage = Number(n.luggage23kg || 0) >= 3
+          // Equipaje voluminoso: más de 3 maletas de 23Kg
+          const extraLuggage = Number(n.luggage23kg || 0) > 3
           const extrasSum = extraPax + (isNight ? 5 : 0) + (extraLuggage ? 10 : 0)
           n.isNightTime = isNight
           n.extraLuggage = extraLuggage
@@ -102,7 +104,24 @@ export default function PaymentPage() {
       bookingData?.routeOption !== undefined ||
       ["tour-paris", "tour-nocturno", "paris-dl-dl"].includes(bookingData?.tourId || ""),
   )
-  const total = Number(bookingData?.totalPrice || 0)
+  // Si tenemos una ruta y pasajeros, recalcular base con la nueva lógica
+  let computedBase = Number(bookingData?.basePrice || 0)
+  try {
+    const from = (bookingData?.pickupAddress || "").toLowerCase().includes("cdg") ? "cdg"
+      : (bookingData?.pickupAddress || "").toLowerCase().includes("orly") ? "orly"
+      : (bookingData?.pickupAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
+      : (bookingData?.pickupAddress || "").toLowerCase().includes("disney") ? "disneyland"
+      : (bookingData?.pickupAddress || "").toLowerCase().includes("parís") || (bookingData?.pickupAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
+    const to = (bookingData?.dropoffAddress || "").toLowerCase().includes("cdg") ? "cdg"
+      : (bookingData?.dropoffAddress || "").toLowerCase().includes("orly") ? "orly"
+      : (bookingData?.dropoffAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
+      : (bookingData?.dropoffAddress || "").toLowerCase().includes("disney") ? "disneyland"
+      : (bookingData?.dropoffAddress || "").toLowerCase().includes("parís") || (bookingData?.dropoffAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
+    const pax = Number(bookingData?.passengers || 1)
+    const baseCalc = calcBaseTransferPrice(from, to, pax)
+    if (typeof baseCalc === "number") computedBase = baseCalc
+  } catch {}
+  const total = Number(bookingData?.totalPrice || computedBase || 0)
   const deposit = paymentMethod === "cash" ? (isTour ? Number((total * 0.1).toFixed(2)) : 5) : 0
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)))
   const amountNow = isQuick ? 5 : (paymentMethod === "cash" ? deposit : total)
@@ -529,6 +548,9 @@ export default function PaymentPage() {
                             <span>{total}€</span>
                           </div>
                           <p className="text-xs text-muted-foreground">Puedes pagar con tarjeta o PayPal de forma segura.</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            * Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.
+                          </p>
                         </>
                       )}
                     </div>

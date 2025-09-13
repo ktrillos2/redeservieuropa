@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Plane, MapPin, Clock, Users, Star, Ticket, Ship } from "lucide-react"
 import Link from "next/link"
 import { AnimatedSection } from "@/components/animated-section"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import { useEffect, useRef } from "react"
 
 // Cards personalizadas con la información proporcionada
 
@@ -90,6 +92,54 @@ export function Services() {
     },
   ]
 
+  // Autoplay básico: avanza cada 4s, pausa on-hover
+  const carouselContainerRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const container = carouselContainerRef.current
+    if (!container) return
+    const region = container.querySelector('[role="region"][aria-roledescription="carousel"]') as HTMLElement | null
+    if (!region) return
+
+    let timer: number | undefined
+    let paused = false
+    const start = () => {
+      stop()
+      timer = window.setInterval(() => {
+        // Click on next control if available; fallback to dispatching ArrowRight
+        const nextBtn = region.querySelector('[data-slot="carousel-next"]') as HTMLButtonElement | null
+        if (nextBtn && !nextBtn.disabled) {
+          nextBtn.click()
+        } else {
+          // If at end and disabled, click previous to keep motion (loop should handle)
+          const prevBtn = region.querySelector('[data-slot="carousel-previous"]') as HTMLButtonElement | null
+          prevBtn?.click()
+        }
+      }, 4000)
+    }
+    const stop = () => {
+      if (timer) window.clearInterval(timer)
+      timer = undefined
+    }
+    const onMouseEnter = () => {
+      paused = true
+      stop()
+    }
+    const onMouseLeave = () => {
+      paused = false
+      start()
+    }
+
+    region.addEventListener('mouseenter', onMouseEnter)
+    region.addEventListener('mouseleave', onMouseLeave)
+    start()
+
+    return () => {
+      region.removeEventListener('mouseenter', onMouseEnter)
+      region.removeEventListener('mouseleave', onMouseLeave)
+      stop()
+    }
+  }, [])
+
   return (
     <section id="servicios" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -100,36 +150,44 @@ export function Services() {
           </p>
         </AnimatedSection>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {cards.map((c, idx) => (
-            <AnimatedSection key={c.id} animation="zoom-in" delay={idx * 100}>
-              <Card className={`relative transition-all duration-500 hover-lift hover-glow ${c.popular ? "border-2 border-accent/60" : ""}`}>
-                {c.popular && (
-                  <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
-                    <Star className="w-3 h-3 mr-1" /> Popular
-                  </Badge>
-                )}
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="animate-rotate-in">{c.icon}</div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-primary">{c.price}</div>
-                    </div>
-                  </div>
-                  <CardTitle className="text-xl text-primary">{c.title}</CardTitle>
-                  <p className="text-muted-foreground text-sm">{c.desc}</p>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  {c.note && <p className="text-muted-foreground">{c.note}</p>}
-                  <Link href={c.link}>
-                    <Button className="w-full bg-primary hover:bg-primary/90 transform hover:scale-105 transition-all duration-300">
-                      Ver Detalles y Reservar
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </AnimatedSection>
-          ))}
+        <div ref={carouselContainerRef}>
+          <Carousel opts={{ align: "start", loop: true }} className="relative">
+            <CarouselContent>
+              {cards.map((c, idx) => (
+                <CarouselItem key={c.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
+                  <AnimatedSection animation="zoom-in" delay={idx * 100}>
+                    <Card className={`relative transition-all duration-500 hover-lift hover-glow ${c.popular ? "border-2 border-accent/60" : ""}`}>
+                      {c.popular && (
+                        <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
+                          <Star className="w-3 h-3 mr-1" /> Popular
+                        </Badge>
+                      )}
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="animate-rotate-in">{c.icon}</div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">{c.price}</div>
+                          </div>
+                        </div>
+                        <CardTitle className="text-xl text-primary">{c.title}</CardTitle>
+                        <p className="text-muted-foreground text-sm">{c.desc}</p>
+                      </CardHeader>
+                      <CardContent className="space-y-3 text-sm">
+                        {c.note && <p className="text-muted-foreground">{c.note}</p>}
+                        <Link href={c.link}>
+                          <Button className="w-full bg-primary hover:bg-primary/90 transform hover:scale-105 transition-all duration-300">
+                            Ver Detalles y Reservar
+                          </Button>
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  </AnimatedSection>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="-left-6" />
+            <CarouselNext className="-right-6" />
+          </Carousel>
         </div>
 
         {/* Sub-sección: Cotiza a tu gusto */}
@@ -170,7 +228,7 @@ export function Services() {
                       rel="noopener noreferrer"
                     >
                       <Button className="bg-accent text-accent-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md">
-                        Cotizar por WhatsApp
+                        ¡Escríbenos!
                       </Button>
                     </a>
                   </div>
@@ -206,7 +264,7 @@ export function Services() {
                       rel="noopener noreferrer"
                     >
                       <Button className="bg-accent text-accent-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md">
-                        Cotizar por WhatsApp
+                        ¡Escríbenos!
                       </Button>
                     </a>
                   </div>
@@ -226,7 +284,7 @@ export function Services() {
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-accent" />
-                <span>Pasajero adicional: +17€</span>
+                <span>Pasajero adicional: +20€</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-accent" />

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { AnimatedSection } from "@/components/animated-section"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 
 const transferRoutes = [
   {
@@ -75,7 +76,7 @@ const transferRoutes = [
 const additionalCharges = [
   { icon: <Clock className="w-5 h-5" />, text: "Recargo nocturno (después 21h)", price: "+5€" },
   { icon: <Luggage className="w-5 h-5" />, text: "Equipaje voluminoso (+3 maletas 23kg)", price: "+10€" },
-  { icon: <Users className="w-5 h-5" />, text: "Pasajero adicional", price: "+17€" },
+  { icon: <Users className="w-5 h-5" />, text: "Pasajero adicional", price: "+20€" },
 ]
 
 export function TransfersSection() {
@@ -126,6 +127,45 @@ export function TransfersSection() {
     }
   }
 
+  // Autoplay básico para el carrusel de traslados
+  const transfersCarouselRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const container = transfersCarouselRef.current
+    if (!container) return
+    const region = container.querySelector('[role="region"][aria-roledescription="carousel"]') as HTMLElement | null
+    if (!region) return
+
+    let timer: number | undefined
+    const start = () => {
+      stop()
+      timer = window.setInterval(() => {
+        const nextBtn = region.querySelector('[data-slot="carousel-next"]') as HTMLButtonElement | null
+        if (nextBtn && !nextBtn.disabled) {
+          nextBtn.click()
+        } else {
+          const prevBtn = region.querySelector('[data-slot="carousel-previous"]') as HTMLButtonElement | null
+          prevBtn?.click()
+        }
+      }, 4000)
+    }
+    const stop = () => {
+      if (timer) window.clearInterval(timer)
+      timer = undefined
+    }
+    const onMouseEnter = () => stop()
+    const onMouseLeave = () => start()
+
+    region.addEventListener('mouseenter', onMouseEnter)
+    region.addEventListener('mouseleave', onMouseLeave)
+    start()
+
+    return () => {
+      region.removeEventListener('mouseenter', onMouseEnter)
+      region.removeEventListener('mouseleave', onMouseLeave)
+      stop()
+    }
+  }, [])
+
   return (
     <section id="traslados" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -136,67 +176,74 @@ export function TransfersSection() {
           </p>
         </div>
 
-        {/* Transfer Routes Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 stagger-animation">
-          {transferRoutes.map((route, index) => (
-            <AnimatedSection key={route.id} animation="zoom-in" delay={index * 100}>
-              <Card
-                className={`relative bg-card border-border hover-lift hover-glow h-full flex flex-col ${
-                  route.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : ""
-                }`}
-              >
-              {route.popular && (
-                <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
-                  Popular
-                </Badge>
-              )}
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-accent/10 rounded-lg text-accent animate-rotate-in animation-delay-200">
-                      {route.icon}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg animate-slide-in-right animation-delay-300">
-                        {route.from} → {route.to}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground animate-fade-in-up animation-delay-400">
-                        {route.description}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-primary">{route.price}</div>
-                    <p className="text-xs text-muted-foreground">Hasta 4 pasajeros</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1" />
+        {/* Transfer Routes Carousel */}
+        <div className="mb-12" ref={transfersCarouselRef}>
+          <Carousel opts={{ align: "start", loop: true }}>
+            <CarouselContent>
+              {transferRoutes.map((route, index) => (
+                <CarouselItem key={route.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
+                  <AnimatedSection animation="zoom-in" delay={index * 100}>
+                    <Card
+                      className={`relative bg-card border-border hover-lift hover-glow h-full flex flex-col ${
+                        route.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : ""
+                      }`}
+                    >
+                      {route.popular && (
+                        <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
+                          Popular
+                        </Badge>
+                      )}
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-accent/10 rounded-lg text-accent animate-rotate-in animation-delay-200">
+                              {route.icon}
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg animate-slide-in-right animation-delay-300">
+                                {route.from} → {route.to}
+                              </CardTitle>
+                              <p className="text-sm text-muted-foreground animate-fade-in-up animation-delay-400">
+                                {route.description}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">{route.price}</div>
+                            <p className="text-xs text-muted-foreground">Hasta 4 pasajeros</p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1" />
 
-              {/* Footer fijo abajo con botón */}
-              <div className="mt-auto p-4 pt-0 space-y-3">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                  <Clock className="w-4 h-4" />
-                  <span>{route.duration}</span>
-                </div>
-                {/\/h/.test(route.price) || route.from === "Tour" ? (
-                  <Link href="/tour/tour-nocturno" className="block">
-                    <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md">
-                      Ver detalles y reservar
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button
-                    onClick={() => handleReserve(route)}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
-                  >
-                    Reservar
-                  </Button>
-                )}
-              </div>
-              </Card>
-            </AnimatedSection>
-          ))}
+                      {/* Footer fijo abajo con botón */}
+                      <div className="mt-auto p-4 pt-0 space-y-3">
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          <Clock className="w-4 h-4" />
+                          <span>{route.duration}</span>
+                        </div>
+                        {/\/h/.test(route.price) || route.from === "Tour" ? (
+                          <Link href="/tour/tour-nocturno" className="block">
+                            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md">
+                              Ver detalles y reservar
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button
+                            onClick={() => handleReserve(route)}
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
+                          >
+                            Reservar
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+                  </AnimatedSection>
+                </CarouselItem>) )}
+            </CarouselContent>
+            <CarouselPrevious className="-left-6" />
+            <CarouselNext className="-right-6" />
+          </Carousel>
         </div>
 
         {/* Additional Charges */}
@@ -259,7 +306,7 @@ export function TransfersSection() {
             </div>
             <div className="grid md:grid-cols-3 gap-4 mt-3 text-xs text-muted-foreground">
               <div className="text-center">+10€ por pasajero adicional (Versailles)</div>
-              <div className="text-center">+17€ por persona adicional (Asterix)</div>
+              <div className="text-center">+20€ por persona adicional (Asterix)</div>
               <div className="text-center">Persona adicional 12€ (Giverny)</div>
             </div>
           </CardContent>

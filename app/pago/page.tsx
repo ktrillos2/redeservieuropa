@@ -46,7 +46,7 @@ export default function PaymentPage() {
         if (typeof n.basePrice === "number") {
           const base = Number(n.basePrice)
           const passengers = Number(n.passengers || 1)
-          const extraPax = Math.max(0, passengers - 4) * 17
+          const extraPax = Math.max(0, passengers - 4) * 20
           const isNight = (() => {
             if (!n.time) return false
             const [hh] = String(n.time).split(":").map(Number)
@@ -95,6 +95,7 @@ export default function PaymentPage() {
 
   // Derivados para depósito/remaining y método de pago
   const paymentMethod = bookingData?.paymentMethod || "card" // card | paypal | cash
+  const isQuick = bookingData?.quickDeposit === true
   const isTour = Boolean(
     bookingData?.isEvent ||
       bookingData?.tourHours !== undefined ||
@@ -104,6 +105,19 @@ export default function PaymentPage() {
   const total = Number(bookingData?.totalPrice || 0)
   const deposit = paymentMethod === "cash" ? (isTour ? Number((total * 0.1).toFixed(2)) : 5) : 0
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)))
+  const amountNow = isQuick ? 5 : (paymentMethod === "cash" ? deposit : total)
+
+  // Etiquetas seguras para servicio/route en quick
+  const quickType: "traslado" | "tour" | undefined = bookingData?.quickType
+  const serviceLabel = bookingData?.isEvent
+    ? "EVENTO ESPECIAL"
+    : isQuick
+      ? (quickType === "traslado"
+          ? (bookingData?.pickupAddress && bookingData?.dropoffAddress
+              ? `${bookingData.pickupAddress} → ${bookingData.dropoffAddress}`
+              : "TRASLADO")
+          : "TOUR")
+      : (bookingData?.tourId ? bookingData.tourId.replace("-", " → ").toUpperCase() : "SERVICIO")
 
   // Enviar a WhatsApp cuando el método es efectivo
   const sendWhatsApp = () => {
@@ -199,7 +213,7 @@ export default function PaymentPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{bookingData.isEvent ? "Evento:" : "Servicio:"}</span>
                       <Badge className="bg-accent text-accent-foreground">
-                        {bookingData.isEvent ? "EVENTO ESPECIAL" : bookingData.tourId.replace("-", " → ").toUpperCase()}
+                        {serviceLabel}
                       </Badge>
                     </div>
 
@@ -319,7 +333,21 @@ export default function PaymentPage() {
 
                     {/* Price Breakdown */}
                     <div className="space-y-2">
-                      {bookingData.isEvent ? (
+                      {isQuick ? (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Pago de confirmación ahora</span>
+                            <span>5€</span>
+                          </div>
+                          {total > 0 && (
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Importe estimado del servicio</span>
+                              <span>{total}€</span>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">Después del pago completarás los datos faltantes para finalizar tu reserva.</p>
+                        </>
+                      ) : bookingData.isEvent ? (
                         <>
                           <div className="flex justify-between text-sm">
                             <span>Precio por cupo</span>
@@ -339,7 +367,7 @@ export default function PaymentPage() {
                           {Math.max(0, (bookingData.passengers || 1) - 4) > 0 && (
                             <div className="flex justify-between text-sm">
                               <span>Pasajeros adicionales</span>
-                              <span>+{Math.max(0, (bookingData.passengers || 1) - 4) * 17}€</span>
+                              <span>+{Math.max(0, (bookingData.passengers || 1) - 4) * 20}€</span>
                             </div>
                           )}
                           {bookingData.isNightTime && (
@@ -460,7 +488,17 @@ export default function PaymentPage() {
 
                     {/* Depósito y Restante (según método) */}
                     <div className="space-y-2 text-sm">
-                      {paymentMethod === "cash" ? (
+                      {isQuick ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span>Pago de confirmación</span>
+                            <span>5€</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Este pago asegura tu reserva. Después de pagarlo, terminarás de rellenar los datos faltantes.
+                          </p>
+                        </>
+                      ) : paymentMethod === "cash" ? (
                         <>
                           <div className="flex justify-between">
                             <span>Confirmar tu reserva (depósito {isTour ? "10%" : "fijo"})</span>
@@ -531,12 +569,13 @@ export default function PaymentPage() {
                           }
                         }}
                       >
-            Pagar ahora
+            {isQuick ? "Pagar 5€ y confirmar" : "Pagar ahora"}
                       </Button>
 
                       <p className="text-xs text-muted-foreground text-center">
-                        Al confirmar el pago, aceptas nuestros términos y condiciones de servicio. Recibirás una
-                        confirmación por email con todos los detalles de tu reserva.
+                        {isQuick
+                          ? "Después del pago podrás completar los datos faltantes para finalizar tu reserva."
+                          : "Al confirmar el pago, aceptas nuestros términos y condiciones de servicio. Recibirás una confirmación por email con todos los detalles de tu reserva."}
                       </p>
                     </div>
                   </CardContent>

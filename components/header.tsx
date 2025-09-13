@@ -55,6 +55,7 @@ export function Header() {
   const [servicesOpen, setServicesOpen] = useState(false)
   const hoverCloseTimeout = useRef<number | null>(null)
   const [belgiumOpen, setBelgiumOpen] = useState(false)
+  const [parisOpen, setParisOpen] = useState(false)
   const pathname = usePathname()
 
   const isHomePage = pathname === "/"
@@ -76,9 +77,11 @@ export function Header() {
   // Builder de URL de WhatsApp sin número (abre selector con mensaje)
   const wa = (message: string) => `https://wa.me/?text=${encodeURIComponent(message)}`
 
+  const HOVER_CLOSE_DELAY = 520 // ms de gracia para cruzar del trigger al contenido sin cierre
+
   const scheduleClose = () => {
     if (hoverCloseTimeout.current) window.clearTimeout(hoverCloseTimeout.current)
-    hoverCloseTimeout.current = window.setTimeout(() => setServicesOpen(false), 180)
+    hoverCloseTimeout.current = window.setTimeout(() => setServicesOpen(false), HOVER_CLOSE_DELAY)
   }
   const cancelClose = () => {
     if (hoverCloseTimeout.current) {
@@ -86,6 +89,11 @@ export function Header() {
       hoverCloseTimeout.current = null
     }
   }
+  useEffect(() => {
+    return () => {
+      if (hoverCloseTimeout.current) window.clearTimeout(hoverCloseTimeout.current)
+    }
+  }, [])
 
   return (
     <header
@@ -93,7 +101,15 @@ export function Header() {
         isScrolled ? "bg-background/95 backdrop-blur-sm border-b border-border py-2" : "bg-transparent py-3"
       }`}
     >
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4" onClick={(e) => {
+        // Cerrar sólo si se hace click fuera del trigger/contenido del menú
+        const target = e.target as HTMLElement
+        const inTrigger = target.closest('[data-slot="dropdown-menu-trigger"]')
+        const inContent = target.closest('[data-slot="dropdown-menu-content"]')
+        if (!inTrigger && !inContent) {
+          setServicesOpen(false)
+        }
+      }}>
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3">
             <Image
@@ -105,17 +121,17 @@ export function Header() {
             />
             <div className="hidden md:block">
               <h1
-                className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-2xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
+                className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-4xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
               >
                 REDESERVI
               </h1>
-              <p className={`font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-base"} ${useDarkText ? "!text-black" : "!text-white"}`}>
+              <p className={`font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-2xl"} ${useDarkText ? "!text-black" : "!text-white"}`}>
                 PARIS
               </p>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-8 font-display">
+          <nav className="hidden md:flex items-center space-x-10 md:space-x-12 font-display">
             {/* Menú Servicios con submenús */}
             <DropdownMenu open={servicesOpen} onOpenChange={setServicesOpen}>
               <DropdownMenuTrigger
@@ -123,33 +139,84 @@ export function Header() {
                   cancelClose()
                   setServicesOpen(true)
                 }}
+                onPointerEnter={() => {
+                  cancelClose()
+                  setServicesOpen(true)
+                }}
                 onMouseLeave={scheduleClose}
-                className={`px-2 py-1 rounded-md transition-colors hover:opacity-80 cursor-pointer font-bold ${useDarkText ? "text-black" : "!text-white"}`}
+                onPointerLeave={scheduleClose}
+                className={`px-4 py-2 rounded-lg transition-colors hover:bg-accent/15 cursor-pointer font-bold ${useDarkText ? "text-black" : "!text-white"}`}
               >
                 Servicios
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="min-w-64"
-                onMouseEnter={() => {
-                  cancelClose()
-                  setServicesOpen(true)
-                }}
+                className="min-w-64 px-1.5 py-1.5"
+                onMouseEnter={cancelClose}
+                onPointerEnter={cancelClose}
                 onMouseLeave={scheduleClose}
+                onPointerLeave={scheduleClose}
               >
                 <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <Link href="/#traslados">Traslados</Link>
+                  <DropdownMenuItem asChild className="rounded-md">
+                    <Link href="/#traslados" className="px-2 py-2 w-full rounded-md">Traslados</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/tour/tour-paris">Tours en París</Link>
+
+                  {/* Acordeón inline: Tours París */}
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setParisOpen((v) => !v)
+                      setServicesOpen(true)
+                    }}
+                    className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
+                  >
+                    <span>Tours París</span>
+                    {parisOpen ? (
+                      <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
+                    ) : (
+                      <ChevronDown className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
+                    )}
                   </DropdownMenuItem>
+                  {parisOpen && (
+                    <div className="pl-6 py-2 space-y-1 soft-fade-in">
+                      <Link
+                        href="/tour/tour-paris"
+                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                      >
+                        Tour por París (personalizable)
+                      </Link>
+                      <a
+                        href={wa("Hola, me interesa un Tour en acompañamiento por París (sin vehículo). ¿Podrían enviarme propuesta y disponibilidad?")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                      >
+                        Tour en acompañamiento por París (No vehículo)
+                      </a>
+                      <a
+                        href={wa("Hola, me interesa un Tour escala (aeropuerto - Tour - aeropuerto). Tengo una escala y deseo hacer un tour por París entre vuelos. ¿Podrían enviarme opciones, duración y precios?")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                      >
+                        Tour escala (aeropuerto - Tour - aeropuerto)
+                      </a>
+                    </div>
+                  )}
 
                   {/* Acordeón inline: Tours Bélgica */}
                   <DropdownMenuItem
                     onSelect={(e) => e.preventDefault()}
-                    onClick={() => setBelgiumOpen((v) => !v)}
-                    className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setBelgiumOpen((v) => !v)
+                      setServicesOpen(true)
+                    }}
+                    className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
                   >
                     <span>Tours Bélgica</span>
                     {belgiumOpen ? (
@@ -201,18 +268,6 @@ export function Header() {
                   <DropdownMenuItem asChild>
                     <a href={wa("Hola, me interesa el Tour a Versailles. ¿Podrían enviarme información de horarios, entradas y transporte?")} target="_blank" rel="noopener noreferrer">Tour Versailles</a>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href={wa("Hola, me interesa un Tour en acompañamiento por París (sin vehículo). ¿Podrían enviarme propuesta y disponibilidad?")} target="_blank" rel="noopener noreferrer">Tour en acompañamiento por París (No vehículo)</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={wa("Hola, me interesa un Tour escala (aeropuerto - Tour - aeropuerto). Tengo una escala y deseo hacer un tour por París entre vuelos. ¿Podrían enviarme opciones, duración y precios?")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Tour escala (aeropuerto - Tour - aeropuerto)
-                    </a>
-                  </DropdownMenuItem>
 
                   <DropdownMenuSeparator />
 
@@ -234,9 +289,7 @@ export function Header() {
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href="#traslados" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
-              Traslados
-            </Link>
+            {/* Enlace principal 'Traslados' removido: permanece dentro del submenú Servicios */}
             <Link href="#testimonios" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
               Testimonios
             </Link>
@@ -257,11 +310,11 @@ export function Header() {
 
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 soft-fade-in">
-            <nav className="flex flex-col space-y-4 pt-4 font-display">
+            <nav className="flex flex-col space-y-5 pt-4 font-display px-2">
               {/* Servicios (acordeón simple en móvil) */}
               <button
                 onClick={() => setIsServicesOpenMobile((v) => !v)}
-                className="text-left transition-colors drop-shadow-lg hover:opacity-75"
+                className="text-left transition-colors drop-shadow-lg hover:bg-accent/10 rounded-md px-2 py-2"
                 style={{ color: "#000000", fontWeight: 600 }}
               >
                 Servicios {isServicesOpenMobile ? "▲" : "▼"}
@@ -269,11 +322,28 @@ export function Header() {
               {isServicesOpenMobile && (
                 <div className="pl-4 space-y-3 text-sm">
                   <Link href="/#traslados" className="block hover:underline" style={{ color: "#000" }}>
-                    Traslados
+                    <span className="inline-block px-1 py-1.5 -mx-1 rounded-md hover:bg-accent/10">Traslados</span>
                   </Link>
-                  <Link href="/tour/tour-paris" className="block hover:underline" style={{ color: "#000" }}>
-                    Tours en París
-                  </Link>
+                  <div>
+                    <div className="font-semibold mb-1" style={{ color: "#000" }}>Tours París</div>
+                    <div className="pl-4 space-y-2">
+                      <Link href="/tour/tour-paris" className="block hover:underline" style={{ color: "#000" }}>
+                        Tour por París (personalizable)
+                      </Link>
+                      <a href={wa("Hola, me interesa un Tour en acompañamiento por París (sin vehículo). ¿Podrían enviarme propuesta y disponibilidad?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>
+                        Tour en acompañamiento por París (No vehículo)
+                      </a>
+                      <a
+                        href={wa("Hola, me interesa un Tour escala (aeropuerto - Tour - aeropuerto). Tengo una escala y deseo hacer un tour por París entre vuelos. ¿Podrían enviarme opciones, duración y precios?")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block hover:underline"
+                        style={{ color: "#000" }}
+                      >
+                        Tour escala (aeropuerto - Tour - aeropuerto)
+                      </a>
+                    </div>
+                  </div>
                   <div>
                     <div className="font-semibold mb-1" style={{ color: "#000" }}>Tours Bélgica</div>
                     <div className="pl-4 space-y-2">
@@ -301,13 +371,7 @@ export function Header() {
                   <a href={wa("Hola, quiero comprar billetes para Disneyland París. ¿Podrían enviarme disponibilidad y precios?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Billetes Disneyland</a>
                 </div>
               )}
-              <Link
-                href="#traslados"
-                className="transition-colors drop-shadow-lg hover:opacity-75"
-                style={{ color: "#000000", fontWeight: "600" }}
-              >
-                Traslados
-              </Link>
+              {/* Enlace principal 'Traslados' removido en móvil: permanece en el submenú de Servicios */}
               <Link
                 href="#testimonios"
                 className="transition-colors drop-shadow-lg hover:opacity-75"

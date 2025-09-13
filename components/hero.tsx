@@ -4,52 +4,41 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, MapPin, Users, Clock, Car, Map } from "lucide-react"
-import { useMemo, useState, useLayoutEffect, useRef } from "react"
+import { Calendar, MapPin, Users, Clock, Car, Map, Plane } from "lucide-react"
+import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatedSection } from "@/components/animated-section"
+import EventsSlider from "@/components/events-slider"
 
 export function Hero() {
   const router = useRouter()
-  // Componente interno para animar cambios de altura suavemente
-  function SmoothHeight({ children, deps = [] as any[] }: { children: React.ReactNode; deps?: any[] }) {
-    const containerRef = useRef<HTMLDivElement | null>(null)
-    const contentRef = useRef<HTMLDivElement | null>(null)
-    const [height, setHeight] = useState<number>(0)
-
-    useLayoutEffect(() => {
-      const next = contentRef.current?.scrollHeight || 0
-      setHeight((prev) => (prev === 0 ? next : prev))
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Componente interno para un fade simple al montar (se reinicia con la prop key)
+  function FadeOnMount({ children, duration = 300 }: { children: React.ReactNode; duration?: number }) {
+    const [visible, setVisible] = useState(false)
+    useEffect(() => {
+      // Asegura transición después del primer paint
+      const id = requestAnimationFrame(() => setVisible(true))
+      return () => cancelAnimationFrame(id)
     }, [])
-
-    useLayoutEffect(() => {
-      const next = contentRef.current?.scrollHeight || 0
-      setHeight((prev) => (prev === next ? prev : next))
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, deps)
-
     return (
       <div
-        ref={containerRef}
-        style={{ height: height }}
-        className="transition-[height] duration-500 ease-in-out overflow-hidden"
+        className="transition-opacity"
+        style={{ opacity: visible ? 1 : 0, transitionDuration: `${duration}ms` }}
       >
-        <div ref={contentRef} className="transition-opacity duration-500 ease-in-out data-[entering=true]:opacity-0">
-          {children}
-        </div>
+        {children}
       </div>
     )
   }
 
   const [bookingData, setBookingData] = useState({
-    origen: "",
-    destino: "",
+    origen: "cdg",
+    destino: "paris",
     fecha: "",
     hora: "",
-    pasajeros: "",
+    pasajeros: "1",
     vehiculo: "",
-  tipoReserva: "" as "" | "traslado" | "tour",
+    flightNumber: "",
+  tipoReserva: "traslado" as "" | "traslado" | "tour",
     tipoTour: "" as "diurno" | "nocturno" | "escala" | "",
     categoriaTour: "" as "" | "ciudad" | "escala",
     subtipoTour: "" as "" | "diurno" | "nocturno",
@@ -72,6 +61,24 @@ export function Hero() {
     const key = `${from}->${to}`
     return routePrices[key]
   }
+
+  // Precio mínimo global entre todas las rutas
+  const globalMinBase = useMemo(() => {
+    const values = Object.values(routePrices)
+    if (values.length === 0) return null
+    return Math.min(...values)
+  }, [routePrices])
+
+  // Precio mínimo "desde" según el origen (si aún no hay destino seleccionado)
+  const minBaseFromOrigin = useMemo(() => {
+    if (!bookingData.origen) return null
+    const prefix = `${bookingData.origen}->`
+    const values = Object.entries(routePrices)
+      .filter(([k]) => k.startsWith(prefix))
+      .map(([, v]) => v)
+    if (values.length === 0) return null
+    return Math.min(...values)
+  }, [bookingData.origen, routePrices])
 
   // Mapa de etiquetas amigables
   const labelMap = useMemo(
@@ -177,6 +184,7 @@ export function Hero() {
           vehicleType: bookingData.vehiculo || "",
           pickupAddress: (labelMap as any)[bookingData.origen] || bookingData.origen || "",
           dropoffAddress: (labelMap as any)[bookingData.destino] || bookingData.destino || "",
+          flightNumber: bookingData.flightNumber || "",
         })
       } else if (bookingData.tipoReserva === "tour") {
         Object.assign(data, {
@@ -188,7 +196,8 @@ export function Hero() {
           date: bookingData.fecha || "",
           time: bookingData.hora || "",
           vehicleType: bookingData.vehiculo || "",
-          totalPrice: typeof tourQuote?.total === "number" ? tourQuote.total : 0, // estimación del servicio si disponible
+          // Para quick deposit, si no hay estimación, mantenemos 0 como estimado, pero el pago ahora será 5€.
+          totalPrice: typeof tourQuote?.total === "number" ? tourQuote.total : 0,
         })
       }
 
@@ -223,6 +232,10 @@ export function Hero() {
                 Transporte 
                 <span className="text-accent block animate-pulse drop-shadow-lg">Comodo y Seguro</span>
               </h1>
+              {/* Slider de evento, pequeño, justo debajo del título */}
+              <div className="mb-6">
+                <EventsSlider />
+              </div>
               <p className="text-xl mb-8 text-white/95 text-pretty drop-shadow-md">
                 {"✈🚖 Transporte Privado en París\nConfort, seguridad y puntualidad.\n📍 Traslados desde/hacia aeropuertos (CDG, ORY, BVA),🎢 Viajes a Disneyland, 🏰 Tours privados por la ciudad,\nExcursiones a Brujas y mucho más. \n✨ Vive París sin preocupaciones."}
               </p>
@@ -301,6 +314,7 @@ export function Hero() {
                             hora: "",
                             pasajeros: "",
                             vehiculo: "",
+                            flightNumber: "",
                           })
                         }
                       >
@@ -310,58 +324,44 @@ export function Hero() {
                     </div>
                   </div>
 
-                  {/* Tipo de tour (2 opciones: ciudad (diurno/nocturno) o escala) */}
+                  {/* Tipo de tour (unificado: Diurno, Nocturno o Escala) */}
                   {bookingData.tipoReserva === "tour" && (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Tipo de tour</label>
-                        <Select
-                          value={bookingData.categoriaTour}
-                          onValueChange={(value) =>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tipo de tour</label>
+                      <Select
+                        value={
+                          bookingData.categoriaTour === "escala"
+                            ? "escala"
+                            : bookingData.subtipoTour || ""
+                        }
+                        onValueChange={(value) => {
+                          if (value === "escala") {
                             setBookingData({
                               ...bookingData,
-                              categoriaTour: value as any,
-                              // reset subtipo si cambia la categoría
+                              categoriaTour: "escala",
                               subtipoTour: "",
-                              // mantener compatibilidad con campo antiguo
-                              tipoTour: value === "escala" ? "escala" : "",
+                              tipoTour: "escala",
+                            })
+                          } else {
+                            setBookingData({
+                              ...bookingData,
+                              categoriaTour: "ciudad",
+                              subtipoTour: value as any, // diurno | nocturno
+                              tipoTour: value as any,
                             })
                           }
-                        >
-                          <SelectTrigger className="cursor-pointer">
-                            <SelectValue placeholder="Selecciona: Diurno/Nocturno o Escala" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ciudad">Tour diurno o nocturno</SelectItem>
-                            <SelectItem value="escala">Tour escala</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {bookingData.categoriaTour === "ciudad" && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Horario del tour</label>
-                          <Select
-                            value={bookingData.subtipoTour}
-                            onValueChange={(value) =>
-                              setBookingData({
-                                ...bookingData,
-                                subtipoTour: value as any,
-                                tipoTour: value as any,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="cursor-pointer">
-                              <SelectValue placeholder="Selecciona: Diurno o Nocturno" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="diurno">Diurno</SelectItem>
-                              <SelectItem value="nocturno">Nocturno</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </>
+                        }}
+                      >
+                        <SelectTrigger className="cursor-pointer">
+                          <SelectValue placeholder="Selecciona: Diurno, Nocturno o Escala" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="diurno">Tour diurno</SelectItem>
+                          <SelectItem value="nocturno">Tour nocturno</SelectItem>
+                          <SelectItem value="escala">Tour escala</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
 
                   {/* Campos de información también para Tour (fecha/hora/pax/vehículo) */}
@@ -487,6 +487,8 @@ export function Hero() {
                   </div>
                   )}
 
+                  
+
                   {bookingData.tipoReserva === "traslado" && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -511,6 +513,7 @@ export function Hero() {
                         onChange={(e) => setBookingData({ ...bookingData, hora: e.target.value })}
                       />
                     </div>
+                    
                   </div>
                   )}
 
@@ -561,73 +564,90 @@ export function Hero() {
                   </div>
                   )}
 
+                  {/* Número de vuelo: última opción, centrada, siempre visible */}
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-sm space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2 justify-center">
+                        <Plane className="w-4 h-4 text-accent" />
+                        Número de vuelo
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="Ej: AF1234"
+                        className="text-center"
+                        value={bookingData.flightNumber}
+                        onChange={(e) => setBookingData({ ...bookingData, flightNumber: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
                   {/* Resultado de cotización */}
-                  <div className="rounded-lg border border-border p-4 bg-muted/40">
-                    <SmoothHeight
-                      deps={[
-                        bookingData.tipoReserva,
-                        bookingData.tipoTour,
-                        bookingData.categoriaTour,
-                        bookingData.subtipoTour,
-                        bookingData.origen,
-                        bookingData.destino,
-                        bookingData.hora,
-                        bookingData.pasajeros,
-                        bookingData.vehiculo,
-                      ]}
+                  <div className="rounded-lg border border-border p-4 bg-muted/40 text-foreground">
+                    <FadeOnMount
+                      key={`${bookingData.tipoReserva}-${bookingData.tipoTour}-${bookingData.origen}-${bookingData.destino}-${bookingData.hora}-${bookingData.pasajeros}-${bookingData.vehiculo}-${quote?.total ?? 'x'}`}
                     >
-                      <div
-                        key={`${bookingData.tipoReserva}-${bookingData.tipoTour}-${bookingData.origen}-${bookingData.destino}-${bookingData.hora}-${bookingData.pasajeros}-${bookingData.vehiculo}-${quote?.total ?? 'x'}`}
-                        className="animate-[fadeSlide_.5s_ease-in-out]"
-                      >
-                        {bookingData.tipoReserva === "" ? (
-                          <p className="text-sm text-muted-foreground text-center">Selecciona si deseas reservar un Traslado o un Tour.</p>
-                        ) : bookingData.tipoReserva === "tour" ? (
-                          <div className="space-y-2 text-sm text-center">
-                            {!bookingData.categoriaTour ? (
-                              <p className="text-muted-foreground">Selecciona el tipo de tour: diurno/nocturno o escala.</p>
-                            ) : bookingData.categoriaTour === "ciudad" && !bookingData.subtipoTour ? (
-                              <p className="text-muted-foreground">Selecciona si será diurno o nocturno.</p>
-                            ) : (
-                              <>
-                                <p>
-                                  Reserva seleccionada: <span className="font-semibold">{bookingData.categoriaTour === "escala" ? "Tour escala" : `Tour ${bookingData.subtipoTour}`}</span>
-                                </p>
-                                {tourQuote?.total ? (
-                                  <p className="text-base font-semibold text-primary">Total estimado del tour: {tourQuote.total}€</p>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground">{tourQuote?.label || "Los precios de tour varían según duración, horario y vehículo. Indícanos tus datos para una cotización exacta."}</p>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ) : !bookingData.origen || !bookingData.destino ? (
-                          <p className="text-sm text-muted-foreground text-center">Selecciona origen y destino para ver el precio.</p>
-                        ) : quote ? (
-                          <div className="space-y-1 text-center">
-                            <p className="text-sm">
-                              Precio base: <span className="font-semibold">{quote.base}€</span> (hasta 4 pasajeros)
-                            </p>
-                            {bookingData.vehiculo && (
-                              <p className="text-xs text-muted-foreground">
-                                Tipo de vehículo: {bookingData.vehiculo === "vehiculo" ? "Vehículo" : bookingData.vehiculo === "minivan" ? "Minivan" : "Ambos"}
+                      {bookingData.tipoReserva === "" ? (
+                        <div className="space-y-1 text-center">
+                          <p className="text-sm text-muted-foreground">Selecciona si deseas reservar un Traslado o un Tour.</p>
+                          {globalMinBase != null && (
+                            <p className="text-sm">Desde: <span className="font-semibold">{globalMinBase}€</span></p>
+                          )}
+                        </div>
+                      ) : bookingData.tipoReserva === "tour" ? (
+                        <div className="space-y-2 text-sm text-center">
+                          {!bookingData.categoriaTour && !bookingData.subtipoTour ? (
+                            <p className="text-muted-foreground">Selecciona el tipo de tour: Diurno, Nocturno o Escala.</p>
+                          ) : (
+                            <>
+                              <p>
+                                Reserva seleccionada: <span className="font-semibold">{bookingData.categoriaTour === "escala" ? "Tour escala" : `Tour ${bookingData.subtipoTour}`}</span>
                               </p>
-                            )}
-                            {quote.nightCharge > 0 && (
-                              <p className="text-xs text-muted-foreground">+{quote.nightCharge}€ recargo nocturno</p>
-                            )}
-                            {quote.extraPax > 0 && (
-                              <p className="text-xs text-muted-foreground">+{quote.extraPaxCharge}€ por {quote.extraPax} pasajero(s) extra</p>
-                            )}
-                            <p className="text-lg font-bold text-primary mt-1">
-                              Total estimado: {quote.total}€
+                              {tourQuote?.total ? (
+                                <p className="text-base font-semibold text-primary">Total estimado del tour: {tourQuote.total}€</p>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">{tourQuote?.label || "Los precios de tour varían según duración, horario y vehículo. Indícanos tus datos para una cotización exacta."}</p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ) : !bookingData.origen || !bookingData.destino ? (
+                        <div className="space-y-1 text-center">
+                          <p className="text-sm text-muted-foreground">Selecciona origen y destino para ver el precio.</p>
+                          {bookingData.origen && minBaseFromOrigin != null && (
+                            <p className="text-sm">
+                              Desde: <span className="font-semibold">{minBaseFromOrigin}€</span>
                             </p>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-destructive text-center">Ruta no disponible. Revisa los traslados disponibles.</p>
-                        )}
-                      </div>
-                    </SmoothHeight>
+                          )}
+                          {!bookingData.origen && globalMinBase != null && (
+                            <p className="text-sm">
+                              Desde: <span className="font-semibold">{globalMinBase}€</span>
+                            </p>
+                          )}
+                        </div>
+                      ) : quote ? (
+                        <div className="space-y-1 text-center">
+                          <p className="text-sm">
+                            Precio base: <span className="font-semibold">{quote.base}€</span> (hasta 4 pasajeros)
+                          </p>
+                          {bookingData.vehiculo && (
+                            <p className="text-xs text-muted-foreground">
+                              Tipo de vehículo: {bookingData.vehiculo === "vehiculo" ? "Vehículo" : bookingData.vehiculo === "minivan" ? "Minivan" : "Ambos"}
+                            </p>
+                          )}
+                          {quote.nightCharge > 0 && (
+                            <p className="text-xs text-muted-foreground">+{quote.nightCharge}€ recargo nocturno</p>
+                          )}
+                          {quote.extraPax > 0 && (
+                            <p className="text-xs text-muted-foreground">+{quote.extraPaxCharge}€ por {quote.extraPax} pasajero(s) extra</p>
+                          )}
+                          <p className="text-lg font-bold text-primary mt-1">
+                            Total estimado: {quote.total}€
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-destructive text-center">Ruta no disponible. Revisa los traslados disponibles.</p>
+                      )}
+                    </FadeOnMount>
                   </div>
 
                   <Button

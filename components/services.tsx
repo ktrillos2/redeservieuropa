@@ -151,10 +151,10 @@ export function Services() {
         </AnimatedSection>
 
         <div ref={carouselContainerRef}>
-          <Carousel opts={{ align: "start", loop: true }} className="relative">
-            <CarouselContent>
+          <Carousel opts={{ align: "start", loop: true }} className="relative  !overflow-none">
+            <CarouselContent className="py-6 " >
               {cards.map((c, idx) => (
-                <CarouselItem key={c.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
+                <CarouselItem key={c.id} className="basis-full sm:basis-1/2 lg:basis-1/3 ">
                   <AnimatedSection animation="zoom-in" delay={idx * 100}>
                     <Card className={`relative transition-all duration-500 hover-lift hover-glow ${c.popular ? "border-2 border-accent/60" : ""}`}>
                       {c.popular && (

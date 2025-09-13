@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Jost, Playfair_Display } from "next/font/google"
 import { Suspense } from "react"
 import { ScrollToTopButton } from "@/components/scroll-to-top-button"
+import { AnimationGuardian } from "@/components/animation-guardian"
 import "./globals.css"
 
 const jost = Jost({
@@ -37,9 +38,12 @@ export default function RootLayout({
 }>) {
   return (
   <html lang="es" className={`${jost.variable} ${playfair.variable} antialiased`}>
+      <head />
       <body className="font-sans">
         <Suspense fallback={null}>{children}</Suspense>
         <ScrollToTopButton />
+        <AnimationGuardian />
+        {/* pre-anim removido para evitar ocultar contenido antes de las animaciones */}
       </body>
     </html>
   )

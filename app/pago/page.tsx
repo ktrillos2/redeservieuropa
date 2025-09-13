@@ -391,13 +391,13 @@ export default function PaymentPage() {
                           </div>
                         </>
                       )}
-                      {bookingData.isNightTime && (
+                      {!isQuick && bookingData.isNightTime && (
                         <div className="flex justify-between text-sm">
                           <span>Recargo nocturno</span>
                           <span>+5€</span>
                         </div>
                       )}
-                      {bookingData.extraLuggage && (
+                      {!isQuick && bookingData.extraLuggage && (
                         <div className="flex justify-between text-sm">
                           <span>Equipaje extra</span>
                           <span>+10€</span>
@@ -406,7 +406,7 @@ export default function PaymentPage() {
                       <Separator />
                       <div className="flex justify-between font-bold text-lg">
                         <span>Total a Pagar</span>
-                        <span className="text-accent animate-pulse">{bookingData.totalPrice}€</span>
+                        <span className="text-accent animate-pulse">{amountNow}€</span>
                       </div>
                     </div>
                   </CardContent>

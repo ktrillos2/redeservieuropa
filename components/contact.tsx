@@ -1,4 +1,5 @@
 "use client"
+import { AnimatedSection } from "@/components/animated-section"
 
 import type React from "react"
 
@@ -25,15 +26,15 @@ export function Contact() {
   return (
     <section id="contacto" className="py-16 bg-muted/30 relative z-0">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12 animate-fade-in-up">
+        <AnimatedSection animation="fade-up" className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4 text-balance text-primary">Contáctanos</h2>
           <p className="text-xl max-w-2xl mx-auto text-pretty text-muted-foreground">
             Estamos disponibles 24/7 para atender tus consultas y reservas.
           </p>
-        </div>
+        </AnimatedSection>
 
         {/* Contact Information Cards - First */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12 animate-slide-in-left">
+        <AnimatedSection animation="fade-up" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           <Card className="bg-card border-border transform hover:scale-105 transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
@@ -77,11 +78,12 @@ export function Contact() {
               <p className="text-sm text-muted-foreground font-medium">Todos los días</p>
             </CardContent>
           </Card>
-        </div>
+        </AnimatedSection>
 
         {/* Contact Form - Centered Below */}
         <div className="max-w-2xl mx-auto">
-          <Card className="bg-card border-border animate-fade-in-up transform hover:scale-105 transition-all duration-300">
+          <AnimatedSection animation="fade-up">
+          <Card className="bg-card border-border transform hover:scale-105 transition-all duration-300">
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-foreground text-center justify-center">
                 <MessageCircle className="w-6 h-6 text-accent" />
@@ -146,6 +148,7 @@ export function Contact() {
               </form>
             </CardContent>
           </Card>
+          </AnimatedSection>
         </div>
       </div>
     </section>

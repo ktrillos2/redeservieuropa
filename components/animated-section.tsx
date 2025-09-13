@@ -11,6 +11,7 @@ interface AnimatedSectionProps {
   animation?: "fade-up" | "slide-left" | "slide-right" | "zoom-in" | "bounce-in"
   delay?: number
   threshold?: number
+  style?: React.CSSProperties
 }
 
 export function AnimatedSection({
@@ -19,6 +20,7 @@ export function AnimatedSection({
   animation = "fade-up",
   delay = 0,
   threshold = 0.2,
+  style,
 }: AnimatedSectionProps) {
   const { elementRef, isVisible } = useScrollAnimation({ threshold })
 
@@ -45,13 +47,17 @@ export function AnimatedSection({
   return (
     <div
       ref={elementRef}
+      data-animated
+      data-visible={isVisible ? "true" : "false"}
       className={cn(
-        "transition-all duration-1000 ease-out",
-        !isVisible && "opacity-0 translate-y-4",
+        "will-change-transform will-change-opacity",
+        !isVisible && "translate-y-4 anim-paused",
         isVisible && animationClasses[animation],
+        isVisible && "anim-running",
         isVisible && delayClasses[delay as keyof typeof delayClasses],
         className,
       )}
+      style={{ ...(style || {}) }}
     >
       {children}
     </div>

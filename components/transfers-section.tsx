@@ -169,17 +169,17 @@ export function TransfersSection() {
   return (
     <section id="traslados" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16 animate-bounce-in">
+        <AnimatedSection animation="fade-up" className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4 text-primary text-balance">Nuestros Traslados</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
             Tarifas transparentes para todos nuestros servicios de transporte premium en París.
           </p>
-        </div>
+        </AnimatedSection>
 
         {/* Transfer Routes Carousel */}
         <div className="mb-12" ref={transfersCarouselRef}>
           <Carousel opts={{ align: "start", loop: true }}>
-            <CarouselContent>
+            <CarouselContent className="py-6">
               {transferRoutes.map((route, index) => (
                 <CarouselItem key={route.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
                   <AnimatedSection animation="zoom-in" delay={index * 100}>
@@ -247,12 +247,14 @@ export function TransfersSection() {
         </div>
 
         {/* Additional Charges */}
-        <Card className="bg-card border-border animate-slide-up animation-delay-800 hover-lift">
+        <Card className="bg-card border-border hover-lift">
           <CardHeader>
-            <CardTitle className="text-center text-primary animate-bounce-in">Cargos Adicionales</CardTitle>
+            <AnimatedSection animation="fade-up">
+              <CardTitle className="text-center text-primary">Cargos Adicionales</CardTitle>
+            </AnimatedSection>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-3 gap-4 stagger-animation">
+            <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
               {additionalCharges.map((charge, index) => (
                 <div key={index} className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
                   <div className="text-accent animate-pulse">{charge.icon}</div>
@@ -262,7 +264,7 @@ export function TransfersSection() {
                   <div className="text-accent font-bold">{charge.price}</div>
                 </div>
               ))}
-            </div>
+            </AnimatedSection>
             <div className="mt-6 p-4 bg-primary rounded-lg">
               <p className="text-sm text-center text-white">
                 <strong>Nota:</strong> Para grupos de 5+ pasajeros, se combina la tarifa base + tarifa de vehículo
@@ -273,12 +275,14 @@ export function TransfersSection() {
         </Card>
 
         {/* Traslados Especiales */}
-        <Card className="bg-card border-border animate-slide-up animation-delay-900 hover-lift mt-10">
+        <Card className="bg-card border-border hover-lift mt-10">
           <CardHeader>
-            <CardTitle className="text-center text-primary">Traslados Especiales</CardTitle>
+            <AnimatedSection animation="fade-up">
+              <CardTitle className="text-center text-primary">Traslados Especiales</CardTitle>
+            </AnimatedSection>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-3 gap-4 stagger-animation">
+            <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
               <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
                 <div className="text-accent"><MapPin className="w-5 h-5" /></div>
                 <div className="flex-1">
@@ -303,7 +307,7 @@ export function TransfersSection() {
                 </div>
                 <div className="text-accent font-bold">100€</div>
               </div>
-            </div>
+            </AnimatedSection>
             <div className="grid md:grid-cols-3 gap-4 mt-3 text-xs text-muted-foreground">
               <div className="text-center">+10€ por pasajero adicional (Versailles)</div>
               <div className="text-center">+20€ por persona adicional (Asterix)</div>

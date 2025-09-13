@@ -129,4 +129,71 @@
     0% { opacity: 0; transform: translateY(6px); }
     100% { opacity: 1; transform: translateY(0); }
   }
+
+  /* Evita parpadeo inicial: asegura que la animación aplique el primer fotograma desde el inicio */
+  [class*="animate-fade-in"],
+  [class*="animate-slide-in"],
+  [class*="animate-rotate"],
+  .animate-slide-up,
+  .animate-zoom-in,
+  .animate-bounce-in {
+    animation-fill-mode: both !important;
+    animation-iteration-count: 1 !important;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    will-change: opacity, transform;
+  }
+
+  /* Para utilidades arbitrarias animate-[...] solo forzamos fill-mode, no pre-ocultamos */
+  [class*="animate-["] {
+    animation-fill-mode: both !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  /* AnimatedSection: mantener play-state en pausa sin ocultar */
+  [data-animated][data-visible="false"] {
+    animation-play-state: paused !important;
+    transform: translateY(6px);
+  }
+
+  /* Control explícito del play-state */
+  .anim-paused { animation-play-state: paused !important; }
+  .anim-running { animation-play-state: running !important; }
+
+  /* Pre-hide controlado antes de que carguen estilos/JS: pausa y oculta animaciones de entrada */
+  /* pre-anim eliminado: no ocultar por defecto */
+
+  /* Mejoras a delays para sincronía consistente en SSR */
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+  .animation-delay-400 { animation-delay: 400ms; }
+  .animation-delay-500 { animation-delay: 500ms; }
+  .animation-delay-600 { animation-delay: 600ms; }
+  .animation-delay-700 { animation-delay: 700ms; }
+  .animation-delay-800 { animation-delay: 800ms; }
+
+  /* No re-trigger on hover/focus for entry animations */
+  [class*="animate-fade-in"]:hover,
+  [class*="animate-fade-in"]:focus,
+  [class*="animate-slide-in"]:hover,
+  [class*="animate-slide-in"]:focus,
+  .animate-slide-up:hover,
+  .animate-slide-up:focus,
+  .animate-zoom-in:hover,
+  .animate-zoom-in:focus,
+  .animate-bounce-in:hover,
+  .animate-bounce-in:focus {
+    animation-play-state: running;
+  }
+
+  /* Accesibilidad: reducir movimiento si el usuario lo prefiere */
+  @media (prefers-reduced-motion: reduce) {
+    [class*="animate-"], .animate-slide-up, .animate-zoom-in, .animate-bounce-in {
+      animation: none !important;
+      transition: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
 }

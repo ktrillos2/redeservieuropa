@@ -1,4 +1,5 @@
 "use client"
+import { AnimatedSection } from "@/components/animated-section"
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Star, Quote } from "lucide-react"
@@ -78,20 +79,19 @@ export function Testimonials() {
   return (
     <section id="testimonios" className="py-20 bg-background">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16 animate-fade-in-up">
+        <AnimatedSection animation="fade-up" className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4 text-primary text-balance">Lo que Dicen Nuestros Clientes</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
             Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.
           </p>
-        </div>
+        </AnimatedSection>
 
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8 stagger-animation">
             {getVisibleTestimonials().map((testimonial, index) => (
+              <AnimatedSection key={testimonial.id} animation="fade-up" delay={index * 200}>
               <Card
-                key={testimonial.id}
-                className="bg-card border-border shadow-lg transform hover:scale-105 transition-all duration-500 animate-fade-in-up overflow-hidden"
-                style={{ animationDelay: `${index * 0.2}s` }}
+                className="bg-card border-border shadow-lg transform hover:scale-105 transition-all duration-500 overflow-hidden"
               >
                 <CardHeader className="p-0">
                   <div className="h-48 w-full overflow-hidden">
@@ -127,6 +127,7 @@ export function Testimonials() {
                   </div>
                 </CardContent>
               </Card>
+              </AnimatedSection>
             ))}
           </div>
 

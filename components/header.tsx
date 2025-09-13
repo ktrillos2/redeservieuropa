@@ -159,7 +159,7 @@ export function Header() {
                     )}
                   </DropdownMenuItem>
                   {belgiumOpen && (
-                    <div className="pl-6 py-1 space-y-1 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                    <div className="pl-6 py-1 space-y-1 soft-fade-in">
                       <a
                         href={wa("Hola, me interesa el Tour a Brujas desde París. ¿Podrían enviarme información y disponibilidad?")}
                         target="_blank"
@@ -256,7 +256,7 @@ export function Header() {
         </div>
 
         {isMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 animate-fade-in-up">
+          <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 soft-fade-in">
             <nav className="flex flex-col space-y-4 pt-4 font-display">
               {/* Servicios (acordeón simple en móvil) */}
               <button

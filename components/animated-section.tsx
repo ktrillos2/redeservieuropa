@@ -25,11 +25,11 @@ export function AnimatedSection({
   const { elementRef, isVisible } = useScrollAnimation({ threshold })
 
   const animationClasses = {
-    "fade-up": "animate-fade-in-up",
-    "slide-left": "animate-slide-in-left",
-    "slide-right": "animate-slide-in-right",
-    "zoom-in": "animate-zoom-in",
-    "bounce-in": "animate-bounce-in",
+    "fade-up": "soft-fade-in",
+    "slide-left": "soft-fade-in",
+    "slide-right": "soft-fade-in",
+    "zoom-in": "soft-fade-in",
+    "bounce-in": "soft-fade-in",
   }
 
   const delayClasses = {
@@ -51,7 +51,7 @@ export function AnimatedSection({
       data-visible={isVisible ? "true" : "false"}
       className={cn(
         "will-change-transform will-change-opacity",
-        !isVisible && "translate-y-4 anim-paused",
+        !isVisible && "opacity-0 anim-paused",
         isVisible && animationClasses[animation],
         isVisible && "anim-running",
         isVisible && delayClasses[delay as keyof typeof delayClasses],

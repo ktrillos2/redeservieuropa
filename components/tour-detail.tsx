@@ -176,7 +176,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
           <div className="lg:col-span-2 space-y-8">
             {/* Galería con carrusel + lightbox */}
             <div className="relative rounded-lg overflow-hidden">
-              <Carousel className="animate-fade-in-up">
+              <Carousel className="soft-fade-in">
                 <CarouselContent className="">
                   {galleryImages.map((src, idx) => (
                     <CarouselItem key={idx} className="md:basis-1/1 lg:basis-1/1">
@@ -204,7 +204,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                             <img
                               src={src}
                               alt={`${tour.title} - ampliada ${idx + 1}`}
-                              className="w-full h-full object-contain animate-fade-in"
+                              className="w-full h-full object-contain soft-fade-in"
                             />
                           </div>
                         </DialogContent>
@@ -227,8 +227,8 @@ export function TourDetail({ tourId }: TourDetailProps) {
             {/* Tour Details */}
             <Card className="transform hover:scale-105 transition-all duration-300">
               <CardHeader>
-                <CardTitle className="text-3xl text-primary animate-fade-in-up">{tour.title}</CardTitle>
-                <div className="flex items-center gap-6 text-muted-foreground animate-fade-in-up animation-delay-200">
+                <CardTitle className="text-3xl text-primary soft-fade-in">{tour.title}</CardTitle>
+                <div className="flex items-center gap-6 text-muted-foreground soft-fade-in animation-delay-200">
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
                     <span>{tour.duration}</span>
@@ -252,7 +252,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-lg text-muted-foreground mb-6 text-pretty animate-fade-in-up animation-delay-400">
+                <p className="text-lg text-muted-foreground mb-6 text-pretty soft-fade-in animation-delay-400">
                   {tour.description}
                 </p>
 
@@ -263,7 +263,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     {tour.features.map((feature: string, index: number) => (
                       <div
                         key={index}
-                        className="flex items-center gap-2 animate-fade-in-up"
+                        className="flex items-center gap-2 soft-fade-in"
                         style={{ animationDelay: `${index * 0.1}s` }}
                       >
                         <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
@@ -282,7 +282,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     {tour.included.map((item: string, index: number) => (
                       <div
                         key={index}
-                        className="flex items-center gap-2 animate-fade-in-up"
+                        className="flex items-center gap-2 soft-fade-in"
                         style={{ animationDelay: `${index * 0.1}s` }}
                       >
                         <Shield className="w-4 h-4 text-accent" />

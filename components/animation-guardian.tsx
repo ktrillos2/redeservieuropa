@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 
 const SELECTOR = [
+  '.soft-fade-in',
   '[class*="animate-fade-in"]',
   '[class*="animate-slide-in"]',
   '[class*="animate-rotate"]',

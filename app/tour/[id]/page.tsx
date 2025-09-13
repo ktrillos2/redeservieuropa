@@ -13,7 +13,7 @@ export default function TourPage({ params }: TourPageProps) {
   return (
     <main className="min-h-screen">
       <Header />
-      <AnimatedSection animation="fade-up" delay={200}>
+  <AnimatedSection animation="fade-up" delay={200}>
         <TourDetail tourId={params.id} />
       </AnimatedSection>
       <Footer />

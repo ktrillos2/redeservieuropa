@@ -164,7 +164,7 @@ export function Services() {
                       )}
                       <CardHeader className="pb-4">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="animate-rotate-in">{c.icon}</div>
+                          <div className="soft-fade-in">{c.icon}</div>
                           <div className="text-right">
                             <div className="text-2xl font-bold text-primary">{c.price}</div>
                           </div>
@@ -191,7 +191,7 @@ export function Services() {
         </div>
 
         {/* Sub-sección: Cotiza a tu gusto */}
-        <AnimatedSection animation="zoom-in" delay={400} className="mt-8">
+  <AnimatedSection animation="zoom-in" delay={400} className="mt-8">
           <Card className="relative transition-all duration-500 hover-lift hover-glow">
             <CardHeader>
               <CardTitle className="text-center text-primary font-display">Cotiza a tu gusto</CardTitle>

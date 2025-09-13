@@ -169,7 +169,7 @@ export function TransfersSection() {
   return (
     <section id="traslados" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
-        <AnimatedSection animation="fade-up" className="text-center mb-16">
+  <AnimatedSection animation="fade-up" className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">Nuestros Traslados</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
             Tarifas transparentes para todos nuestros servicios de transporte premium en París.
@@ -196,14 +196,14 @@ export function TransfersSection() {
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="p-2 bg-accent/10 rounded-lg text-accent animate-rotate-in animation-delay-200">
+                            <div className="p-2 bg-accent/10 rounded-lg text-accent soft-fade-in animation-delay-200">
                               {route.icon}
                             </div>
                             <div>
-                              <CardTitle className="text-lg animate-slide-in-right animation-delay-300">
+                              <CardTitle className="text-lg soft-fade-in animation-delay-300">
                                 {route.from} → {route.to}
                               </CardTitle>
-                              <p className="text-sm text-muted-foreground animate-fade-in-up animation-delay-400">
+                              <p className="text-sm text-muted-foreground soft-fade-in animation-delay-400">
                                 {route.description}
                               </p>
                             </div>

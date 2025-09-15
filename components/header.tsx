@@ -48,7 +48,15 @@ const XIcon = () => (
   </svg>
 )
 
-export function Header() {
+export function Header({
+  siteTitle = 'REDESERVI',
+  siteSubtitle = 'PARIS',
+  logoUrl = '/images/logo.png',
+}: {
+  siteTitle?: string
+  siteSubtitle?: string
+  logoUrl?: string
+}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isServicesOpenMobile, setIsServicesOpenMobile] = useState(false)
@@ -113,7 +121,7 @@ export function Header() {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3">
             <Image
-              src="/images/logo.png"
+              src={logoUrl}
               alt="REDESERVI PARIS"
               width={isScrolled ? 64 : 88}
               height={isScrolled ? 64 : 88}
@@ -123,10 +131,10 @@ export function Header() {
               <h1
                 className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-4xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
               >
-                REDESERVI
+                {siteTitle}
               </h1>
               <p className={`font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-2xl"} ${useDarkText ? "!text-black" : "!text-white"}`}>
-                PARIS
+                {siteSubtitle}
               </p>
             </div>
           </Link>

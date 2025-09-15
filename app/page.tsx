@@ -1,18 +1,19 @@
-import { Hero } from "@/components/hero"
+import HeroServer from "@/components/hero.server"
 import { Services } from "@/components/services"
 import { TransfersSection } from "@/components/transfers-section"
 import { Testimonials } from "@/components/testimonials"
 import { Contact } from "@/components/contact"
-import { Header } from "@/components/header"
+import HeaderServer from "@/components/header.server"
 import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
 
 export default function HomePage() {
   return (
     <main className="min-h-screen">
-      <Header />
+  <HeaderServer />
       <AnimatedSection animation="fade-up">
-        <Hero />
+        {/* Hero consumiendo Sanity */}
+        <HeroServer />
       </AnimatedSection>
       <AnimatedSection animation="slide-left" delay={200}>
         <Services />

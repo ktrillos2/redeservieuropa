@@ -11,7 +11,23 @@ import { AnimatedSection } from "@/components/animated-section"
 import EventsSlider from "@/components/events-slider"
 import { calcBaseTransferPrice, getAvailableDestinations as pricingGetAvailableDestinations, getGlobalMinBase as pricingGetGlobalMinBase, getMinBaseFromOrigin as pricingGetMinBaseFromOrigin } from "@/lib/pricing"
 
-export function Hero() {
+export function Hero({
+  title = 'Transporte',
+  highlight = 'Comodo y Seguro',
+  description = "Transporte Privado en París\nConfort, seguridad y puntualidad.\nTraslados desde/hacia aeropuertos (CDG, ORY, BVA), viajes a Disneyland, tours privados por la ciudad,\nexcursiones a Brujas y mucho más.\nVive París sin preocupaciones.",
+  backgroundUrl,
+  primaryCtaLabel = 'Reservar Ahora',
+  secondaryCtaLabel = 'Ver Servicios',
+  showBookingForm = true,
+}: {
+  title?: string
+  highlight?: string
+  description?: string
+  backgroundUrl?: string
+  primaryCtaLabel?: string
+  secondaryCtaLabel?: string
+  showBookingForm?: boolean
+}) {
   const router = useRouter()
   // Eliminado FadeOnMount para no ocultar contenido con opacity 0
 
@@ -207,7 +223,7 @@ export function Hero() {
         <div
           className="absolute inset-0 opacity-30"
           style={{
-            backgroundImage: `url('/elegant-paris-skyline-with-eiffel-tower-and-luxury.jpg')`,
+            backgroundImage: backgroundUrl ? `url('${backgroundUrl}')` : `url('/elegant-paris-skyline-with-eiffel-tower-and-luxury.jpg')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -221,34 +237,35 @@ export function Hero() {
           <AnimatedSection animation="slide-left">
             <div className="text-white">
               <h1 className="font-bold mb-6 text-balance text-white drop-shadow-lg text-5xl font-display">
-                Transporte 
-                <span className="text-accent block animate-pulse drop-shadow-lg">Comodo y Seguro</span>
+                {title}
+                <span className="text-accent block animate-pulse drop-shadow-lg">{highlight}</span>
               </h1>
               {/* Slider de evento, pequeño, justo debajo del título */}
               <div className="mb-6">
                 <EventsSlider />
               </div>
-              <p className="text-xl mb-8 text-white/95 text-pretty drop-shadow-md">
-                {"Transporte Privado en París\nConfort, seguridad y puntualidad.\nTraslados desde/hacia aeropuertos (CDG, ORY, BVA), viajes a Disneyland, tours privados por la ciudad,\nexcursiones a Brujas y mucho más.\nVive París sin preocupaciones."}
+              <p className="text-xl mb-8 text-white/95 text-pretty drop-shadow-md" style={{ whiteSpace: 'pre-line' }}>
+                {description}
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   size="lg"
                   className="bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300 shadow-lg"
                 >
-                  Reservar Ahora
+                  {primaryCtaLabel}
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   className="border-2 border-white text-white hover:bg-white hover:text-primary bg-transparent transform hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-sm"
                 >
-                  Ver Servicios
+                  {secondaryCtaLabel}
                 </Button>
               </div>
             </div>
           </AnimatedSection>
 
+          {showBookingForm && (
           <AnimatedSection animation="fade-up" delay={300}>
             <Card className="bg-card/98 backdrop-blur-md transform hover:scale-102 transition-all duration-300 shadow-2xl border-white/20">
               <CardContent className="p-6">
@@ -714,6 +731,7 @@ export function Hero() {
               </CardContent>
             </Card>
           </AnimatedSection>
+          )}
         </div>
       </div>
     </section>

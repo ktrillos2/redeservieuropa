@@ -29,14 +29,32 @@ import Link from "next/link"
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { tourData } from "@/lib/tours"
+import { urlFor } from "@/sanity/lib/image"
 
 interface TourDetailProps {
   tourId: string
+  tourFromCms?: {
+    title: string
+    description?: string
+    basePrice?: number
+    basePriceDay?: number
+    basePriceNight?: number
+    duration?: string
+    distance?: string
+    mainImage?: any
+    gallery?: any[]
+    features?: string[]
+    included?: string[]
+    pricing?: { pax: number; price: number }[]
+    pricingP4?: { threeH?: number; twoH?: number; eiffelArco?: number }
+    pricingP5?: { threeH?: number; twoH?: number; eiffelArco?: number }
+    extraSections?: Array<{ title?: string; body?: any; included?: string[]; itinerary?: string[] }>
+  }
 }
 
-export function TourDetail({ tourId }: TourDetailProps) {
+export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
   const effectiveTourId = tourId === "tour-nocturno" ? "tour-paris" : tourId
-  const tour = tourData[effectiveTourId]
+  const tour = tourFromCms || tourData[effectiveTourId]
   const router = useRouter()
   const [passengers, setPassengers] = useState(2)
   const [date, setDate] = useState("")
@@ -58,9 +76,25 @@ export function TourDetail({ tourId }: TourDetailProps) {
   const [routeOption, setRouteOption] = useState<"threeH" | "twoH" | "eiffelArco" | undefined>(undefined)
 
   const galleryImages = useMemo<string[]>(() => {
-    const g = tour?.gallery as string[] | undefined
-    return Array.isArray(g) && g.length > 0 ? g : tour?.image ? [tour.image] : []
-  }, [tour])
+    // Si viene de CMS, construir URLs de Sanity
+    if (tourFromCms) {
+      const sanImgs: string[] = []
+      const main = tourFromCms.mainImage ? urlFor(tourFromCms.mainImage).width(1600).url() : undefined
+      if (main) sanImgs.push(main)
+      if (Array.isArray(tourFromCms.gallery)) {
+        tourFromCms.gallery.forEach((img: any) => {
+          try {
+            const u = urlFor(img).width(1600).url()
+            if (u) sanImgs.push(u)
+          } catch {}
+        })
+      }
+      return sanImgs
+    }
+    // Fallback local
+    const g = (tour as any)?.gallery as string[] | undefined
+    return Array.isArray(g) && g.length > 0 ? g : (tour as any)?.image ? [(tour as any).image] : []
+  }, [tour, tourFromCms])
 
   if (!tour) {
     return (
@@ -96,10 +130,25 @@ export function TourDetail({ tourId }: TourDetailProps) {
       return NaN
     }
 
-    let basePrice = tour.pricing?.[passengers] ?? tour.basePrice ?? 0
-    if (isNightTime) basePrice += 5
-    if (extraLuggage) basePrice += 10
-    return basePrice
+    const getBaseFromPricing = (): number | undefined => {
+      const p: any = (tour as any)?.pricing
+      if (Array.isArray(p)) {
+        const found = p.find((x: any) => x && Number(x.pax) === Number(passengers))
+        if (found && typeof found.price === 'number') return found.price
+        return undefined
+      }
+      if (p && typeof p === 'object') {
+        const val = (p as Record<string, number>)[String(passengers)]
+        if (typeof val === 'number') return val
+      }
+      return undefined
+    }
+    let base = getBaseFromPricing()
+    if (typeof base !== 'number') base = (tour as any)?.basePrice ?? 0
+    let total = base || 0
+    if (isNightTime) total += 5
+    if (extraLuggage) total += 10
+    return total
   }
 
   const handleTimeChange = (value: string) => {
@@ -260,7 +309,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                 <div className="mb-6">
                   <h3 className="text-xl font-semibold mb-4 text-primary">Características del Servicio</h3>
                   <div className="grid md:grid-cols-2 gap-3">
-                    {tour.features.map((feature: string, index: number) => (
+                    {(tour.features || []).map((feature: string, index: number) => (
                       <div
                         key={index}
                         className="flex items-center gap-2 soft-fade-in"
@@ -279,7 +328,7 @@ export function TourDetail({ tourId }: TourDetailProps) {
                 <div>
                   <h3 className="text-xl font-semibold mb-4 text-primary">Incluido en el Precio</h3>
                   <div className="grid md:grid-cols-2 gap-3">
-                    {tour.included.map((item: string, index: number) => (
+                    {(tour.included || []).map((item: string, index: number) => (
                       <div
                         key={index}
                         className="flex items-center gap-2 soft-fade-in"
@@ -969,7 +1018,17 @@ export function TourDetail({ tourId }: TourDetailProps) {
                     <>
                       <div className="flex justify-between text-sm">
                         <span>Precio base ({passengers} pax)</span>
-                        <span>{(tour.pricing?.[passengers] ?? tour.basePrice ?? 0)}€</span>
+                        <span>
+                          {(() => {
+                            const p: any = (tour as any)?.pricing
+                            if (Array.isArray(p)) {
+                              const found = p.find((x: any) => x && Number(x.pax) === Number(passengers))
+                              return `${typeof found?.price === 'number' ? found.price : ((tour as any)?.basePrice ?? 0)}€`
+                            }
+                            const val = p?.[passengers]
+                            return `${typeof val === 'number' ? val : ((tour as any)?.basePrice ?? 0)}€`
+                          })()}
+                        </span>
                       </div>
                       {isNightTime && (
                         <div className="flex justify-between text-sm">

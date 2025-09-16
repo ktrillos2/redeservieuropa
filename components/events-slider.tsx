@@ -6,70 +6,21 @@ import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/com
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
-type EventItem = {
+export type EventItem = {
   id: string
   title: string
-  image: string
-  pricePerPerson: number
+  image?: string
+  pricePerPerson?: number
   date?: string
   time?: string
   meetingPoint?: string
 }
 
-export function EventsSlider({ className }: { className?: string }) {
+export function EventsSlider({ className, events: eventsProp }: { className?: string; events?: EventItem[] }) {
   const router = useRouter()
 
-  // Fuente de eventos (por ahora estática; fácilmente reemplazable por datos reales)
-  const events = useMemo<EventItem[]>(
-    () => [
-      {
-        id: "evento-tour-paris",
-        title: "Tour París Nocturno",
-        image: "/vehicles/stepway-paris-2.jpg",
-        pricePerPerson: 200,
-        date: "2025-10-15",
-        time: "18:00",
-        meetingPoint: "Disneyland Paris – Punto de encuentro",
-      },
-      {
-        id: "evento-disney-shuttle",
-        title: "Shuttle a Disneyland (Ida/Vuelta)",
-        image: "/family-transport-to-disneyland-paris-castle.jpg",
-        pricePerPerson: 60,
-        date: "2025-10-20",
-        time: "09:00",
-        meetingPoint: "París Centro",
-      },
-      {
-        id: "evento-charles-triatlon",
-        title: "Traslado especial Maratón París",
-        image: "/vehicles/stepway-paris-4.jpg",
-        pricePerPerson: 45,
-        date: "2025-11-02",
-        time: "06:30",
-        meetingPoint: "Aeropuerto CDG – Terminal 2",
-      },
-      {
-        id: "evento-city-tour-diurno",
-        title: "City Tour Diurno",
-        image: "/vehicles/stepway-paris-1.jpg",
-        pricePerPerson: 120,
-        date: "2025-10-22",
-        time: "14:00",
-        meetingPoint: "Torre Eiffel – Trocadero",
-      },
-      {
-        id: "evento-bruja-daytrip",
-        title: "Excursión a Brujas (Día Completo)",
-        image: "/vehicles/stepway-paris-6.jpg",
-        pricePerPerson: 180,
-        date: "2025-11-10",
-        time: "07:30",
-        meetingPoint: "París Centro",
-      },
-    ],
-    []
-  )
+  // Fuente de eventos (se recibe por props; si no hay, fallback a vacío)
+  const events = useMemo<EventItem[]>(() => eventsProp || [], [eventsProp])
 
   const apiRef = useRef<CarouselApi | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -174,7 +125,7 @@ export function EventsSlider({ className }: { className?: string }) {
                 <div
                   className="absolute inset-0"
                   style={{
-                    backgroundImage: `url('${ev.image}')`,
+                    backgroundImage: ev.image ? `url('${ev.image}')` : undefined,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }}

@@ -48,7 +48,25 @@ async function run() {
     backgroundImage: bg,
     primaryCta: { label: 'Reservar Ahora', internalHref: '#', external: false },
     secondaryCta: { label: 'Ver Servicios', internalHref: '#', external: false },
-    showBookingForm: true,
+    bookingForm: {
+      title: 'Reserva tu Servicio',
+      ctaLabel: 'Reservar con 5€',
+      depositAmount: 5,
+      typePicker: { label: 'Tipo de reserva', trasladoLabel: 'Traslado', tourLabel: 'Tour' },
+      originField: { label: 'Origen' },
+      destinationField: { label: 'Destino' },
+      dateField: { label: 'Fecha' },
+      timeField: { label: 'Hora' },
+      passengersField: { label: 'Pasajeros', singular: 'Pasajero', plural: 'Pasajeros' },
+      vehicleField: { label: 'Tipo de vehículo', labelCoche: 'Coche (4 personas)', labelMinivan: 'Minivan (6 pasajeros)', labelVan: 'Van (8 pasajeros)' },
+      flightNumberField: { label: 'Número de vuelo', placeholder: 'Ej: AF1234' },
+      notes: {
+        minivan6: 'Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.',
+        minivan5: 'Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.',
+        nightChargeNote: '+5€ recargo nocturno después de las 21:00.',
+        surchargeFootnote: '* Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.',
+      },
+    },
   }
 
   const res = await client.transaction().createOrReplace(doc).commit()

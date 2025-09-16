@@ -7,9 +7,11 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "seed:sanity:general": "node scripts/seed-general-info.mjs",
-    "seed:sanity:header": "node scripts/seed-header.mjs",
-    "seed:sanity:hero": "node scripts/seed-hero.mjs"
+    "seed:sanity:general": "tsx scripts/seed-general-info.mjs",
+    "seed:sanity:header": "tsx scripts/seed-header.mjs",
+    "seed:sanity:hero": "tsx scripts/seed-hero.mjs",
+  "seed:sanity:tours": "tsx scripts/seed-tours.ts",
+    "seed:sanity:events": "tsx scripts/seed-events.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -77,6 +79,7 @@
     "dotenv": "^17.2.2",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
+    "tsx": "^4.20.5",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   }

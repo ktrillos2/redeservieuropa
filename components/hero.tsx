@@ -8,7 +8,7 @@ import { Calendar, MapPin, Users, Clock, Car, Map, Plane } from "lucide-react"
 import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatedSection } from "@/components/animated-section"
-import EventsSlider from "@/components/events-slider"
+import EventsSlider, { type EventItem as SliderEventItem } from "@/components/events-slider"
 import { calcBaseTransferPrice, getAvailableDestinations as pricingGetAvailableDestinations, getGlobalMinBase as pricingGetGlobalMinBase, getMinBaseFromOrigin as pricingGetMinBaseFromOrigin } from "@/lib/pricing"
 
 export function Hero({
@@ -18,7 +18,8 @@ export function Hero({
   backgroundUrl,
   primaryCtaLabel = 'Reservar Ahora',
   secondaryCtaLabel = 'Ver Servicios',
-  showBookingForm = true,
+  bookingForm,
+  events,
 }: {
   title?: string
   highlight?: string
@@ -26,7 +27,8 @@ export function Hero({
   backgroundUrl?: string
   primaryCtaLabel?: string
   secondaryCtaLabel?: string
-  showBookingForm?: boolean
+  bookingForm?: any
+  events?: SliderEventItem[]
 }) {
   const router = useRouter()
   // Eliminado FadeOnMount para no ocultar contenido con opacity 0
@@ -241,9 +243,11 @@ export function Hero({
                 <span className="text-accent block animate-pulse drop-shadow-lg">{highlight}</span>
               </h1>
               {/* Slider de evento, pequeño, justo debajo del título */}
-              <div className="mb-6">
-                <EventsSlider />
-              </div>
+              {events && events.length > 0 && (
+                <div className="mb-6">
+                  <EventsSlider events={events} />
+                </div>
+              )}
               <p className="text-xl mb-8 text-white/95 text-pretty drop-shadow-md" style={{ whiteSpace: 'pre-line' }}>
                 {description}
               </p>
@@ -265,17 +269,17 @@ export function Hero({
             </div>
           </AnimatedSection>
 
-          {showBookingForm && (
+          {
           <AnimatedSection animation="fade-up" delay={300}>
             <Card className="bg-card/98 backdrop-blur-md transform hover:scale-102 transition-all duration-300 shadow-2xl border-white/20">
               <CardContent className="p-6">
-                <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">Reserva tu Servicio</h3>
+                <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">{bookingForm?.title || 'Reserva tu Servicio'}</h3>
                 <div className="space-y-4">
                   {/* Tipo de reserva (botones) */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <Map className="w-4 h-4 text-accent" />
-                      Tipo de reserva
+                      {bookingForm?.typePicker?.label || 'Tipo de reserva'}
                     </label>
                     <div className="flex flex-wrap gap-4 justify-center w-full">
                       <Button
@@ -300,7 +304,7 @@ export function Hero({
                         }
                       >
                         <Car className="w-5 h-5" />
-                        Traslado
+                        {bookingForm?.typePicker?.trasladoLabel || 'Traslado'}
                       </Button>
                       <Button
                         type="button"
@@ -328,7 +332,7 @@ export function Hero({
                         }
                       >
                         <Map className="w-5 h-5" />
-                        Tour
+                        {bookingForm?.typePicker?.tourLabel || 'Tour'}
                       </Button>
                     </div>
                   </div>
@@ -380,7 +384,7 @@ export function Hero({
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-2">
                             <Calendar className="w-4 h-4 text-accent" />
-                            Fecha
+                            {bookingForm?.dateField?.label || 'Fecha'}
                           </label>
                           <Input
                             type="date"
@@ -391,7 +395,7 @@ export function Hero({
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-2">
                             <Clock className="w-4 h-4 text-accent" />
-                            Hora
+                            {bookingForm?.timeField?.label || 'Hora'}
                           </label>
                           <Input
                             type="time"
@@ -404,7 +408,7 @@ export function Hero({
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-2">
                             <Users className="w-4 h-4 text-accent" />
-                            Pasajeros
+                            {bookingForm?.passengersField?.label || 'Pasajeros'}
                           </label>
                           <Select
                             value={bookingData.pasajeros}
@@ -416,7 +420,7 @@ export function Hero({
                             <SelectContent className="max-h-72">
                               {Array.from({ length: getVehicleCap(bookingData.vehiculo) }, (_, i) => i + 1).map((n) => (
                                 <SelectItem key={n} value={String(n)}>
-                                  {n} {n === 1 ? "Pasajero" : "Pasajeros"}
+                                  {n} {n === 1 ? (bookingForm?.passengersField?.singular || 'Pasajero') : (bookingForm?.passengersField?.plural || 'Pasajeros')}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -425,7 +429,7 @@ export function Hero({
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-2">
                             <Car className="w-4 h-4 text-accent" />
-                            Tipo de vehículo
+                            {bookingForm?.vehicleField?.label || 'Tipo de vehículo'}
                           </label>
                           <Select
                             value={bookingData.vehiculo}
@@ -440,9 +444,9 @@ export function Hero({
                               <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="coche">Coche (4 personas)</SelectItem>
-                              <SelectItem value="minivan">Minivan</SelectItem>
-                              <SelectItem value="van">Van (8 pasajeros)</SelectItem>
+                              <SelectItem value="coche">{bookingForm?.vehicleField?.labelCoche || 'Coche (4 personas)'}</SelectItem>
+                              <SelectItem value="minivan">{bookingForm?.vehicleField?.labelMinivan || 'Minivan (6 pasajeros)'}</SelectItem>
+                              <SelectItem value="van">{bookingForm?.vehicleField?.labelVan || 'Van (8 pasajeros)'}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -454,14 +458,14 @@ export function Hero({
                           if (pax === 6) {
                             return (
                               <p className="text-xs text-muted-foreground text-center">
-                                Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.
+                                {bookingForm?.notes?.minivan6 || 'Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.'}
                               </p>
                             )
                           }
                           if (pax === 5) {
                             return (
                               <p className="text-xs text-muted-foreground text-center">
-                                Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.
+                                {bookingForm?.notes?.minivan5 || 'Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.'}
                               </p>
                             )
                           }
@@ -475,7 +479,7 @@ export function Hero({
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-accent" />
-                        Origen
+                        {bookingForm?.originField?.label || 'Origen'}
                       </label>
                       <Select
                         value={bookingData.origen}
@@ -498,7 +502,7 @@ export function Hero({
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-accent" />
-                        Destino
+                        {bookingForm?.destinationField?.label || 'Destino'}
                       </label>
                       <Select value={bookingData.destino} onValueChange={(value) => setBookingData({ ...bookingData, destino: value })}>
                         <SelectTrigger disabled={!bookingData.origen} className="cursor-pointer disabled:cursor-not-allowed">
@@ -529,7 +533,7 @@ export function Hero({
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-accent" />
-                        Fecha
+                        {bookingForm?.dateField?.label || 'Fecha'}
                       </label>
                       <Input
                         type="date"
@@ -540,7 +544,7 @@ export function Hero({
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <Clock className="w-4 h-4 text-accent" />
-                        Hora
+                        {bookingForm?.timeField?.label || 'Hora'}
                       </label>
                       <Input
                         type="time"
@@ -629,11 +633,11 @@ export function Hero({
                     <div className="w-full max-w-sm space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2 justify-center">
                         <Plane className="w-4 h-4 text-accent" />
-                        Número de vuelo
+                        {bookingForm?.flightNumberField?.label || 'Número de vuelo'}
                       </label>
                       <Input
                         type="text"
-                        placeholder="Ej: AF1234"
+                        placeholder={bookingForm?.flightNumberField?.placeholder || 'Ej: AF1234'}
                         className="text-center"
                         value={bookingData.flightNumber}
                         onChange={(e) => setBookingData({ ...bookingData, flightNumber: e.target.value })}
@@ -693,7 +697,7 @@ export function Hero({
                             </p>
                           )}
                           {quote.nightCharge > 0 && (
-                            <p className="text-xs text-muted-foreground">+{quote.nightCharge}€ recargo nocturno</p>
+                            <p className="text-xs text-muted-foreground">+{quote.nightCharge}€ {bookingForm?.notes?.nightChargeNote || 'recargo nocturno'}</p>
                           )}
                           {quote.extraPax > 0 && (
                             <p className="text-xs text-muted-foreground">+{quote.extraPaxCharge}€ por {quote.extraPax} pasajero(s) extra</p>
@@ -702,7 +706,7 @@ export function Hero({
                             Total estimado: {quote.total}€
                           </p>
                           <p className="text-[11px] text-muted-foreground mt-1">
-                            * Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.
+                            {bookingForm?.notes?.surchargeFootnote || '* Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.'}
                           </p>
                         </div>
                       ) : (
@@ -725,13 +729,13 @@ export function Hero({
                     }
                     onClick={goToPayment}
                   >
-                    Reservar con 5€
+                    {bookingForm?.ctaLabel || 'Reservar con 5€'}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           </AnimatedSection>
-          )}
+          }
         </div>
       </div>
     </section>

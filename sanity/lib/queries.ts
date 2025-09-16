@@ -20,6 +20,52 @@ export const HERO_QUERY = `
   backgroundImage,
   primaryCta,
   secondaryCta,
-  showBookingForm
+  bookingForm
+}
+`
+
+export const EVENTS_FOR_HERO_QUERY = `
+*[_type == "event" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc)[0...10]{
+  _id,
+  title,
+  image,
+  pricePerPerson,
+  date,
+  time,
+  meetingPoint
+}
+`
+
+export const TOURS_LIST_QUERY = `
+*[_type == "tour" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc){
+  _id,
+  title,
+  slug,
+  description,
+  duration,
+  distance,
+  mainImage,
+}
+`
+
+export const TOUR_BY_SLUG_QUERY = `
+*[_type == "tour" && slug.current == $slug][0]{
+  _id,
+  title,
+  slug,
+  description,
+  duration,
+  distance,
+  mainImage,
+  gallery,
+  features,
+  included,
+  basePrice,
+  basePriceDay,
+  basePriceNight,
+  pricing,
+  pricingP4,
+  pricingP5,
+  extraSections
 }
 `

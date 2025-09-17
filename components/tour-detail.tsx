@@ -109,6 +109,199 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
     )
   }
 
+  // Rama uniforme para tours del CMS: misma estructura para todos
+  if (tourFromCms) {
+    const calcCmsPrice = () => {
+      // Buscar precio por pax en pricing; si no, usar basePrice
+      const p: any = tourFromCms.pricing
+      if (Array.isArray(p)) {
+        const found = p.find((x: any) => x && Number(x.pax) === Number(passengers))
+        if (found && typeof found.price === 'number') return found.price
+      }
+      return tourFromCms.basePrice ?? 0
+    }
+
+    const cmsTotal = calcCmsPrice()
+
+    const submitCmsBooking = () => {
+      const errors: string[] = []
+      if (!date) errors.push("Fecha del viaje")
+      if (!time) errors.push("Hora del tour")
+      if (passengers < 1) errors.push("Número de pasajeros")
+      if (errors.length > 0) {
+        alert(`Por favor completa: ${errors.join(", ")}.`)
+        return
+      }
+      const isNight = (() => {
+        if (!time) return false
+        const [hh] = String(time).split(":").map(Number)
+        const h = hh || 0
+        return h >= 21 || h < 6
+      })()
+      const bookingData: any = {
+        tourId,
+        isTourQuick: true,
+        passengers,
+        date,
+        time,
+        pickupAddress: "",
+        dropoffAddress: "",
+        flightNumber: "",
+        luggage23kg: 0,
+        luggage10kg: 0,
+        babyStrollers: 0,
+        specialRequests: "",
+        contactName: "",
+        contactPhone: "",
+        contactEmail: "",
+        totalPrice: Number(cmsTotal || 0),
+        isNightTime: isNight,
+        extraLuggage: false,
+        // Marca como tour para cálculo de depósito en Pago
+        tourHours: 0,
+      }
+      localStorage.setItem("bookingData", JSON.stringify(bookingData))
+      router.push("/pago")
+    }
+
+    return (
+      <div className="min-h-screen pt-20">
+        <div className="container mx-auto px-4 py-10">
+          {/* Back Button */}
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver a servicios
+          </Link>
+
+          <div className="grid lg:grid-cols-3 gap-8 py-3">
+            {/* Información + galería */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Galería uniforme con lightbox */}
+              <div className="relative rounded-lg overflow-hidden">
+                <Carousel className="soft-fade-in">
+                  <CarouselContent>
+                    {galleryImages.map((src, idx) => (
+                      <CarouselItem key={idx} className="md:basis-1/1 lg:basis-1/1">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button aria-label="Ampliar imagen" className="relative group block w-full h-64 md:h-96 overflow-hidden">
+                              <img src={src} alt={`${tour.title} - imagen ${idx + 1}`} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-5xl p-0 bg-transparent border-none shadow-none" showCloseButton>
+                            <div className="relative w-full h-[70vh]">
+                              <img src={src} alt={`${tour.title} - ampliada ${idx + 1}`} className="w-full h-full object-contain" />
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
+              </div>
+
+              {/* Detalle básico uniforme */}
+              <Card className="transform hover:scale-105 transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-3xl text-primary">{tour.title}</CardTitle>
+                  <div className="flex items-center gap-6 text-muted-foreground">
+                    {tour.duration && (
+                      <div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{tour.duration}</span></div>
+                    )}
+                    {tour.distance && (
+                      <div className="flex items-center gap-1"><MapPin className="w-4 h-4" /><span>{tour.distance}</span></div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {tour.description && (
+                    <p className="text-lg text-muted-foreground mb-6 text-pretty">{tour.description}</p>
+                  )}
+
+                  {Array.isArray(tour.features) && tour.features.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-xl font-semibold mb-4 text-primary">Características</h3>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {tour.features.map((feature: string, index: number) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-accent rounded-full" />
+                            <span className="text-sm">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {Array.isArray(tour.included) && tour.included.length > 0 && (
+                    <div>
+                      <h3 className="text-xl font-semibold mb-4 text-primary">Incluye</h3>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {tour.included.map((item: string, index: number) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-accent" />
+                            <span className="text-sm">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Reserva simple y uniforme */}
+            <div className="lg:col-span-1">
+              <Card className="sticky top-24 transform hover:scale-105 transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-primary text-center">Reservar Ahora</CardTitle>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-accent animate-pulse">{cmsTotal}€</div>
+                    <p className="text-sm text-muted-foreground">precio estimado según pasajeros</p>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Users className="w-4 h-4 text-accent" />
+                      Pasajeros
+                    </label>
+                    <Input type="number" min={1} max={8} value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2"><Calendar className="w-4 h-4 text-accent" />Fecha</label>
+                      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2"><Clock className="w-4 h-4 text-accent" />Hora</label>
+                      <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <Separator />
+                  <div className="flex justify-between font-semibold">
+                    <span>Total</span>
+                    <span className="text-accent">{cmsTotal}€</span>
+                  </div>
+
+                  <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={submitCmsBooking}>
+                    Ver pago y confirmar
+                  </Button>
+
+                  <p className="text-xs text-muted-foreground text-center">El depósito para tours en efectivo es del 10%.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const calculatePrice = () => {
     if (effectiveTourId === "tour-paris") {
       const hourlyRate = (isNightTime ? tour.basePriceNight : tour.basePriceDay) ?? 0

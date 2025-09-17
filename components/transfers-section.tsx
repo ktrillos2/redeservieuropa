@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { AnimatedSection } from "@/components/animated-section"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import { client } from "@/sanity/lib/client"
+import { TRANSFERS_QUERY } from "@/sanity/lib/queries"
 
-const transferRoutes = [
+const localTransferRoutes = [
   {
     id: 1,
     from: "CDG",
@@ -73,7 +75,7 @@ const transferRoutes = [
   },
 ]
 
-const additionalCharges = [
+const localAdditionalCharges = [
   { icon: <Clock className="w-5 h-5" />, text: "Recargo nocturno (después 21h)", price: "+5€" },
   { icon: <Luggage className="w-5 h-5" />, text: "Equipaje voluminoso (+3 maletas 23kg)", price: "+10€" },
   { icon: <Users className="w-5 h-5" />, text: "Pasajero adicional", price: "+20€" },
@@ -82,6 +84,26 @@ const additionalCharges = [
 export function TransfersSection() {
   const router = useRouter()
   // Captura mínima: la información detallada se pedirá en la página de pago
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<any | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await client.fetch(TRANSFERS_QUERY)
+        if (!mounted) return
+        setData(res)
+      } catch (e) {
+        console.warn('[TransfersSection] No se pudo cargar transfers desde Sanity, usaré fallback local.', e)
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const parseBasePrice = (price: string) => {
     const m = price.match(/\d+/)
@@ -90,7 +112,10 @@ export function TransfersSection() {
 
   const defaultPassengers = 1
 
-  const handleReserve = (route: (typeof transferRoutes)[number]) => {
+  type Route = { from: string; to: string; price: string; description?: string; duration?: string; popular?: boolean }
+  type Charge = { icon?: string; text: string; price: string }
+  type Special = { title: string; subtitle?: string; price: string; icon?: string; notes?: string }
+  const handleReserve = (route: Route) => {
     const passengers = defaultPassengers
     const base = parseBasePrice(route.price)
     const isHourly = /\/h/.test(route.price) || route.from === "Tour"
@@ -166,22 +191,43 @@ export function TransfersSection() {
     }
   }, [])
 
+  const routes: Route[] = useMemo(() => {
+    if (data?.routes && Array.isArray(data.routes)) return data.routes
+    return localTransferRoutes
+  }, [data])
+
+  const charges: Charge[] = useMemo(() => {
+    if (data?.extraCharges && Array.isArray(data.extraCharges)) return data.extraCharges
+    return localAdditionalCharges
+  }, [data])
+
+  const specials: Special[] = useMemo(() => {
+    if (data?.specials && Array.isArray(data.specials)) return data.specials
+    return [
+      { title: 'Versailles', subtitle: 'Desde París. Hasta 4 pax', price: '65€', icon: 'map-pin', notes: '+10€ por pasajero adicional (Versailles)' },
+      { title: 'Parque Asterix', subtitle: 'Desde París u Orly', price: '70€', icon: 'plane', notes: '+20€ por persona adicional (Asterix)' },
+      { title: 'Casa de Monet (Giverny)', subtitle: 'Desde París · hasta 4 pax', price: '100€', icon: 'map-pin', notes: 'Persona adicional 12€ (Giverny)' },
+    ]
+  }, [data])
+
+  const sectionTitle = data?.title || 'Nuestros Traslados'
+  const sectionSubtitle = data?.subtitle || 'Tarifas transparentes para todos nuestros servicios de transporte premium en París.'
+  const footnote = data?.footnote || 'Nota: Para grupos de 5+ pasajeros, se combina la tarifa base + tarifa de vehículo adicional. Ejemplo: 9 pasajeros = Tarifa de 5 + Tarifa de 4 adicionales.'
+
   return (
     <section id="traslados" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
   <AnimatedSection animation="fade-up" className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">Nuestros Traslados</h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Tarifas transparentes para todos nuestros servicios de transporte premium en París.
-          </p>
+          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">{sectionTitle}</h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">{sectionSubtitle}</p>
         </AnimatedSection>
 
         {/* Transfer Routes Carousel */}
         <div className="mb-12" ref={transfersCarouselRef}>
           <Carousel opts={{ align: "start", loop: true }}>
             <CarouselContent className="py-6">
-              {transferRoutes.map((route, index) => (
-                <CarouselItem key={route.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
+              {routes.map((route: Route, index: number) => (
+                <CarouselItem key={`${route.from}-${route.to}-${index}`} className="basis-full sm:basis-1/2 lg:basis-1/3">
                   <AnimatedSection animation="zoom-in" delay={index * 100}>
                     <Card
                       className={`relative bg-card border-border hover-lift hover-glow h-full flex flex-col ${
@@ -197,7 +243,8 @@ export function TransfersSection() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-accent/10 rounded-lg text-accent soft-fade-in animation-delay-200">
-                              {route.icon}
+                              {/* icono opcional por ahora ignorado para mantener UI */}
+                              <Plane className="w-6 h-6" />
                             </div>
                             <div>
                               <CardTitle className="text-lg soft-fade-in animation-delay-300">
@@ -255,9 +302,9 @@ export function TransfersSection() {
           </CardHeader>
           <CardContent>
             <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
-              {additionalCharges.map((charge, index) => (
+              {charges.map((charge: Charge, index: number) => (
                 <div key={index} className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
-                  <div className="text-accent animate-pulse">{charge.icon}</div>
+                  <div className="text-accent animate-pulse"><Euro className="w-5 h-5" /></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium">{charge.text}</p>
                   </div>
@@ -267,8 +314,7 @@ export function TransfersSection() {
             </AnimatedSection>
             <div className="mt-6 p-4 bg-primary rounded-lg">
               <p className="text-sm text-center text-white">
-                <strong>Nota:</strong> Para grupos de 5+ pasajeros, se combina la tarifa base + tarifa de vehículo
-                adicional. Ejemplo: 9 pasajeros = Tarifa de 5 + Tarifa de 4 adicionales.
+                <strong>Nota:</strong> {footnote}
               </p>
             </div>
           </CardContent>
@@ -283,35 +329,21 @@ export function TransfersSection() {
           </CardHeader>
           <CardContent>
             <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
-              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
-                <div className="text-accent"><MapPin className="w-5 h-5" /></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Versailles</p>
-                  <p className="text-xs text-muted-foreground">Desde París. Hasta 4 pax</p>
+              {specials.map((sp: Special, idx: number) => (
+                <div key={idx} className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
+                  <div className="text-accent"><MapPin className="w-5 h-5" /></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{sp.title}</p>
+                    <p className="text-xs text-muted-foreground">{sp.subtitle}</p>
+                  </div>
+                  <div className="text-accent font-bold">{sp.price}</div>
                 </div>
-                <div className="text-accent font-bold">65€</div>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
-                <div className="text-accent"><Plane className="w-5 h-5" /></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Parque Asterix</p>
-                  <p className="text-xs text-muted-foreground">Desde París u Orly</p>
-                </div>
-                <div className="text-accent font-bold">70€</div>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
-                <div className="text-accent"><MapPin className="w-5 h-5" /></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Casa de Monet (Giverny)</p>
-                  <p className="text-xs text-muted-foreground">Desde París · hasta 4 pax</p>
-                </div>
-                <div className="text-accent font-bold">100€</div>
-              </div>
+              ))}
             </AnimatedSection>
             <div className="grid md:grid-cols-3 gap-4 mt-3 text-xs text-muted-foreground">
-              <div className="text-center">+10€ por pasajero adicional (Versailles)</div>
-              <div className="text-center">+20€ por persona adicional (Asterix)</div>
-              <div className="text-center">Persona adicional 12€ (Giverny)</div>
+              {specials.map((sp: Special, idx: number) => (
+                <div key={idx} className="text-center">{sp.notes}</div>
+              ))}
             </div>
           </CardContent>
         </Card>

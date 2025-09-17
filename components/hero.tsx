@@ -8,13 +8,47 @@ import { Calendar, MapPin, Users, Clock, Car, Map, Plane } from "lucide-react"
 import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatedSection } from "@/components/animated-section"
+import { PortableText } from "@portabletext/react"
 import EventsSlider, { type EventItem as SliderEventItem } from "@/components/events-slider"
 import { calcBaseTransferPrice, getAvailableDestinations as pricingGetAvailableDestinations, getGlobalMinBase as pricingGetGlobalMinBase, getMinBaseFromOrigin as pricingGetMinBaseFromOrigin } from "@/lib/pricing"
 
 export function Hero({
   title = 'Transporte',
   highlight = 'Comodo y Seguro',
-  description = "Transporte Privado en París\nConfort, seguridad y puntualidad.\nTraslados desde/hacia aeropuertos (CDG, ORY, BVA), viajes a Disneyland, tours privados por la ciudad,\nexcursiones a Brujas y mucho más.\nVive París sin preocupaciones.",
+  description = [
+    {
+      _type: 'block',
+      children: [
+        { _type: 'span', text: 'Transporte Privado en París' },
+      ],
+      markDefs: [],
+      style: 'normal',
+    },
+    {
+      _type: 'block',
+      children: [
+        { _type: 'span', text: 'Confort, seguridad y puntualidad.' },
+      ],
+      markDefs: [],
+      style: 'normal',
+    },
+    {
+      _type: 'block',
+      children: [
+        { _type: 'span', text: 'Traslados desde/hacia aeropuertos (CDG, ORY, BVA), viajes a Disneyland, tours privados por la ciudad, excursiones a Brujas y mucho más.' },
+      ],
+      markDefs: [],
+      style: 'normal',
+    },
+    {
+      _type: 'block',
+      children: [
+        { _type: 'span', text: 'Vive París sin preocupaciones.' },
+      ],
+      markDefs: [],
+      style: 'normal',
+    },
+  ] as any,
   backgroundUrl,
   primaryCtaLabel = 'Reservar Ahora',
   secondaryCtaLabel = 'Ver Servicios',
@@ -23,7 +57,7 @@ export function Hero({
 }: {
   title?: string
   highlight?: string
-  description?: string
+  description?: any
   backgroundUrl?: string
   primaryCtaLabel?: string
   secondaryCtaLabel?: string
@@ -248,9 +282,32 @@ export function Hero({
                   <EventsSlider events={events} />
                 </div>
               )}
-              <p className="text-xl mb-8 text-white/95 text-pretty drop-shadow-md" style={{ whiteSpace: 'pre-line' }}>
-                {description}
-              </p>
+              <div className="mb-8 text-white/95 text-pretty drop-shadow-md text-justify">
+                {(() => {
+                  // Construir un único párrafo a partir de Portable Text o string
+                  let text = ""
+                  if (Array.isArray(description)) {
+                    try {
+                      text = (description as any[])
+                        .map((block) => {
+                          if (block?._type === "block" && Array.isArray(block.children)) {
+                            return block.children.map((c: any) => c?.text || "").join("")
+                          }
+                          return ""
+                        })
+                        .filter(Boolean)
+                        .join(" ")
+                    } catch {
+                      text = ""
+                    }
+                  } else {
+                    text = String(description || "")
+                  }
+                  // Normalizar espacios y saltos de línea a espacios simples
+                  text = text.replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim()
+                  return <p className="text-xl leading-relaxed">{text}</p>
+                })()}
+              </div>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   size="lg"

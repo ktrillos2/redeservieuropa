@@ -14,6 +14,9 @@ export type EventItem = {
   date?: string
   time?: string
   meetingPoint?: string
+  shortInfo?: string
+  description?: string
+  images?: string[]
 }
 
 export function EventsSlider({ className, events: eventsProp }: { className?: string; events?: EventItem[] }) {
@@ -59,6 +62,8 @@ export function EventsSlider({ className, events: eventsProp }: { className?: st
           isEvent: true,
           eventId: ev.id,
           eventTitle: ev.title,
+          eventShortInfo: ev.shortInfo || "",
+          eventImages: Array.isArray(ev.images) ? ev.images : (ev.image ? [ev.image] : []),
           tourId: ev.id,
           passengers: 1,
           date: d,
@@ -114,7 +119,7 @@ export function EventsSlider({ className, events: eventsProp }: { className?: st
               <button
                 type="button"
                 onClick={() => handleClick(ev)}
-                className="relative block w-full h-full overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="relative block w-full h-full overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
                 aria-label={`Abrir pago de ${ev.title}`}
               >
                 {/* Badge de Eventos */}

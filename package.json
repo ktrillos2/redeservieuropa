@@ -10,11 +10,17 @@
     "seed:sanity:general": "tsx scripts/seed-general-info.mjs",
     "seed:sanity:header": "tsx scripts/seed-header.mjs",
     "seed:sanity:hero": "tsx scripts/seed-hero.mjs",
-  "seed:sanity:tours": "tsx scripts/seed-tours.ts",
-    "seed:sanity:events": "tsx scripts/seed-events.mjs"
+    "seed:sanity:tours": "tsx scripts/seed-tours.ts",
+    "seed:sanity:events": "tsx scripts/seed-events.mjs",
+    "seed:sanity:transfers": "tsx scripts/seed-transfers.ts",
+    "seed:sanity:tours-section": "tsx scripts/seed-tours-section.ts",
+    "seed:sanity:testimonials-section": "tsx scripts/seed-testimonials-section.ts",
+    "seed:sanity:contact-section": "tsx scripts/seed-contact-section.ts",
+    "seed:sanity:footer-section": "tsx scripts/seed-footer-section.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
+    "@portabletext/react": "^4.0.3",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
     "@radix-ui/react-aspect-ratio": "1.1.1",

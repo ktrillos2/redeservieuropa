@@ -44,7 +44,12 @@ async function run() {
     _type: 'hero',
     title: 'Transporte',
     highlight: 'Comodo y Seguro',
-    description: 'Transporte Privado en París\nConfort, seguridad y puntualidad.\nTraslados desde/hacia aeropuertos (CDG, ORY, BVA), viajes a Disneyland, tours privados por la ciudad,\nexcursiones a Brujas y mucho más.\nVive París sin preocupaciones.',
+    description: [
+      { _type: 'block', style: 'normal', markDefs: [], children: [{ _type: 'span', text: 'Transporte Privado en París' }] },
+      { _type: 'block', style: 'normal', markDefs: [], children: [{ _type: 'span', text: 'Confort, seguridad y puntualidad.' }] },
+      { _type: 'block', style: 'normal', markDefs: [], children: [{ _type: 'span', text: 'Traslados desde/hacia aeropuertos (CDG, ORY, BVA), viajes a Disneyland, tours privados por la ciudad, excursiones a Brujas y mucho más.' }] },
+      { _type: 'block', style: 'normal', markDefs: [], children: [{ _type: 'span', text: 'Vive París sin preocupaciones.' }] },
+    ],
     backgroundImage: bg,
     primaryCta: { label: 'Reservar Ahora', internalHref: '#', external: false },
     secondaryCta: { label: 'Ver Servicios', internalHref: '#', external: false },

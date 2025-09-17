@@ -4,8 +4,11 @@ import { AnimatedSection } from "@/components/animated-section"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Star, Quote } from "lucide-react"
 import { useState, useEffect } from "react"
+import { client } from "@/sanity/lib/client"
+import { TESTIMONIALS_SECTION_QUERY } from "@/sanity/lib/queries"
+import { urlFor } from "@/sanity/lib/image"
 
-const testimonials = [
+const testimonialsLocal = [
   {
     id: 1,
     name: "María González",
@@ -60,18 +63,37 @@ const testimonials = [
 
 export function Testimonials() {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [data, setData] = useState<any | null>(null)
+  const [items, setItems] = useState<any[]>(testimonialsLocal)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await client.fetch(TESTIMONIALS_SECTION_QUERY)
+        if (!mounted) return
+        setData(res)
+        if (Array.isArray(res?.testimonials) && res.testimonials.length > 0) {
+          setItems(res.testimonials)
+        }
+      } catch (e) {
+        console.warn('[Testimonials] No se pudo cargar testimonios desde Sanity, usando fallback local.')
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 3) % testimonials.length)
+      setCurrentIndex((prevIndex) => (prevIndex + 3) % items.length)
     }, 6000)
     return () => clearInterval(timer)
-  }, [])
+  }, [items.length])
 
   const getVisibleTestimonials = () => {
     const visible = []
     for (let i = 0; i < 3; i++) {
-      visible.push(testimonials[(currentIndex + i) % testimonials.length])
+      visible.push(items[(currentIndex + i) % items.length])
     }
     return visible
   }
@@ -80,9 +102,9 @@ export function Testimonials() {
     <section id="testimonios" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="fade-up" className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">Lo que Dicen Nuestros Clientes</h2>
+          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">{data?.title || 'Lo que Dicen Nuestros Clientes'}</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.
+            {data?.subtitle || 'Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.'}
           </p>
         </AnimatedSection>
 
@@ -95,11 +117,19 @@ export function Testimonials() {
               >
                 <CardHeader className="p-0">
                   <div className="h-48 w-full overflow-hidden">
-                    <img
-                      src={testimonial.avatar || "/placeholder.svg"}
-                      alt={testimonial.name}
-                      className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500"
-                    />
+                    {testimonial.avatar?.asset ? (
+                      <img
+                        src={urlFor(testimonial.avatar).width(1200).height(800).url()}
+                        alt={testimonial.name}
+                        className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <img
+                        src={testimonial.avatar || "/placeholder.svg"}
+                        alt={testimonial.name}
+                        className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500"
+                      />
+                    )}
                   </div>
                 </CardHeader>
 
@@ -132,7 +162,7 @@ export function Testimonials() {
           </div>
 
           <div className="flex justify-center gap-2 mt-8">
-            {Array.from({ length: Math.ceil(testimonials.length / 3) }).map((_, index) => (
+            {Array.from({ length: Math.ceil(items.length / 3) }).map((_, index) => (
               <button
                 key={index}
                 className={`w-3 h-3 rounded-full transition-all duration-300 transform hover:scale-125 ${

@@ -120,13 +120,16 @@ export function Header({
       }}>
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3">
-            <Image
-              src={logoUrl}
-              alt="REDESERVI PARIS"
-              width={isScrolled ? 64 : 88}
-              height={isScrolled ? 64 : 88}
-              className="animate-float transition-all duration-300"
-            />
+            <div className={`relative ${isScrolled ? 'h-[110px] w-[70px]' : 'h-[140px] w-[90px]'}`}>
+              <Image
+                src={logoUrl}
+                alt={`${siteTitle} ${siteSubtitle}`}
+                fill
+                className="object-contain animate-float transition-all duration-300"
+                sizes="(max-width: 768px) 70px, 90px"
+                priority
+              />
+            </div>
             <div className="hidden md:block">
               <h1
                 className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-4xl"} ${useDarkText ? "!text-black" : "!text-white"}`}

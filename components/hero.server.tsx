@@ -15,6 +15,13 @@ export default async function HeroServer() {
     date: e.date,
     time: e.time,
     meetingPoint: e.meetingPoint,
+    shortInfo: e.shortInfo,
+    description: e.description,
+    images: Array.isArray(e.gallery)
+      ? e.gallery
+          .map((img) => (img ? urlFor(img).width(1600).url() : undefined))
+          .filter((u): u is string => typeof u === 'string')
+      : undefined,
   }))
   return (
     <Hero

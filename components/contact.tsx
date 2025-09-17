@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Phone, Mail, MapPin, Clock, MessageCircle } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { client } from "@/sanity/lib/client"
+import { GENERAL_INFO_QUERY, CONTACT_SECTION_QUERY } from "@/sanity/lib/queries"
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -17,6 +19,26 @@ export function Contact() {
     telefono: "",
     mensaje: "",
   })
+  const [gi, setGi] = useState<any | null>(null)
+  const [section, setSection] = useState<any | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const [g, s] = await Promise.all([
+          client.fetch(GENERAL_INFO_QUERY),
+          client.fetch(CONTACT_SECTION_QUERY),
+        ])
+        if (!mounted) return
+        setGi(g)
+        setSection(s)
+      } catch (e) {
+        console.warn('[Contact] No se pudo cargar información desde Sanity, usando fallback local.')
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,9 +49,9 @@ export function Contact() {
     <section id="contacto" className="py-16 bg-muted/30 relative z-0">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="fade-up" className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4 text-balance text-primary font-display">Contáctanos</h2>
+          <h2 className="text-4xl font-bold mb-4 text-balance text-primary font-display">{section?.title || 'Contáctanos'}</h2>
           <p className="text-xl max-w-2xl mx-auto text-pretty text-muted-foreground">
-            Estamos disponibles 24/7 para atender tus consultas y reservas.
+            {section?.subtitle || 'Estamos disponibles 24/7 para atender tus consultas y reservas.'}
           </p>
         </AnimatedSection>
 
@@ -41,7 +63,7 @@ export function Contact() {
                 <Phone className="w-5 h-5 text-accent" />
                 <h3 className="font-semibold text-foreground">Teléfono</h3>
               </div>
-              <p className="font-semibold text-foreground">+33 1 23 45 67 89</p>
+              <p className="font-semibold text-foreground">{gi?.contact?.phone || '+33 1 23 45 67 89'}</p>
               <p className="text-sm text-muted-foreground font-medium">24/7 disponible</p>
             </CardContent>
           </Card>
@@ -52,7 +74,7 @@ export function Contact() {
                 <Mail className="w-5 h-5 text-accent" />
                 <h3 className="font-semibold text-foreground">Email</h3>
               </div>
-              <p className="font-semibold text-foreground">info@redeservi.paris</p>
+              <p className="font-semibold text-foreground">{gi?.contact?.email || 'info@redeservi.paris'}</p>
               <p className="text-sm text-muted-foreground font-medium">Respuesta rápida</p>
             </CardContent>
           </Card>
@@ -63,7 +85,7 @@ export function Contact() {
                 <MapPin className="w-5 h-5 text-accent" />
                 <h3 className="font-semibold text-foreground">Ubicación</h3>
               </div>
-              <p className="font-semibold text-foreground">París, Francia</p>
+              <p className="font-semibold text-foreground">{gi?.contact?.address || 'París, Francia'}</p>
               <p className="text-sm text-muted-foreground font-medium">Toda la región</p>
             </CardContent>
           </Card>
@@ -87,7 +109,7 @@ export function Contact() {
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-foreground text-center justify-center font-display">
                 <MessageCircle className="w-6 h-6 text-accent" />
-                Envíanos un Mensaje
+                {section?.formTitle || 'Envíanos un Mensaje'}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -145,6 +167,22 @@ export function Contact() {
                 >
                   Enviar Mensaje
                 </Button>
+                {section?.showWhatsAppButton && gi?.contact?.whatsapp ? (
+                  <a
+                    className="mt-3 inline-flex w-full"
+                    href={`https://wa.me/${gi.contact.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(gi.defaultWhatsAppMessage || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="secondary" className="w-full flex items-center gap-2">
+                      <MessageCircle className="w-5 h-5" />
+                      WhatsApp
+                    </Button>
+                  </a>
+                ) : null}
+                {section?.formNote ? (
+                  <p className="text-xs text-muted-foreground mt-3 text-center">{section.formNote}</p>
+                ) : null}
               </form>
             </CardContent>
           </Card>

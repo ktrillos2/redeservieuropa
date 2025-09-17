@@ -4,7 +4,33 @@ import header, { menuGroup, menuLink, menuSeparator } from './header'
 import hero from './hero'
 import event from './event'
 import tour, { pricingItem } from './tour'
+import transfers, { transferRoute, extraCharge, specialTransfer } from './transfers'
+import toursSection from './toursSection'
+import testimonialsSection, { testimonialItem } from './testimonialsSection'
+import contactSection from './contactSection'
+import footerSection, { footerColumn } from './footerSection'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
-  types: [generalInfo, menuLink, menuGroup, menuSeparator, header, hero, event, pricingItem, tour],
+  types: [
+    generalInfo,
+    menuLink,
+    menuGroup,
+    menuSeparator,
+    header,
+    hero,
+    event,
+    pricingItem,
+    tour,
+    // subtipos de transfers deben estar registrados
+    transferRoute,
+    extraCharge,
+    specialTransfer,
+    transfers,
+    toursSection,
+    testimonialItem,
+    testimonialsSection,
+    contactSection,
+    footerColumn,
+    footerSection,
+  ],
 }

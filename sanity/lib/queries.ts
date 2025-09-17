@@ -32,7 +32,10 @@ export const EVENTS_FOR_HERO_QUERY = `
   pricePerPerson,
   date,
   time,
-  meetingPoint
+  meetingPoint,
+  shortInfo,
+  description,
+  gallery
 }
 `
 
@@ -67,5 +70,68 @@ export const TOUR_BY_SLUG_QUERY = `
   pricingP4,
   pricingP5,
   extraSections
+}
+`
+
+export const TRANSFERS_QUERY = `
+*[_type == "transfers" && _id == "transfers"][0]{
+  _id,
+  title,
+  subtitle,
+  routes[]{ from, to, price, description, duration, popular, icon },
+  extraCharges[]{ icon, text, price },
+  specials[]{ title, subtitle, price, icon, notes },
+  footnote
+}
+`
+
+export const TOURS_SECTION_QUERY = `
+*[_type == "toursSection" && _id == "toursSection"][0]{
+  _id,
+  title,
+  subtitle,
+  footnote,
+  cta
+}
+`
+
+export const TESTIMONIALS_SECTION_QUERY = `
+*[_type == "testimonialsSection" && _id == "testimonialsSection"][0]{
+  _id,
+  title,
+  subtitle,
+  testimonials[]{
+    name,
+    location,
+    rating,
+    comment,
+    service,
+    avatar
+  }
+}
+`
+
+export const CONTACT_SECTION_QUERY = `
+*[_type == "contactSection" && _id == "contactSection"][0]{
+  _id,
+  title,
+  subtitle,
+  formTitle,
+  formNote,
+  showWhatsAppButton
+}
+`
+
+export const FOOTER_SECTION_QUERY = `
+*[_type == "footerSection" && _id == "footerSection"][0]{
+  _id,
+  description,
+  showStars,
+  statsText,
+  columns[]{
+    title,
+    links[]{ label, href, internalHref, external }
+  },
+  copyright
 }
 `

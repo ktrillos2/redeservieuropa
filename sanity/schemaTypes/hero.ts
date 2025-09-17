@@ -7,7 +7,13 @@ export default defineType({
   fields: [
     defineField({ name: 'title', title: 'Título', type: 'string', validation: (Rule) => Rule.required() }),
     defineField({ name: 'highlight', title: 'Texto destacado', type: 'string' }),
-    defineField({ name: 'description', title: 'Descripción', type: 'text' }),
+    defineField({
+      name: 'description',
+      title: 'Descripción',
+      type: 'array',
+      of: [{ type: 'block' }],
+      description: 'Usa párrafos y estilos básicos. El contenido se renderiza justificado en el sitio.',
+    }),
     defineField({
       name: 'backgroundImage',
       title: 'Imagen de fondo',

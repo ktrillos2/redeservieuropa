@@ -7,11 +7,13 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, CheckCircle, CreditCard, Shield, Clock, MapPin, Users, Luggage } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
 import { calcBaseTransferPrice, isNightTime as pricingIsNightTime } from "@/lib/pricing"
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 
 export default function PaymentPage() {
   const [bookingData, setBookingData] = useState<any>(null)
@@ -242,6 +244,9 @@ export default function PaymentPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {bookingData.isEvent && Array.isArray(bookingData.eventImages) && bookingData.eventImages.length > 0 && (
+                      <EventImagesCarousel images={bookingData.eventImages} shortInfo={bookingData.eventShortInfo} />
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{bookingData.isEvent ? "Evento:" : "Servicio:"}</span>
                       <Badge className="bg-accent text-accent-foreground">
@@ -253,6 +258,11 @@ export default function PaymentPage() {
 
                     <div className="space-y-3">
                       {/* Pasajeros/Cupos editable */}
+                      {bookingData.isEvent && bookingData.eventShortInfo && !bookingData.eventImages?.length && (
+                        <div className="text-sm text-muted-foreground border-l-2 border-accent/60 pl-3">
+                          {bookingData.eventShortInfo}
+                        </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <Users className="w-4 h-4 text-accent" />
                         <div className="flex items-center gap-2">
@@ -656,5 +666,68 @@ export default function PaymentPage() {
       </div>
       <Footer />
     </main>
+  )
+}
+
+function EventImagesCarousel({ images, shortInfo }: { images: string[]; shortInfo?: string }) {
+  const apiRef = useRef<CarouselApi | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [isHover, setIsHover] = useState(false)
+
+  useEffect(() => {
+    const start = () => {
+      if (intervalRef.current) return
+      intervalRef.current = setInterval(() => {
+        apiRef.current?.scrollNext()
+      }, 4000)
+    }
+    const stop = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+    if (!isHover) start()
+    return () => stop()
+  }, [isHover])
+
+  return (
+    <div className="relative" onMouseEnter={() => setIsHover(true)} onMouseLeave={() => setIsHover(false)}>
+      <Carousel
+        className="w-full h-56 sm:h-64 rounded-lg overflow-hidden"
+        opts={{ align: "start", loop: true }}
+        setApi={(api) => {
+          // @ts-ignore: embla type channel
+          apiRef.current = api
+        }}
+      >
+        <CarouselContent className="h-full">
+          {images.map((src: string, idx: number) => (
+            <CarouselItem key={idx} className="h-full">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Ampliar imagen ${idx + 1}`}
+                    className="relative block w-full h-56 sm:h-64"
+                  >
+                    <img src={src} alt={`Imagen ${idx + 1} del evento`} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-5xl p-0 bg-transparent border-none shadow-none" showCloseButton>
+                  <div className="relative w-full h-[70vh]">
+                    <img src={src} alt={`Imagen ${idx + 1} ampliada`} className="w-full h-full object-contain" />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+      {shortInfo && (
+        <p className="mt-3 text-sm text-muted-foreground">{shortInfo}</p>
+      )}
+    </div>
   )
 }

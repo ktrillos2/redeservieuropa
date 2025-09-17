@@ -25,7 +25,57 @@ export const structure: StructureResolver = (S) =>
             .schemaType('header')
             .documentId('header')
         ),
+      // Singleton Transfers
+      S.listItem()
+        .title('Traslados')
+        .id('transfers')
+        .child(
+          S.editor()
+            .id('transfersEditor')
+            .schemaType('transfers')
+            .documentId('transfers')
+        ),
+      // Singleton Tours Section
+      S.listItem()
+        .title('Sección: Nuestros Tours')
+        .id('toursSection')
+        .child(
+          S.editor()
+            .id('toursSectionEditor')
+            .schemaType('toursSection')
+            .documentId('toursSection')
+        ),
+      // Singleton Testimonials Section
+      S.listItem()
+        .title('Sección: Testimonios')
+        .id('testimonialsSection')
+        .child(
+          S.editor()
+            .id('testimonialsSectionEditor')
+            .schemaType('testimonialsSection')
+            .documentId('testimonialsSection')
+        ),
+      // Singleton Contact Section
+      S.listItem()
+        .title('Sección: Contáctanos')
+        .id('contactSection')
+        .child(
+          S.editor()
+            .id('contactSectionEditor')
+            .schemaType('contactSection')
+            .documentId('contactSection')
+        ),
+      // Singleton Footer Section
+      S.listItem()
+        .title('Sección: Footer')
+        .id('footerSection')
+        .child(
+          S.editor()
+            .id('footerSectionEditor')
+            .schemaType('footerSection')
+            .documentId('footerSection')
+        ),
       S.divider(),
-      // Fallback: other document lists
-      ...S.documentTypeListItems().filter((item) => !['generalInfo','header'].includes(item.getId() || '')),
+      // Fallback: other document lists (excluir singletons para evitar IDs duplicados)
+      ...S.documentTypeListItems().filter((item) => !['generalInfo','header','transfers','toursSection','testimonialsSection','contactSection','footerSection'].includes(item.getId() || '')),
     ])

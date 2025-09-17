@@ -125,9 +125,14 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
     const submitCmsBooking = () => {
       const errors: string[] = []
+      if (!contactName.trim()) errors.push("Nombre completo")
+      if (!contactPhone.trim()) errors.push("Teléfono")
+      if (!contactEmail.trim()) errors.push("Email")
       if (!date) errors.push("Fecha del viaje")
       if (!time) errors.push("Hora del tour")
+      if (!pickupAddress.trim()) errors.push("Dirección de recogida")
       if (passengers < 1) errors.push("Número de pasajeros")
+
       if (errors.length > 0) {
         alert(`Por favor completa: ${errors.join(", ")}.`)
         return
@@ -138,25 +143,27 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
         const h = hh || 0
         return h >= 21 || h < 6
       })()
+      const extraLugg = Number(luggage23kg || 0) > 3
       const bookingData: any = {
         tourId,
-        isTourQuick: true,
         passengers,
         date,
         time,
-        pickupAddress: "",
-        dropoffAddress: "",
-        flightNumber: "",
-        luggage23kg: 0,
-        luggage10kg: 0,
-        babyStrollers: 0,
-        specialRequests: "",
-        contactName: "",
-        contactPhone: "",
-        contactEmail: "",
+        pickupAddress,
+        dropoffAddress,
+        flightNumber,
+        luggage23kg,
+        luggage10kg,
+        babyStrollers,
+        childrenAges,
+        specialRequests,
+        contactName,
+        contactPhone,
+        contactEmail,
         totalPrice: Number(cmsTotal || 0),
         isNightTime: isNight,
-        extraLuggage: false,
+        extraLuggage: extraLugg,
+        luggageCount: Number(luggage23kg || 0) + Number(luggage10kg || 0),
         // Marca como tour para cálculo de depósito en Pago
         tourHours: 0,
       }
@@ -253,39 +260,119 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
               </Card>
             </div>
 
-            {/* Reserva simple y uniforme */}
+            {/* Reserva completa y uniforme */}
             <div className="lg:col-span-1">
               <Card className="sticky top-24 transform hover:scale-105 transition-all duration-300">
                 <CardHeader>
                   <CardTitle className="text-2xl text-primary text-center">Reservar Ahora</CardTitle>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-accent animate-pulse">{cmsTotal}€</div>
+                    <div className="text-3xl font-bold text-accent animate-pulse">{Number.isNaN(Number(cmsTotal)) ? "…€" : `${cmsTotal}€`}</div>
                     <p className="text-sm text-muted-foreground">precio estimado según pasajeros</p>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Información de contacto */}
+                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-semibold text-primary flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-accent" />
+                      Información de Contacto
+                    </h4>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nombre Completo</label>
+                      <Input placeholder="Tu nombre completo" value={contactName} onChange={(e) => setContactName(e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Teléfono</label>
+                        <Input placeholder="+33 1 23 45 67 89" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Email</label>
+                        <Input type="email" placeholder="tu@email.com" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pasajeros */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <Users className="w-4 h-4 text-accent" />
-                      Pasajeros
+                      Número de Pasajeros
                     </label>
-                    <Input type="number" min={1} max={8} value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} />
+                    <Input type="number" min={1} max={9} value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} />
                   </div>
+
+                  {/* Fecha y hora */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2"><Calendar className="w-4 h-4 text-accent" />Fecha</label>
-                      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2"><Clock className="w-4 h-4 text-accent" />Hora</label>
-                      <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                      <Input type="time" value={time} onChange={(e) => {
+                        const v = e.target.value
+                        setTime(v)
+                        const hour = Number.parseInt(v.split(":")[0])
+                        setIsNightTime(hour >= 21 || hour < 6)
+                      }} />
                     </div>
+                  </div>
+                  {isNightTime && (
+                    <p className="text-xs text-accent animate-pulse">* Tour nocturno (después de las 21:00)</p>
+                  )}
+
+                  {/* Direcciones */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2"><MapPin className="w-4 h-4 text-accent" />Dirección de Recogida</label>
+                    <Input placeholder="Dirección completa de recogida" value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2"><MapPin className="w-4 h-4 text-accent" />Dirección de Destino (opcional)</label>
+                    <Input placeholder="Dirección completa de destino" value={dropoffAddress} onChange={(e) => setDropoffAddress(e.target.value)} />
+                  </div>
+
+                  {/* Vuelo (opcional) */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2"><Plane className="w-4 h-4 text-accent" />Número de Vuelo (opcional)</label>
+                    <Input placeholder="AF1234, BA456, etc." value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} />
+                  </div>
+
+                  {/* Equipaje */}
+                  <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                    <label className="text-sm font-medium flex items-center gap-2"><Luggage className="w-4 h-4 text-accent" />Equipaje</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium"># Maletas 23kg</label>
+                        <Input type="number" min={0} max={10} value={luggage23kg} onChange={(e) => setLuggage23kg(Number(e.target.value))} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium"># Maletas 10kg</label>
+                        <Input type="number" min={0} max={10} value={luggage10kg} onChange={(e) => setLuggage10kg(Number(e.target.value))} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium">Carritos de bebé</label>
+                      <Input type="number" min={0} max={5} value={babyStrollers} onChange={(e) => setBabyStrollers(Number(e.target.value))} />
+                    </div>
+                  </div>
+
+                  {/* Edades niños y solicitudes */}
+                  <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+                    <label className="text-sm font-medium">Edades niños menores de 8 años</label>
+                    <Input placeholder="Ej: 3 años, 5 años" value={childrenAges} onChange={(e) => setChildrenAges(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">Para sillas de niño o bebé que se requieran (sin costo adicional)</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Solicitudes Especiales</label>
+                    <Input placeholder="Asiento para bebé, parada adicional, etc." value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} />
                   </div>
 
                   <Separator />
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>
-                    <span className="text-accent">{cmsTotal}€</span>
+                    <span className="text-accent">{Number.isNaN(Number(cmsTotal)) ? "…€" : `${cmsTotal}€`}</span>
                   </div>
 
                   <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={submitCmsBooking}>

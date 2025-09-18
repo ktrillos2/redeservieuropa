@@ -67,7 +67,8 @@ export function Header({
   const pathname = usePathname()
 
   const isHomePage = pathname === "/"
-  const useDarkText = !isHomePage || isScrolled
+  const compactHeader = !isHomePage || isScrolled
+  const useDarkText = compactHeader
 
   useEffect(() => {
     const handleScroll = () => {
@@ -120,7 +121,7 @@ export function Header({
       }}>
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3">
-            <div className={`relative ${isScrolled ? 'h-[110px] w-[70px]' : 'h-[140px] w-[90px]'}`}>
+            <div className={`relative transition-all duration-500 ${compactHeader ? 'h-[110px] w-[70px]' : 'h-[140px] w-[90px]'}`}>
               <Image
                 src={logoUrl}
                 alt={`${siteTitle} ${siteSubtitle}`}
@@ -132,11 +133,11 @@ export function Header({
             </div>
             <div className="hidden md:block">
               <h1
-                className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-lg" : "text-4xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
+                className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${compactHeader ? "text-lg" : "text-4xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
               >
                 {siteTitle}
               </h1>
-              <p className={`font-display transition-all duration-300 drop-shadow-lg ${isScrolled ? "text-xs" : "text-2xl"} ${useDarkText ? "!text-black" : "!text-white"}`}>
+              <p className={`font-display transition-all duration-300 drop-shadow-lg ${compactHeader ? "text-xs" : "text-2xl"} ${useDarkText ? "!text-black" : "!text-white"}`}>
                 {siteSubtitle}
               </p>
             </div>

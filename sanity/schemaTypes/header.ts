@@ -41,7 +41,6 @@ export default defineType({
   fields: [
     defineField({ name: 'siteTitle', title: 'Título', type: 'string' }),
     defineField({ name: 'siteSubtitle', title: 'Subtítulo', type: 'string' }),
-    defineField({ name: 'logo', title: 'Logo', type: 'image', options: { hotspot: true }, fields: [defineField({ name: 'alt', title: 'Alt', type: 'string' })] }),
     defineField({
       name: 'navLinks',
       title: 'Navegación principal',

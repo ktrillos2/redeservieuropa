@@ -9,15 +9,17 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Phone, Mail, MapPin, Clock, MessageCircle } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { contactFormSchema, type ContactFormValues } from '@/lib/validation'
+// Eliminado toast de validación por solicitud: solo errores inline
 import { client } from "@/sanity/lib/client"
 import { GENERAL_INFO_QUERY, CONTACT_SECTION_QUERY } from "@/sanity/lib/queries"
 
 export function Contact() {
-  const [formData, setFormData] = useState({
-    nombre: "",
-    email: "",
-    telefono: "",
-    mensaje: "",
+  const form = useForm<ContactFormValues>({
+    resolver: zodResolver(contactFormSchema),
+    defaultValues: { nombre: '', email: '', telefono: '', mensaje: '' }
   })
   const [gi, setGi] = useState<any | null>(null)
   const [section, setSection] = useState<any | null>(null)
@@ -40,9 +42,11 @@ export function Contact() {
     return () => { mounted = false }
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Form submitted:", formData)
+  const [submitted, setSubmitted] = useState(false)
+  const onSubmit = (values: ContactFormValues) => {
+    console.log('[contact] submit', values)
+    setSubmitted(true)
+    form.reset()
   }
 
   return (
@@ -113,26 +117,31 @@ export function Contact() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">Nombre</label>
                     <Input
                       placeholder="Tu nombre completo"
-                      value={formData.nombre}
-                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                      required
+                      {...form.register('nombre')}
                       className="transform focus:scale-105 transition-all duration-300"
+                      aria-invalid={!!form.formState.errors.nombre}
                     />
+                    {form.formState.errors.nombre && (
+                      <p className="text-xs text-destructive">{form.formState.errors.nombre.message}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">Teléfono</label>
                     <Input
                       placeholder="+33 1 23 45 67 89"
-                      value={formData.telefono}
-                      onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                      {...form.register('telefono')}
                       className="transform focus:scale-105 transition-all duration-300"
+                      aria-invalid={!!form.formState.errors.telefono}
                     />
+                    {form.formState.errors.telefono && (
+                      <p className="text-xs text-destructive">{form.formState.errors.telefono.message}</p>
+                    )}
                   </div>
                 </div>
 
@@ -141,11 +150,13 @@ export function Contact() {
                   <Input
                     type="email"
                     placeholder="tu@email.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
+                    {...form.register('email')}
                     className="transform focus:scale-105 transition-all duration-300"
+                    aria-invalid={!!form.formState.errors.email}
                   />
+                  {form.formState.errors.email && (
+                    <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -153,20 +164,26 @@ export function Contact() {
                   <Textarea
                     placeholder="Cuéntanos sobre tu viaje o consulta..."
                     rows={3}
-                    value={formData.mensaje}
-                    onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
-                    required
+                    {...form.register('mensaje')}
                     className="transform focus:scale-105 transition-all duration-300"
+                    aria-invalid={!!form.formState.errors.mensaje}
                   />
+                  {form.formState.errors.mensaje && (
+                    <p className="text-xs text-destructive">{form.formState.errors.mensaje.message}</p>
+                  )}
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 transform hover:scale-105 transition-all duration-300"
+                  className="w-full bg-primary hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 disabled:opacity-60"
                   size="lg"
+                  disabled={form.formState.isSubmitting}
                 >
-                  Enviar Mensaje
+                  {form.formState.isSubmitting ? 'Enviando...' : 'Enviar Mensaje'}
                 </Button>
+                {submitted && !Object.keys(form.formState.errors).length && (
+                  <p className="text-center text-sm text-green-600">Enviado correctamente.</p>
+                )}
                 {section?.showWhatsAppButton && gi?.contact?.whatsapp ? (
                   <a
                     className="mt-3 inline-flex w-full"

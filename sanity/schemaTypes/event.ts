@@ -1,8 +1,16 @@
 import { defineField, defineType } from 'sanity'
 
+// Nota de migración: el tipo pasó de 'event' (singular) a 'events' (plural).
+// Documentos existentes con _type == 'event' no aparecerán en este schema hasta migrarlos.
+// Para migrar:
+// 1. Ejecutar en la consola de Sanity (Vision o client):
+//    *[_type == "event"]{_id,_type} => para listar.
+// 2. Crear un script GROQ Patch: client.patch(id).set({_type: 'events'}).commit()
+// 3. O reimportar contenido ajustando _type en los JSON de export.
+
 export default defineType({
-  name: 'event',
-  title: 'Evento',
+  name: 'events',
+  title: 'Eventos',
   type: 'document',
   fields: [
     defineField({ name: 'title', title: 'Título', type: 'string', validation: (rule) => rule.required() }),

@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { PortableText } from "@portabletext/react"
 import { useRouter } from "next/navigation"
 import { tourData } from "@/lib/tours"
 import { urlFor } from "@/sanity/lib/image"
@@ -49,6 +50,9 @@ interface TourDetailProps {
     pricingP4?: { threeH?: number; twoH?: number; eiffelArco?: number }
     pricingP5?: { threeH?: number; twoH?: number; eiffelArco?: number }
     extraSections?: Array<{ title?: string; body?: any; included?: string[]; itinerary?: string[] }>
+    amenities?: string[]
+    notes?: string[]
+    infoLists?: Array<{ title?: string; icon?: string; items?: string[] }>
   }
 }
 
@@ -56,6 +60,25 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
   const effectiveTourId = tourId === "tour-nocturno" ? "tour-paris" : tourId
   const tour = tourFromCms || tourData[effectiveTourId]
   const router = useRouter()
+  /*
+   * === LÓGICA DE PRECIOS DINÁMICOS (DOCUMENTACIÓN) ===
+   * Para el tour "tour-paris" el precio ya no es fijo sólo por horas, sino que escala con la cantidad de pasajeros:
+   *  - El precio base por hora (diurno o nocturno) cubre hasta 4 pasajeros.
+   *  - A partir del quinto pasajero se aplica un recargo por pasajero y por hora.
+   *  - Recargo diurno actual: 10€/h por pasajero extra.
+   *  - Recargo nocturno actual: 12€/h por pasajero extra.
+   *  - Cuando el usuario selecciona una "pricingOption" (tarifa cerrada) que incluye horas (p.ej. 2h, 3h), esa tarifa se toma
+   *    como base y se añade el recargo de pasajeros extra calculado con las horas de la opción.
+   *  - Si la opción no define horas, se asume 1 hora para el recargo.
+   *  - En la rama CMS se replica comportamiento. Si existe una opción seleccionada se aplica la misma lógica de recargos.
+   *  - Si el CMS no provee tabla de precios por pax, se usa basePrice + (pasajeros extra * 10€) (fallback simple).
+   *
+   * Para modificar los recargos:
+   *  - Cambiar en calculatePrice(): las constantes extraPerPassenger (10 / 12) y en calcCmsPrice() (10, 12) según convenga.
+   *  - Ajustar también el breakdown (desglose) en el JSX para reflejar la fórmula nueva si cambia.
+   *
+   * Esta implementación evita toasts y mantiene validaciones de campos mediante fieldErrors.
+   */
   const [passengers, setPassengers] = useState(2)
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
@@ -74,6 +97,10 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
   const [contactEmail, setContactEmail] = useState("")
   const [tourHours, setTourHours] = useState(2)
   const [routeOption, setRouteOption] = useState<"threeH" | "twoH" | "eiffelArco" | undefined>(undefined)
+  // Nueva: selección explícita de opción de tarifa (pricingOptions)
+  const [selectedPricingOption, setSelectedPricingOption] = useState<{ label: string; price: number; hours?: number } | null>(null)
+  // Estado de errores por campo para validaciones inline (sin toasts)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const galleryImages = useMemo<string[]>(() => {
     // Si viene de CMS, construir URLs de Sanity
@@ -111,12 +138,60 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
   // Rama uniforme para tours del CMS: misma estructura para todos
   if (tourFromCms) {
+    // === Helpers de renderizado dinámico para nuevas listas ===
+    const IconMap: Record<string, any> = {
+      plane: Plane,
+      "map-pin": MapPin,
+      clock: Clock,
+      shield: Shield,
+      car: Car,
+      star: Star,
+    }
+    const ListSection = ({ title, items, icon }: { title: string; items?: string[]; icon?: string }) => {
+      if (!items || items.length === 0) return null
+      const Ico = icon && IconMap[icon] ? IconMap[icon] : Shield
+      return (
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold mb-4 text-primary flex items-center gap-2"><Ico className="w-4 h-4 text-accent" /> {title}</h3>
+          <ul className="grid md:grid-cols-2 gap-3 list-none m-0 p-0">
+            {items.map((it, idx) => (
+              <li key={idx} className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 bg-accent rounded-full" />
+                <span>{it}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+    const hasExtraSections = Array.isArray(tourFromCms.extraSections) && tourFromCms.extraSections.length > 0
     const calcCmsPrice = () => {
+      // Si hay selección manual de pricingOption: usar como base pero permitir recargo por pasajeros extra (>4) si queremos coherencia.
+      if (selectedPricingOption) {
+        const baseIncluded = 4
+        const extraPassengers = Math.max(0, passengers - baseIncluded)
+        if (extraPassengers > 0) {
+          // Reutilizamos la lógica de recargos (diurno/nocturno) si hay basePriceDay/Night, si no un fallback genérico de 10€/h.
+          const isNight = isNightTime
+          const perHourExtra = isNight ? 12 : 10
+          const hours = selectedPricingOption.hours ?? 1
+          return selectedPricingOption.price + extraPassengers * perHourExtra * hours
+        }
+        return selectedPricingOption.price
+      }
       // Buscar precio por pax en pricing; si no, usar basePrice
       const p: any = tourFromCms.pricing
       if (Array.isArray(p)) {
         const found = p.find((x: any) => x && Number(x.pax) === Number(passengers))
         if (found && typeof found.price === 'number') return found.price
+      }
+      // Fallback: aplicar basePrice y recargo por pasajeros extra >4 si existe basePrice
+      const base = tourFromCms.basePrice ?? 0
+      const baseIncluded = 4
+      const extraPassengers = Math.max(0, passengers - baseIncluded)
+      if (extraPassengers > 0) {
+        // sin horas definidas, asumimos paquete único (1x) y recargo plano 10€ por pasajero extra.
+        return base + extraPassengers * 10
       }
       return tourFromCms.basePrice ?? 0
     }
@@ -124,17 +199,22 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
     const cmsTotal = calcCmsPrice()
 
     const submitCmsBooking = () => {
-      const errors: string[] = []
-      if (!contactName.trim()) errors.push("Nombre completo")
-      if (!contactPhone.trim()) errors.push("Teléfono")
-      if (!contactEmail.trim()) errors.push("Email")
-      if (!date) errors.push("Fecha del viaje")
-      if (!time) errors.push("Hora del tour")
-      if (!pickupAddress.trim()) errors.push("Dirección de recogida")
-      if (passengers < 1) errors.push("Número de pasajeros")
+      const newErrors: Record<string, string> = {}
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+      if (!contactName.trim()) newErrors.contactName = 'Requerido'
+      if (!contactPhone.trim()) newErrors.contactPhone = 'Requerido'
+      if (!contactEmail.trim()) newErrors.contactEmail = 'Requerido'
+      else if (!emailRegex.test(contactEmail.trim())) newErrors.contactEmail = 'Email inválido'
+      if (!date) newErrors.date = 'Requerido'
+      if (!time) newErrors.time = 'Requerido'
+      if (!pickupAddress.trim()) newErrors.pickupAddress = 'Requerido'
+      if (passengers < 1) newErrors.passengers = 'Debe ser ≥1'
 
-      if (errors.length > 0) {
-        alert(`Por favor completa: ${errors.join(", ")}.`)
+      setFieldErrors(newErrors)
+      if (Object.keys(newErrors).length > 0) {
+        // Enfocar primer campo con error
+        const firstKey = Object.keys(newErrors)[0]
+        try { document.querySelector<HTMLInputElement>(`[data-field="${firstKey}"]`)?.focus() } catch {}
         return
       }
       const isNight = (() => {
@@ -166,6 +246,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
         luggageCount: Number(luggage23kg || 0) + Number(luggage10kg || 0),
         // Marca como tour para cálculo de depósito en Pago
         tourHours: 0,
+        selectedPricingOption: selectedPricingOption ? { label: selectedPricingOption.label, price: selectedPricingOption.price, hours: selectedPricingOption.hours } : undefined,
       }
       localStorage.setItem("bookingData", JSON.stringify(bookingData))
       router.push("/pago")
@@ -177,7 +258,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
           {/* Back Button */}
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
+            className="mt-6 inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
           >
             <ArrowLeft className="w-4 h-4" />
             Volver a servicios
@@ -229,6 +310,50 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     <p className="text-lg text-muted-foreground mb-6 text-pretty">{tour.description}</p>
                   )}
 
+                  {Array.isArray((tour as any).pricingOptions) && (tour as any).pricingOptions.length > 0 && (
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4 text-primary">Selecciona una Opción / Tarifa</h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {(tour as any).pricingOptions.map((op: any, idx: number) => {
+                          const active = selectedPricingOption?.label === op.label && selectedPricingOption?.price === op.price
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setSelectedPricingOption({ label: op.label, price: op.price, hours: op.hours })}
+                              className={`text-left p-4 rounded-lg border transition-all duration-300 hover:shadow-sm hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${active ? 'border-accent bg-accent/10 shadow-inner' : 'border-border bg-muted/30'}`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-medium text-sm flex items-center gap-2">
+                                  {op.label}{op.hours ? ` (${op.hours}h)` : ''}
+                                  {active && (
+                                    <Badge className="bg-accent text-accent-foreground animate-pulse">Seleccionado</Badge>
+                                  )}
+                                </span>
+                                <Badge className={active ? 'bg-accent text-accent-foreground' : 'bg-primary/80'}>{op.price}€</Badge>
+                              </div>
+                              {op.description && <p className="text-xs text-muted-foreground leading-snug">{op.description}</p>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">La selección ajustará el total mostrado. Puedes modificarla en cualquier momento.</p>
+                      {selectedPricingOption && (
+                        <div className="mt-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                            onClick={() => setSelectedPricingOption(null)}
+                          >
+                            Quitar selección
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {Array.isArray(tour.features) && tour.features.length > 0 && (
                     <div className="mb-6">
                       <h3 className="text-xl font-semibold mb-4 text-primary">Características</h3>
@@ -256,6 +381,154 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                       </div>
                     </div>
                   )}
+
+                  {Array.isArray((tour as any).amenities) && (tour as any).amenities.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-xl font-semibold mb-4 text-primary">Comodidades del Vehículo</h3>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {(tour as any).amenities.map((am: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Car className="w-4 h-4 text-accent" />
+                            <span className="text-sm">{am}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {Array.isArray((tour as any).pricingOptions) && (tour as any).pricingOptions.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-xl font-semibold mb-4 text-primary">Opciones y Tarifas</h3>
+                      <div className="space-y-3">
+                        {(tour as any).pricingOptions.map((op: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">{op.label}{op.hours ? ` (${op.hours}h)` : ''}</span>
+                              {op.description && <span className="text-xs text-muted-foreground">{op.description}</span>}
+                            </div>
+                            <Badge className="bg-accent text-accent-foreground">{op.price}€</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notas sueltas (bullets genéricos) */}
+                  {Array.isArray(tourFromCms.notes) && tourFromCms.notes.length > 0 && (
+                    <ListSection title="Notas" items={tourFromCms.notes} icon="star" />
+                  )}
+
+                  {/* Listas informativas genéricas */}
+                  {Array.isArray(tourFromCms.infoLists) && tourFromCms.infoLists.length > 0 && (
+                    <div className="mt-8 space-y-8">
+                      {tourFromCms.infoLists.map((lst, i) => (
+                        <ListSection key={i} title={lst.title || `Lista ${i + 1}`} items={lst.items} icon={lst.icon} />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Secciones adicionales enriquecidas (PortableText + listas) */}
+                  {hasExtraSections && (
+                    <div className="mt-10 space-y-10">
+                      {tourFromCms.extraSections!.map((sec, idx) => {
+                        const hasBody = Array.isArray(sec.body) && sec.body.length > 0
+                        const hasIncluded = Array.isArray(sec.included) && sec.included.length > 0
+                        const hasItinerary = Array.isArray(sec.itinerary) && sec.itinerary.length > 0
+                        if (!hasBody && !hasIncluded && !hasItinerary) return null
+                        return (
+                          <div key={idx} className="p-6 rounded-lg border bg-muted/30">
+                            {sec.title && <h3 className="text-xl font-semibold mb-4 text-primary">{sec.title}</h3>}
+                            {hasBody && (
+                              <div className="prose prose-sm max-w-none mb-4 dark:prose-invert">
+                                <PortableText value={sec.body as any} />
+                              </div>
+                            )}
+                            {hasIncluded && <ListSection title="Incluye" items={sec.included as string[]} icon="shield" />}
+                            {hasItinerary && <ListSection title="Itinerario" items={sec.itinerary as string[]} icon="map-pin" />}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              {/* Card adicional: Opciones y Tarifas (CMS) */}
+              <Card className="transform hover:scale-105 transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-primary">Opciones y Tarifas</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 text-sm md:text-base">
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground">Tarifas según número de pasajeros:</p>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h5 className="font-semibold text-primary mb-1">Hasta 4 pasajeros</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Paris Tour (3h): <span className="font-semibold">300€</span></li>
+                          <li>Paris Tour (2h): <span className="font-semibold">245€</span></li>
+                          <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">200€</span></li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h5 className="font-semibold text-primary mb-1">Hasta 5 pasajeros</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Paris Tour (3h): <span className="font-semibold">340€</span></li>
+                          <li>Paris Tour (2h): <span className="font-semibold">315€</span></li>
+                          <li>Paris Tour Eiffel y Arco del triunfo: <span className="font-semibold">245€</span></li>
+                        </ul>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Para más de 5 pasajeros, consultar por Van (8p).</p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-primary mb-2">Qué visitamos</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Museo del Louvre</li>
+                        <li>Campos Elíseos y Arco del Triunfo</li>
+                        <li>Trocadero</li>
+                        <li>Torre Eiffel</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-primary mb-2">Notas</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Paradas de 15 min para fotos</li>
+                        <li>Itinerario ajustable según tráfico</li>
+                        <li>Servicio privado puerta a puerta</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card adicional: Comodidades del Vehículo (CMS) */}
+              <Card className="transform hover:scale-105 transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-primary">Comodidades del Vehículo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
+                      <Wifi className="w-6 h-6 text-accent animate-pulse" />
+                      <span className="text-sm text-center">WiFi Gratuito</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
+                      <Coffee className="w-6 h-6 text-accent animate-pulse" />
+                      <span className="text-sm text-center">Agua de Cortesía</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
+                      <Car className="w-6 h-6 text-accent animate-pulse" />
+                      <span className="text-sm text-center">Vehículo Cómodo</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
+                      <Shield className="w-6 h-6 text-accent animate-pulse" />
+                      <span className="text-sm text-center">Seguro Completo</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -279,16 +552,38 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     </h4>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Nombre Completo</label>
-                      <Input placeholder="Tu nombre completo" value={contactName} onChange={(e) => setContactName(e.target.value)} />
+                      <Input
+                        data-field="contactName"
+                        placeholder="Tu nombre completo"
+                        value={contactName}
+                        onChange={(e) => { setContactName(e.target.value); if (fieldErrors.contactName) setFieldErrors(f => { const c={...f}; delete c.contactName; return c }) }}
+                        className={fieldErrors.contactName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                      />
+                      {fieldErrors.contactName && <p className="text-xs text-destructive">{fieldErrors.contactName}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Teléfono</label>
-                        <Input placeholder="+33 1 23 45 67 89" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+                        <Input
+                          data-field="contactPhone"
+                          placeholder="+33 1 23 45 67 89"
+                          value={contactPhone}
+                          onChange={(e) => { setContactPhone(e.target.value); if (fieldErrors.contactPhone) setFieldErrors(f => { const c={...f}; delete c.contactPhone; return c }) }}
+                          className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
+                        />
+                        {fieldErrors.contactPhone && <p className="text-xs text-destructive">{fieldErrors.contactPhone}</p>}
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Email</label>
-                        <Input type="email" placeholder="tu@email.com" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+                        <Input
+                          data-field="contactEmail"
+                          type="email"
+                          placeholder="tu@email.com"
+                          value={contactEmail}
+                          onChange={(e) => { setContactEmail(e.target.value); if (fieldErrors.contactEmail) setFieldErrors(f => { const c={...f}; delete c.contactEmail; return c }) }}
+                          className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
+                        />
+                        {fieldErrors.contactEmail && <p className="text-xs text-destructive">{fieldErrors.contactEmail}</p>}
                       </div>
                     </div>
                   </div>
@@ -299,23 +594,46 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                       <Users className="w-4 h-4 text-accent" />
                       Número de Pasajeros
                     </label>
-                    <Input type="number" min={1} max={9} value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} />
+                    <Input
+                      data-field="passengers"
+                      type="number" min={1} max={9}
+                      value={passengers}
+                      onChange={(e) => { setPassengers(Number(e.target.value)); if (fieldErrors.passengers) setFieldErrors(f => { const c={...f}; delete c.passengers; return c }) }}
+                      className={fieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : ''}
+                    />
+                    {fieldErrors.passengers && <p className="text-xs text-destructive">{fieldErrors.passengers}</p>}
                   </div>
 
                   {/* Fecha y hora */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2"><Calendar className="w-4 h-4 text-accent" />Fecha</label>
-                      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+                      <Input
+                        data-field="date"
+                        type="date"
+                        value={date}
+                        onChange={(e) => { setDate(e.target.value); if (fieldErrors.date) setFieldErrors(f => { const c={...f}; delete c.date; return c }) }}
+                        min={new Date().toISOString().split("T")[0]}
+                        className={fieldErrors.date ? 'border-destructive focus-visible:ring-destructive' : ''}
+                      />
+                      {fieldErrors.date && <p className="text-xs text-destructive">{fieldErrors.date}</p>}
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2"><Clock className="w-4 h-4 text-accent" />Hora</label>
-                      <Input type="time" value={time} onChange={(e) => {
-                        const v = e.target.value
-                        setTime(v)
-                        const hour = Number.parseInt(v.split(":")[0])
-                        setIsNightTime(hour >= 21 || hour < 6)
-                      }} />
+                      <Input
+                        data-field="time"
+                        type="time"
+                        value={time}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setTime(v)
+                          const hour = Number.parseInt(v.split(":")[0])
+                          setIsNightTime(hour >= 21 || hour < 6)
+                          if (fieldErrors.time) setFieldErrors(f => { const c={...f}; delete c.time; return c })
+                        }}
+                        className={fieldErrors.time ? 'border-destructive focus-visible:ring-destructive' : ''}
+                      />
+                      {fieldErrors.time && <p className="text-xs text-destructive">{fieldErrors.time}</p>}
                     </div>
                   </div>
                   {isNightTime && (
@@ -325,7 +643,14 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                   {/* Direcciones */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2"><MapPin className="w-4 h-4 text-accent" />Dirección de Recogida</label>
-                    <Input placeholder="Dirección completa de recogida" value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} />
+                    <Input
+                      data-field="pickupAddress"
+                      placeholder="Dirección completa de recogida"
+                      value={pickupAddress}
+                      onChange={(e) => { setPickupAddress(e.target.value); if (fieldErrors.pickupAddress) setFieldErrors(f => { const c={...f}; delete c.pickupAddress; return c }) }}
+                      className={fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
+                    />
+                    {fieldErrors.pickupAddress && <p className="text-xs text-destructive">{fieldErrors.pickupAddress}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2"><MapPin className="w-4 h-4 text-accent" />Dirección de Destino (opcional)</label>
@@ -390,9 +715,29 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
   }
 
   const calculatePrice = () => {
+    // Si hay pricingOptions seleccionada y es tour-paris, la usamos como base pero añadimos recargo por pasajeros extra.
+    // En otros tours (no paris) se mantiene como total directo.
+    if (selectedPricingOption && effectiveTourId !== "tour-paris") return selectedPricingOption.price
     if (effectiveTourId === "tour-paris") {
+      // Nuevo: precio dinámico según cantidad de pasajeros.
+      // Asunción (documentada):
+      //  - El precio base por hora (diurno/nocturno) cubre hasta 4 pasajeros.
+      //  - A partir del 5º pasajero se cobra un recargo por pasajero y por hora.
+      //  - Recargo diurno: +10€/h por pasajero extra; Recargo nocturno: +12€/h por pasajero extra.
+      //  - Esto facilita ampliar en el futuro simplemente ajustando constantes.
+      // Si hay opción seleccionada con horas definidas la respetamos como precio base total, ignorando tourHours para base,
+      // pero seguimos añadiendo recargos de pasajeros por hora real seleccionada (op.hours si existe, si no tourHours).
       const hourlyRate = (isNightTime ? tour.basePriceNight : tour.basePriceDay) ?? 0
-      return hourlyRate * tourHours
+      const baseIncluded = 4
+      const extraPerPassenger = isNightTime ? 12 : 10
+      const extraPassengers = Math.max(0, passengers - baseIncluded)
+      const hoursToUse = selectedPricingOption?.hours ? selectedPricingOption.hours : tourHours
+      const recargoExtra = extraPassengers * extraPerPassenger * hoursToUse
+      if (selectedPricingOption) {
+        return selectedPricingOption.price + recargoExtra
+      }
+      const hourlyTotal = hourlyRate + extraPassengers * extraPerPassenger
+      return hourlyTotal * hoursToUse
     }
 
     if (effectiveTourId === "paris-dl-dl") {
@@ -438,27 +783,24 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
   }
 
   const handleBookingSubmit = () => {
-    // Validaciones requeridos
-    const errors: string[] = []
-    if (!contactName.trim()) errors.push("Nombre completo")
-    if (!contactPhone.trim()) errors.push("Teléfono")
-    if (!contactEmail.trim()) errors.push("Email")
-    if (!date) errors.push("Fecha del viaje")
-    if (!time) errors.push("Hora de recogida")
-    if (!pickupAddress.trim()) errors.push("Dirección de recogida")
-    if (passengers < 1) errors.push("Número de pasajeros")
-    if (effectiveTourId !== "tour-paris" && effectiveTourId !== "paris-dl-dl" && !dropoffAddress.trim()) {
-      errors.push("Dirección de destino")
-    }
-    if (effectiveTourId === "tour-paris" && tourHours < 2) {
-      errors.push("Duración del tour (mínimo 2h)")
-    }
-    if (effectiveTourId === "paris-dl-dl" && !routeOption) {
-      errors.push("Opción del tour")
-    }
+    const newErrors: Record<string, string> = {}
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+    if (!contactName.trim()) newErrors.contactName = 'Requerido'
+    if (!contactPhone.trim()) newErrors.contactPhone = 'Requerido'
+    if (!contactEmail.trim()) newErrors.contactEmail = 'Requerido'
+    else if (!emailRegex.test(contactEmail.trim())) newErrors.contactEmail = 'Email inválido'
+    if (!date) newErrors.date = 'Requerido'
+    if (!time) newErrors.time = 'Requerido'
+    if (!pickupAddress.trim()) newErrors.pickupAddress = 'Requerido'
+    if (passengers < 1) newErrors.passengers = 'Debe ser ≥1'
+    if (effectiveTourId !== 'tour-paris' && effectiveTourId !== 'paris-dl-dl' && !dropoffAddress.trim()) newErrors.dropoffAddress = 'Requerido'
+    if (effectiveTourId === 'tour-paris' && tourHours < 2) newErrors.tourHours = 'Mínimo 2'
+    if (effectiveTourId === 'paris-dl-dl' && !routeOption) newErrors.routeOption = 'Seleccione una opción'
 
-    if (errors.length > 0) {
-      alert(`Por favor completa: ${errors.join(", ")}.`)
+    setFieldErrors(newErrors)
+    if (Object.keys(newErrors).length > 0) {
+      const firstKey = Object.keys(newErrors)[0]
+      try { document.querySelector<HTMLElement>(`[data-field="${firstKey}"]`)?.focus() } catch {}
       return
     }
     const bookingData = {
@@ -482,6 +824,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
       totalPrice: calculatePrice(),
       isNightTime,
       extraLuggage,
+      selectedPricingOption: selectedPricingOption ? { label: selectedPricingOption.label, price: selectedPricingOption.price, hours: selectedPricingOption.hours } : undefined,
     }
 
     localStorage.setItem("bookingData", JSON.stringify(bookingData))
@@ -494,7 +837,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
         {/* Back Button */}
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
+          className="mt-6 inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
         >
           <ArrowLeft className="w-4 h-4" />
           Volver a servicios
@@ -585,6 +928,50 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                   {tour.description}
                 </p>
 
+                {Array.isArray((tour as any).pricingOptions) && (tour as any).pricingOptions.length > 0 && (
+                  <div className="mb-8 soft-fade-in">
+                    <h3 className="text-xl font-semibold mb-4 text-primary">Selecciona una Opción / Tarifa</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {(tour as any).pricingOptions.map((op: any, idx: number) => {
+                        const active = selectedPricingOption?.label === op.label && selectedPricingOption?.price === op.price
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setSelectedPricingOption({ label: op.label, price: op.price, hours: op.hours })}
+                            className={`text-left p-4 rounded-lg border transition-all duration-300 hover:shadow-sm hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${active ? 'border-accent bg-accent/10 shadow-inner' : 'border-border bg-muted/30'}`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-sm flex items-center gap-2">
+                                {op.label}{op.hours ? ` (${op.hours}h)` : ''}
+                                {active && (
+                                  <Badge className="bg-accent text-accent-foreground animate-pulse">Seleccionado</Badge>
+                                )}
+                              </span>
+                              <Badge className={active ? 'bg-accent text-accent-foreground' : 'bg-primary/80'}>{op.price}€</Badge>
+                            </div>
+                            {op.description && <p className="text-xs text-muted-foreground leading-snug">{op.description}</p>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">La selección ajustará el total mostrado. Puedes modificarla en cualquier momento.</p>
+                    {selectedPricingOption && (
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                          onClick={() => setSelectedPricingOption(null)}
+                        >
+                          Quitar selección
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Features */}
                 <div className="mb-6">
                   <h3 className="text-xl font-semibold mb-4 text-primary">Características del Servicio</h3>
@@ -620,6 +1007,41 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     ))}
                   </div>
                 </div>
+
+                {Array.isArray((tour as any).amenities) && (tour as any).amenities.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-xl font-semibold mb-4 text-primary">Comodidades del Vehículo</h3>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {(tour as any).amenities.map((am: string, idx: number) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 soft-fade-in"
+                          style={{ animationDelay: `${idx * 0.05}s` }}
+                        >
+                          <Car className="w-4 h-4 text-accent" />
+                          <span className="text-sm">{am}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {Array.isArray((tour as any).pricingOptions) && (tour as any).pricingOptions.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-xl font-semibold mb-4 text-primary">Opciones y Tarifas</h3>
+                    <div className="space-y-3">
+                      {(tour as any).pricingOptions.map((op: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 soft-fade-in" style={{ animationDelay: `${idx * 0.05}s` }}>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{op.label}{op.hours ? ` (${op.hours}h)` : ''}</span>
+                            {op.description && <span className="text-xs text-muted-foreground">{op.description}</span>}
+                          </div>
+                          <Badge className="bg-accent text-accent-foreground">{op.price}€</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -995,35 +1417,38 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Nombre Completo</label>
                     <Input
+                      data-field="contactName"
                       placeholder="Tu nombre completo"
                       value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                      required
-                      className="transform focus:scale-105 transition-all duration-300"
+                      onChange={(e) => { setContactName(e.target.value); if (fieldErrors.contactName) setFieldErrors(f => { const c={...f}; delete c.contactName; return c }) }}
+                      className={(fieldErrors.contactName ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                     />
+                    {fieldErrors.contactName && <p className="text-xs text-destructive">{fieldErrors.contactName}</p>}
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Teléfono</label>
                       <Input
+                        data-field="contactPhone"
                         placeholder="+33 1 23 45 67 89"
                         value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
-                        required
-                        className="transform focus:scale-105 transition-all duration-300"
+                        onChange={(e) => { setContactPhone(e.target.value); if (fieldErrors.contactPhone) setFieldErrors(f => { const c={...f}; delete c.contactPhone; return c }) }}
+                        className={(fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                       />
+                      {fieldErrors.contactPhone && <p className="text-xs text-destructive">{fieldErrors.contactPhone}</p>}
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Email</label>
                       <Input
+                        data-field="contactEmail"
                         type="email"
                         placeholder="tu@email.com"
                         value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
-                        required
-                        className="transform focus:scale-105 transition-all duration-300"
+                        onChange={(e) => { setContactEmail(e.target.value); if (fieldErrors.contactEmail) setFieldErrors(f => { const c={...f}; delete c.contactEmail; return c }) }}
+                        className={(fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                       />
+                      {fieldErrors.contactEmail && <p className="text-xs text-destructive">{fieldErrors.contactEmail}</p>}
                     </div>
                   </div>
                 </div>
@@ -1035,14 +1460,15 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     Número de Pasajeros
                   </label>
                   <Input
+                    data-field="passengers"
                     type="number"
                     min="1"
                     max={effectiveTourId === "paris-dl-dl" ? 5 : 8}
                     value={passengers}
-                    onChange={(e) => setPassengers(Number(e.target.value))}
-                    required
-                    className="transform focus:scale-105 transition-all duration-300"
+                    onChange={(e) => { setPassengers(Number(e.target.value)); if (fieldErrors.passengers) setFieldErrors(f => { const c={...f}; delete c.passengers; return c }) }}
+                    className={(fieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                   />
+                  {fieldErrors.passengers && <p className="text-xs text-destructive">{fieldErrors.passengers}</p>}
                 </div>
 
                 {effectiveTourId === "paris-dl-dl" && (
@@ -1052,8 +1478,8 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                       Opción de Tour
                     </label>
                     <div className="max-w-xs">
-                      <Select value={routeOption} onValueChange={(v: any) => setRouteOption(v)}>
-                        <SelectTrigger className="w-full">
+                      <Select value={routeOption} onValueChange={(v: any) => { setRouteOption(v); if (fieldErrors.routeOption) setFieldErrors(f => { const c={...f}; delete c.routeOption; return c }) }}>
+                        <SelectTrigger className={"w-full " + (fieldErrors.routeOption ? 'border-destructive focus-visible:ring-destructive' : '')}>
                           <SelectValue placeholder="Selecciona una opción" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1062,6 +1488,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                           <SelectItem value="eiffelArco">Torre Eiffel + Arco del Triunfo</SelectItem>
                         </SelectContent>
                       </Select>
+                      {fieldErrors.routeOption && <p className="text-xs text-destructive">{fieldErrors.routeOption}</p>}
                     </div>
                   </div>
                 )}
@@ -1073,14 +1500,15 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                       Duración del Tour (mínimo 2 horas)
                     </label>
                     <Input
+                      data-field="tourHours"
                       type="number"
                       min="2"
                       max="12"
                       value={tourHours}
-                      onChange={(e) => setTourHours(Number(e.target.value))}
-                      required
-                      className="transform focus:scale-105 transition-all duration-300"
+                      onChange={(e) => { setTourHours(Number(e.target.value)); if (fieldErrors.tourHours) setFieldErrors(f => { const c={...f}; delete c.tourHours; return c }) }}
+                      className={(fieldErrors.tourHours ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                     />
+                    {fieldErrors.tourHours && <p className="text-xs text-destructive">{fieldErrors.tourHours}</p>}
                   </div>
                 )}
 
@@ -1091,13 +1519,14 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     Fecha del Viaje
                   </label>
                   <Input
+                    data-field="date"
                     type="date"
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    onChange={(e) => { setDate(e.target.value); if (fieldErrors.date) setFieldErrors(f => { const c={...f}; delete c.date; return c }) }}
                     min={new Date().toISOString().split("T")[0]}
-                    required
-                    className="transform focus:scale-105 transition-all duration-300"
+                    className={(fieldErrors.date ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                   />
+                  {fieldErrors.date && <p className="text-xs text-destructive">{fieldErrors.date}</p>}
                 </div>
 
                 {/* Time of Pickup */}
@@ -1107,12 +1536,13 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     Hora de Recogida
                   </label>
                   <Input
+                    data-field="time"
                     type="time"
                     value={time}
-                    onChange={(e) => handleTimeChange(e.target.value)}
-                    required
-                    className="transform focus:scale-105 transition-all duration-300"
+                    onChange={(e) => { handleTimeChange(e.target.value); if (fieldErrors.time) setFieldErrors(f => { const c={...f}; delete c.time; return c }) }}
+                    className={(fieldErrors.time ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                   />
+                  {fieldErrors.time && <p className="text-xs text-destructive">{fieldErrors.time}</p>}
                   {isNightTime && effectiveTourId !== "tour-paris" && (
                     <p className="text-xs text-accent animate-pulse">* Recargo nocturno: +5€ (después de las 21:00)</p>
                   )}
@@ -1130,12 +1560,13 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     Dirección de Recogida
                   </label>
                   <Input
+                    data-field="pickupAddress"
                     placeholder="Dirección completa de recogida"
                     value={pickupAddress}
-                    onChange={(e) => setPickupAddress(e.target.value)}
-                    required
-                    className="transform focus:scale-105 transition-all duration-300"
+                    onChange={(e) => { setPickupAddress(e.target.value); if (fieldErrors.pickupAddress) setFieldErrors(f => { const c={...f}; delete c.pickupAddress; return c }) }}
+                    className={(fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                   />
+                  {fieldErrors.pickupAddress && <p className="text-xs text-destructive">{fieldErrors.pickupAddress}</p>}
                 </div>
 
                 {/* Dropoff Address */}
@@ -1146,12 +1577,13 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                       Dirección de Destino
                     </label>
                     <Input
+                      data-field="dropoffAddress"
                       placeholder="Dirección completa de destino"
                       value={dropoffAddress}
-                      onChange={(e) => setDropoffAddress(e.target.value)}
-                      required
-                      className="transform focus:scale-105 transition-all duration-300"
+                      onChange={(e) => { setDropoffAddress(e.target.value); if (fieldErrors.dropoffAddress) setFieldErrors(f => { const c={...f}; delete c.dropoffAddress; return c }) }}
+                      className={(fieldErrors.dropoffAddress ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                     />
+                    {fieldErrors.dropoffAddress && <p className="text-xs text-destructive">{fieldErrors.dropoffAddress}</p>}
                   </div>
                 )}
 
@@ -1262,7 +1694,39 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
                 {/* Price Breakdown */}
                 <div className="space-y-2">
-                  {effectiveTourId === "tour-paris" ? (
+                  {selectedPricingOption ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span>Opción seleccionada</span>
+                        <span>{selectedPricingOption.label}{selectedPricingOption.hours ? ` (${selectedPricingOption.hours}h)` : ''}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Precio</span>
+                        <span>{selectedPricingOption.price}€</span>
+                      </div>
+                      {effectiveTourId === "tour-paris" && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Pasajeros</span>
+                            <span>{passengers}</span>
+                          </div>
+                          {passengers > 4 && (
+                            <div className="flex justify-between text-sm text-accent">
+                              <span>Recargo pasajeros extra</span>
+                              <span>
+                                {(() => {
+                                  const extraPerPassenger = isNightTime ? 12 : 10
+                                  const extraPassengers = Math.max(0, passengers - 4)
+                                  const hoursToUse = selectedPricingOption?.hours ? selectedPricingOption.hours : tourHours
+                                  return `+${extraPerPassenger * extraPassengers * hoursToUse}€`
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  ) : effectiveTourId === "tour-paris" ? (
                     <>
                       <div className="flex justify-between text-sm">
                         <span>Precio por hora ({isNightTime ? "nocturno" : "diurno"})</span>
@@ -1274,6 +1738,22 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                           {tourHours} hora{tourHours > 1 ? "s" : ""}
                         </span>
                       </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Pasajeros</span>
+                        <span>{passengers}</span>
+                      </div>
+                      {passengers > 4 && (
+                        <div className="flex justify-between text-sm text-accent">
+                          <span>Recargo pasajeros extra</span>
+                          <span>
+                            {(() => {
+                              const extraPerPassenger = isNightTime ? 12 : 10
+                              const extraPassengers = Math.max(0, passengers - 4)
+                              return `+${extraPerPassenger * extraPassengers * tourHours}€`
+                            })()}
+                          </span>
+                        </div>
+                      )}
                     </>
                   ) : effectiveTourId === "paris-dl-dl" ? (
                     <>

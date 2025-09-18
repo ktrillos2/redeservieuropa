@@ -1,8 +1,9 @@
 "use client"
 
 import React from "react"
-import { NextUIProvider } from "@nextui-org/react"
 
+// Wrapper neutro: se eliminó dependencia a @nextui-org/react porque no está instalada.
+// Si más adelante se quiere usar NextUI, reinstalar paquete y restaurar import original.
 export function NextUIProviders({ children }: { children: React.ReactNode }) {
-  return <NextUIProvider>{children}</NextUIProvider>
+  return <>{children}</>
 }

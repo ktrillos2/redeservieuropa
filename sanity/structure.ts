@@ -5,6 +5,16 @@ export const structure: StructureResolver = (S) =>
   S.list()
     .title('Contenido')
     .items([
+      // Hero / Sección Principal al inicio
+      S.listItem()
+        .title('Sección Principal')
+        .id('hero')
+        .child(
+          S.editor()
+            .id('heroEditor')
+            .schemaType('hero')
+            .documentId('hero')
+        ),
       // Singleton for General Info
       S.listItem()
         .title('Información General')
@@ -25,15 +35,23 @@ export const structure: StructureResolver = (S) =>
             .schemaType('header')
             .documentId('header')
         ),
-      // Singleton Transfers
+      // Lista de Traslados (documentos múltiples)
       S.listItem()
         .title('Traslados')
-        .id('transfers')
+        .id('transfersList')
+        .child(
+          S.documentTypeList('transfers')
+            .title('Traslados')
+        ),
+      // Singleton Transfers Section Content (usar ID único distinto al _id del doc para evitar colisión)
+      S.listItem()
+        .title('Sección: Traslados (Contenido)')
+        .id('transfersSectionContentSingleton')
         .child(
           S.editor()
-            .id('transfersEditor')
-            .schemaType('transfers')
-            .documentId('transfers')
+            .id('transfersSectionContentEditor')
+            .schemaType('transfersSectionContent')
+            .documentId('transfersSectionContent')
         ),
       // Singleton Tours Section
       S.listItem()
@@ -77,5 +95,5 @@ export const structure: StructureResolver = (S) =>
         ),
       S.divider(),
       // Fallback: other document lists (excluir singletons para evitar IDs duplicados)
-      ...S.documentTypeListItems().filter((item) => !['generalInfo','header','transfers','toursSection','testimonialsSection','contactSection','footerSection'].includes(item.getId() || '')),
+  ...S.documentTypeListItems().filter((item) => !['generalInfo','header','toursSection','testimonialsSection','contactSection','footerSection','hero','transfersSectionContent'].includes(item.getId() || '')),
     ])

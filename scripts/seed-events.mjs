@@ -43,7 +43,7 @@ async function run() {
   const items = [
     {
       _id: 'event-tour-paris-nocturno',
-      _type: 'event',
+  _type: 'events',
       title: 'Tour París Nocturno',
       image: await maybeUploadImage('vehicles/stepway-paris-2.jpg', 'tour-paris-nocturno.jpg'),
       pricePerPerson: 200,
@@ -62,7 +62,7 @@ async function run() {
     },
     {
       _id: 'event-shuttle-disney',
-      _type: 'event',
+  _type: 'events',
       title: 'Shuttle a Disneyland (Ida/Vuelta)',
       image: await maybeUploadImage('family-transport-to-disneyland-paris-castle.jpg', 'disney-shuttle.jpg'),
       pricePerPerson: 60,
@@ -80,7 +80,7 @@ async function run() {
     },
     {
       _id: 'event-maraton-paris',
-      _type: 'event',
+  _type: 'events',
       title: 'Traslado especial Maratón París',
       image: await maybeUploadImage('vehicles/stepway-paris-4.jpg', 'maraton-paris.jpg'),
       pricePerPerson: 45,

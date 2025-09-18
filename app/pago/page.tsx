@@ -18,6 +18,16 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 export default function PaymentPage() {
   const [bookingData, setBookingData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // Mapa de errores por campo para resaltar inputs faltantes
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  /*
+   * === RECARGO NOCTURNO AUTOMÁTICO ===
+   * Ahora, además de calcular el recargo nocturno según la hora seleccionada en la reserva (time),
+   * detectamos la hora local del cliente en la página de pago. Si son >=21h o <6h y el booking no tenía
+   * ya marcado isNightTime, se añade automáticamente el recargo (+5€) excepto para 'tour-paris' / 'tour-nocturno'
+   * donde la lógica de tarifa nocturna ya está incorporada al precio por hora en la pantalla anterior.
+   * Si quieres cambiar el rango nocturno modifica la condición hour >= 21 || hour < 6.
+   */
 
   useEffect(() => {
     const data = localStorage.getItem("bookingData")
@@ -26,6 +36,25 @@ export default function PaymentPage() {
     }
     setIsLoading(false)
   }, [])
+
+  // Detectar hora local del cliente y marcar recargo nocturno si aplica cuando aún no se marcó.
+  useEffect(() => {
+    if (!bookingData) return
+    try {
+      const now = new Date()
+      const hour = now.getHours()
+      const isNight = hour >= 21 || hour < 6
+      // Sólo aplicar automáticamente si el registro aún no tenía isNightTime true y no es un tour-paris (que ya maneja tarifa diferente por hora)
+      if (isNight && !bookingData.isNightTime && !["tour-paris", "tour-nocturno"].includes(bookingData.tourId || "")) {
+        setBookingData((prev: any) => {
+          if (!prev) return prev
+          const next = { ...prev, isNightTime: true, totalPrice: Number(prev.totalPrice || 0) + 5 }
+          localStorage.setItem("bookingData", JSON.stringify(next))
+          return next
+        })
+      }
+    } catch {}
+  }, [bookingData])
 
   const updateBookingField = (key: string, value: any) => {
     setBookingData((prev: any) => {
@@ -85,6 +114,22 @@ export default function PaymentPage() {
 
       const computed = recalc(next)
       localStorage.setItem("bookingData", JSON.stringify(computed))
+      // Limpiar error del campo si ahora tiene valor válido
+      setFieldErrors((prevErr) => {
+        if (!prevErr[key]) return prevErr
+        // Revalidaciones simples: si el valor ya no está vacío / formato básico
+        if (typeof value === 'string' && value.trim() === '') return prevErr
+        if (key === 'contactEmail') {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+            if (!emailRegex.test(String(value))) return prevErr
+        }
+        if (key === 'contactPhone') {
+          if (String(value).replace(/\D/g, '').length < 6) return prevErr
+        }
+        const clone = { ...prevErr }
+        delete clone[key]
+        return clone
+      })
       return computed
     })
   }
@@ -140,6 +185,7 @@ export default function PaymentPage() {
   const deposit = paymentMethod === "cash" ? (isTour ? Number((total * 0.1).toFixed(2)) : 5) : 0
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)))
   const amountNow = isQuick ? 5 : (paymentMethod === "cash" ? deposit : total)
+  const clientHour = (() => { try { return new Date().getHours() } catch { return undefined } })()
 
   // Etiquetas seguras para servicio/route en quick
   const quickType: "traslado" | "tour" | undefined = bookingData?.quickType
@@ -216,7 +262,7 @@ export default function PaymentPage() {
           <AnimatedSection animation="slide-left">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
+              className="mt-6 inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
             >
               <ArrowLeft className="w-4 h-4" />
               Volver a servicios
@@ -269,7 +315,8 @@ export default function PaymentPage() {
                           <span className="text-sm">{bookingData.isEvent ? "Cupos" : "Pasajeros"}</span>
                           <Input
                             type="number"
-                            className="w-24"
+                            data-field="passengers"
+                            className={`w-24 ${fieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                             min={1}
                             max={9}
                             value={bookingData.passengers || 1}
@@ -277,6 +324,9 @@ export default function PaymentPage() {
                           />
                         </div>
                       </div>
+                      {fieldErrors.passengers && (
+                        <p className="text-xs text-destructive mt-1">{fieldErrors.passengers}</p>
+                      )}
 
                       {/* Fecha y hora editable */}
                       <div className="flex items-center gap-3">
@@ -284,35 +334,76 @@ export default function PaymentPage() {
                         <div className="flex items-center gap-2">
                           <Input
                             type="date"
-                            className="w-40"
+                            data-field="date"
+                            className={`w-40 ${fieldErrors.date ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                             value={bookingData.date || ""}
                             onChange={(e) => updateBookingField("date", e.target.value)}
                           />
                           <Input
                             type="time"
-                            className="w-28"
+                            data-field="time"
+                            className={`w-28 ${fieldErrors.time ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                             value={bookingData.time || ""}
                             onChange={(e) => updateBookingField("time", e.target.value)}
                           />
                         </div>
                       </div>
-
-                      {bookingData.pickupAddress && (
-                        <div className="flex items-start gap-3">
-                          <MapPin className="w-4 h-4 text-accent mt-0.5" />
-                          <div className="text-sm">
-                            <p className="font-medium">Recogida:</p>
-                            <p className="text-muted-foreground">{bookingData.pickupAddress}</p>
-                          </div>
-                        </div>
+                      {(fieldErrors.date || fieldErrors.time) && (
+                        <p className="text-xs text-destructive mt-1">{fieldErrors.date || fieldErrors.time}</p>
                       )}
 
-                      {bookingData.dropoffAddress && (
-                        <div className="flex items-start gap-3">
-                          <MapPin className="w-4 h-4 text-accent mt-0.5" />
-                          <div className="text-sm">
-                            <p className="font-medium">Destino:</p>
-                            <p className="text-muted-foreground">{bookingData.dropoffAddress}</p>
+                      {/* Direcciones: editables en traslados, sólo lectura en tours / eventos */}
+                      {isTour ? (
+                        <>
+                          {bookingData.pickupAddress && (
+                            <div className="flex items-start gap-3">
+                              <MapPin className="w-4 h-4 text-accent mt-0.5" />
+                              <div className="text-sm">
+                                <p className="font-medium">Recogida:</p>
+                                <p className="text-muted-foreground">{bookingData.pickupAddress}</p>
+                              </div>
+                            </div>
+                          )}
+                          {bookingData.dropoffAddress && (
+                            <div className="flex items-start gap-3">
+                              <MapPin className="w-4 h-4 text-accent mt-0.5" />
+                              <div className="text-sm">
+                                <p className="font-medium">Destino:</p>
+                                <p className="text-muted-foreground">{bookingData.dropoffAddress}</p>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                          <h4 className="font-medium text-primary">Direcciones</h4>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Dirección de Recogida</label>
+                            <Input
+                              placeholder="Origen (ej: CDG Terminal 2E / Hotel ... )"
+                              data-field="pickupAddress"
+                              className={fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              value={bookingData.pickupAddress || ''}
+                              onChange={(e) => updateBookingField('pickupAddress', e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Dirección de Destino</label>
+                            <Input
+                              placeholder="Destino (ej: Disneyland / París centro ...)"
+                              data-field="dropoffAddress"
+                              className={fieldErrors.dropoffAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              value={bookingData.dropoffAddress || ''}
+                              onChange={(e) => updateBookingField('dropoffAddress', e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Número de Vuelo (opcional)</label>
+                            <Input
+                              placeholder="AF1234, BA456, etc."
+                              value={bookingData.flightNumber || ''}
+                              onChange={(e) => updateBookingField('flightNumber', e.target.value)}
+                            />
                           </div>
                         </div>
                       )}
@@ -363,13 +454,60 @@ export default function PaymentPage() {
 
                     <Separator />
 
-                    {/* Contact Info */}
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-primary">Información de Contacto:</h4>
-                      <p className="text-sm">{bookingData.contactName}</p>
-                      <p className="text-sm text-muted-foreground">{bookingData.contactPhone}</p>
-                      <p className="text-sm text-muted-foreground">{bookingData.contactEmail}</p>
-                    </div>
+                    {/* Contact Info: editable para traslados */}
+                    {isTour ? (
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-primary">Información de Contacto:</h4>
+                        <p className="text-sm">{bookingData.contactName}</p>
+                        <p className="text-sm text-muted-foreground">{bookingData.contactPhone}</p>
+                        <p className="text-sm text-muted-foreground">{bookingData.contactEmail}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                        <h4 className="font-medium text-primary">Información de Contacto</h4>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium">Nombre Completo</label>
+                          <Input
+                            placeholder="Tu nombre completo"
+                            data-field="contactName"
+                            className={fieldErrors.contactName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                            value={bookingData.contactName || ''}
+                            onChange={(e) => updateBookingField('contactName', e.target.value)}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Teléfono</label>
+                            <Input
+                              placeholder="+33 1 23 45 67 89"
+                              data-field="contactPhone"
+                              className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              value={bookingData.contactPhone || ''}
+                              onChange={(e) => updateBookingField('contactPhone', e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Email</label>
+                            <Input
+                              type="email"
+                              placeholder="tu@email.com"
+                              data-field="contactEmail"
+                              className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              value={bookingData.contactEmail || ''}
+                              onChange={(e) => updateBookingField('contactEmail', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium">Solicitudes Especiales (opcional)</label>
+                          <Input
+                            placeholder="Asiento bebé, parada extra, etc."
+                            value={bookingData.specialRequests || ''}
+                            onChange={(e) => updateBookingField('specialRequests', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     <Separator />
 
@@ -400,12 +538,99 @@ export default function PaymentPage() {
                             <span>x{bookingData.passengers || 1}</span>
                           </div>
                         </>
+                      ) : (["tour-paris", "tour-nocturno"].includes(bookingData.tourId || "")) ? (
+                        (() => {
+                          const pax = Number(bookingData.passengers || 1)
+                          const hours = bookingData.selectedPricingOption?.hours || bookingData.tourHours || 1
+                          const extraPassengers = Math.max(0, pax - 4)
+                          const ratePerExtra = bookingData.isNightTime ? 12 : 10
+                          const totalLocal = Number(bookingData.totalPrice || 0)
+                          const lines: JSX.Element[] = []
+                          if (bookingData.selectedPricingOption) {
+                            lines.push(
+                              <div key="opt" className="flex justify-between text-sm">
+                                <span>Opción seleccionada</span>
+                                <span>{bookingData.selectedPricingOption.label}{bookingData.selectedPricingOption.hours ? ` (${bookingData.selectedPricingOption.hours}h)` : ''}</span>
+                              </div>
+                            )
+                            lines.push(
+                              <div key="opt-price" className="flex justify-between text-sm">
+                                <span>Precio opción</span>
+                                <span>{bookingData.selectedPricingOption.price}€</span>
+                              </div>
+                            )
+                            lines.push(
+                              <div key="pax" className="flex justify-between text-sm">
+                                <span>Pasajeros</span>
+                                <span>{pax}</span>
+                              </div>
+                            )
+                            if (extraPassengers > 0) {
+                              const recargo = ratePerExtra * extraPassengers * hours
+                              lines.push(
+                                <div key="recargo" className="flex justify-between text-sm text-accent">
+                                  <span>Recargo pasajeros extra</span>
+                                  <span>+{recargo}€</span>
+                                </div>
+                              )
+                            }
+                          } else {
+                            // Intentamos deducir tarifa base por hora (sin extras) para mostrarla.
+                            const perHourWithExtras = hours > 0 ? (totalLocal / hours) : totalLocal
+                            const baseHourly = perHourWithExtras - (extraPassengers * ratePerExtra)
+                            lines.push(
+                              <div key="rate" className="flex justify-between text-sm">
+                                <span>Precio por hora ({bookingData.isNightTime ? 'nocturno' : 'diurno'})</span>
+                                <span>{Math.max(0, Math.round(baseHourly))}€</span>
+                              </div>
+                            )
+                            lines.push(
+                              <div key="dur" className="flex justify-between text-sm">
+                                <span>Duración</span>
+                                <span>{hours}h</span>
+                              </div>
+                            )
+                            lines.push(
+                              <div key="pax-base" className="flex justify-between text-sm">
+                                <span>Pasajeros</span>
+                                <span>{pax}</span>
+                              </div>
+                            )
+                            if (extraPassengers > 0) {
+                              const recargo = ratePerExtra * extraPassengers * hours
+                              lines.push(
+                                <div key="recargo-base" className="flex justify-between text-sm text-accent">
+                                  <span>Recargo pasajeros extra</span>
+                                  <span>+{recargo}€</span>
+                                </div>
+                              )
+                            }
+                          }
+                          return <>{lines}</>
+                        })()
                       ) : typeof bookingData.basePrice === "number" ? (
                         <>
+                          {bookingData.selectedPricingOption && (
+                            <>
+                              <div className="flex justify-between text-sm">
+                                <span>Opción seleccionada</span>
+                                <span>
+                                  {bookingData.selectedPricingOption.label}
+                                  {bookingData.selectedPricingOption.hours ? ` (${bookingData.selectedPricingOption.hours}h)` : ''}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>Precio</span>
+                                <span>{bookingData.selectedPricingOption.price}€</span>
+                              </div>
+                            </>
+                          )}
+                          {!bookingData.selectedPricingOption && (
                           <div className="flex justify-between text-sm">
                             <span>Precio base</span>
                             <span>{bookingData.basePrice}€</span>
                           </div>
+                          )}
                           {Math.max(0, (bookingData.passengers || 1) - 4) > 0 && (
                             <div className="flex justify-between text-sm">
                               <span>Pasajeros adicionales</span>
@@ -573,6 +798,9 @@ export default function PaymentPage() {
                           <p className="text-xs text-muted-foreground">Puedes pagar con tarjeta o PayPal de forma segura.</p>
                           <p className="text-[11px] text-muted-foreground mt-1">
                             * Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.
+                            {typeof clientHour === 'number' && (
+                              <span className="ml-1 text-xs">Hora local detectada: {clientHour}:00 {clientHour >= 21 || clientHour < 6 ? '(recargo aplicado)' : ''}</span>
+                            )}
                           </p>
                         </>
                       )}
@@ -607,15 +835,48 @@ export default function PaymentPage() {
                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300"
                         size="lg"
                         onClick={() => {
-                          if (paymentMethod === "cash") {
+                          if (!bookingData) return
+                          const errors: Record<string, string> = {}
+                          // Requeridos
+                          if (!bookingData.passengers || Number(bookingData.passengers) < 1) errors.passengers = 'Requerido'
+                          if (!bookingData.date) errors.date = 'Requerido'
+                          if (!bookingData.time) errors.time = 'Requerido'
+                          if (!bookingData.contactName) errors.contactName = 'Requerido'
+                          if (!bookingData.contactPhone) errors.contactPhone = 'Requerido'
+                          if (!bookingData.contactEmail) errors.contactEmail = 'Requerido'
+                          const needsAddresses = !bookingData.isEvent && !bookingData.isTourQuick && !bookingData.tourId
+                          if (needsAddresses) {
+                            if (!bookingData.pickupAddress) errors.pickupAddress = 'Requerido'
+                            if (!bookingData.dropoffAddress) errors.dropoffAddress = 'Requerido'
+                          }
+                          // Formatos
+                          if (!errors.contactEmail && bookingData.contactEmail) {
+                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+                            if (!emailRegex.test(String(bookingData.contactEmail))) errors.contactEmail = 'Formato inválido'
+                          }
+                          if (!errors.contactPhone && bookingData.contactPhone) {
+                            if (String(bookingData.contactPhone).replace(/\D/g, '').length < 6) errors.contactPhone = 'Teléfono inválido'
+                          }
+                          setFieldErrors(errors)
+                          if (Object.keys(errors).length) {
+                            // Enfocar primer campo con error
+                            requestAnimationFrame(() => {
+                              const first = Object.keys(errors)[0]
+                              const el = document.querySelector(`[data-field="${first}"]`) as HTMLElement | null
+                              if (el) el.focus()
+                            })
+                            return
+                          }
+                          if (paymentMethod === 'cash') {
                             sendWhatsApp()
                           } else {
-                            // Aquí iría la integración de pago con tarjeta/PayPal
+                            console.log('Procesar pago (integración pendiente)')
                           }
                         }}
                       >
             {isQuick ? "Pagar 5€ y confirmar" : "Pagar ahora"}
                       </Button>
+                      {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
 
                       <p className="text-xs text-muted-foreground text-center">
                         {isQuick

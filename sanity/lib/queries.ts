@@ -25,7 +25,7 @@ export const HERO_QUERY = `
 `
 
 export const EVENTS_FOR_HERO_QUERY = `
-*[_type == "event" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc)[0...10]{
+*[_type == "events" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc)[0...10]{
   _id,
   title,
   image,
@@ -40,7 +40,7 @@ export const EVENTS_FOR_HERO_QUERY = `
 `
 
 export const TOURS_LIST_QUERY = `
-*[_type == "tour" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc){
+*[_type == "tours" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc){
   _id,
   title,
   slug,
@@ -50,9 +50,8 @@ export const TOURS_LIST_QUERY = `
   mainImage,
 }
 `
-
 export const TOUR_BY_SLUG_QUERY = `
-*[_type == "tour" && slug.current == $slug][0]{
+*[_type == "tours" && slug.current == $slug][0]{
   _id,
   title,
   slug,
@@ -63,6 +62,9 @@ export const TOUR_BY_SLUG_QUERY = `
   gallery,
   features,
   included,
+  amenities,
+  notes,
+  infoLists,
   basePrice,
   basePriceDay,
   basePriceNight,
@@ -73,15 +75,52 @@ export const TOUR_BY_SLUG_QUERY = `
 }
 `
 
-export const TRANSFERS_QUERY = `
-*[_type == "transfers" && _id == "transfers"][0]{
+export const TRANSFERS_LIST_QUERY = `
+*[_type == "transfers"] | order(coalesce(order, 999) asc, _createdAt asc){
+  _id,
+  slug,
+  from,
+  to,
+  price,
+  description,
+  duration,
+  popular,
+  icon,
+  isSpecial,
+  subtitle,
+  notes,
+  order
+}
+`
+
+export const TRANSFER_BY_SLUG_QUERY = `
+*[_type == "transfers" && slug.current == $slug][0]{
+  _id,
+  slug,
+  from,
+  to,
+  price,
+  description,
+  duration,
+  popular,
+  icon,
+  isSpecial,
+  subtitle,
+  notes,
+  order
+}
+`
+
+export const TRANSFERS_SECTION_CONTENT_QUERY = `
+*[_type == "transfersSectionContent" && _id == "transfersSectionContent"][0]{
   _id,
   title,
   subtitle,
-  routes[]{ from, to, price, description, duration, popular, icon },
-  extraCharges[]{ icon, text, price },
-  specials[]{ title, subtitle, price, icon, notes },
-  footnote
+  highlight,
+  footnote,
+  cta{ label, href, internalHref },
+  notes,
+  extraCharges[]{ icon, text, price }
 }
 `
 

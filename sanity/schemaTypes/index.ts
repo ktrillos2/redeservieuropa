@@ -4,11 +4,12 @@ import header, { menuGroup, menuLink, menuSeparator } from './header'
 import hero from './hero'
 import event from './event'
 import tour, { pricingItem } from './tour'
-import transfers, { transferRoute, extraCharge, specialTransfer } from './transfers'
+import transfers from './transfers'
 import toursSection from './toursSection'
 import testimonialsSection, { testimonialItem } from './testimonialsSection'
 import contactSection from './contactSection'
 import footerSection, { footerColumn } from './footerSection'
+import transfersSectionContent from './transfersSection'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
@@ -18,14 +19,11 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     menuSeparator,
     header,
     hero,
-    event,
+  event,
     pricingItem,
-    tour,
-    // subtipos de transfers deben estar registrados
-    transferRoute,
-    extraCharge,
-    specialTransfer,
-    transfers,
+  tour,
+  transfers,
+  transfersSectionContent,
     toursSection,
     testimonialItem,
     testimonialsSection,

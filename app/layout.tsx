@@ -25,9 +25,13 @@ export const metadata: Metadata = {
     "Servicio de transporte privado premium en París. Traslados a aeropuertos CDG, Orly, Beauvais y Disneyland. Reserva tu viaje de lujo.",
   generator: "v0.app",
   icons: {
-    icon: "/images/logo.png",
-    apple: "/images/logo.png",
-    shortcut: "/images/logo.png",
+    icon: [
+      { rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'icon', url: '/favicon.svg' },
+      { rel: 'shortcut icon', url: '/favicon.svg' },
+    ],
+    apple: '/images/logo.png', // Mantener logo vertical como touch icon (iOS muestra ícono más grande)
+    shortcut: '/favicon.svg',
   },
 }
 

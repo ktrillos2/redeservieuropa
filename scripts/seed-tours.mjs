@@ -253,7 +253,7 @@ async function run() {
     const gallery = Array.isArray(t.gallery) ? await Promise.all(t.gallery.map(uploadImageIfExists)) : []
     const pricing = t.pricing ? Object.entries(t.pricing).map(([pax, price]) => ({ pax: Number(pax), price: Number(price) })) : undefined
     const doc = {
-      _type: 'tour',
+  _type: 'tours',
       _id: `tour-${slug}`,
       title: t.title,
       slug: { _type: 'slug', current: slug },
@@ -270,6 +270,14 @@ async function run() {
       pricing,
       pricingP4: t.pricingP4,
       pricingP5: t.pricingP5,
+      amenities: t.amenities || [],
+      pricingOptions: (t.pricingOptions || []).map(po => ({
+        _type: 'pricingOption',
+        label: po.label,
+        price: po.price,
+        hours: po.hours,
+        description: po.description,
+      })),
       isActive: true,
       order: 1,
     }

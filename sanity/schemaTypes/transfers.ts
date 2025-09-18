@@ -1,54 +1,48 @@
 import { defineType, defineField } from 'sanity'
 
-export const transferRoute = defineType({
-  name: 'transferRoute',
-  title: 'Ruta de traslado',
-  type: 'object',
-  fields: [
-    defineField({ name: 'from', title: 'Desde', type: 'string', validation: (r) => r.required() }),
-    defineField({ name: 'to', title: 'Hasta', type: 'string', validation: (r) => r.required() }),
-    defineField({ name: 'price', title: 'Precio (texto, ej: 65€ o 65€/h)', type: 'string', validation: (r) => r.required() }),
-    defineField({ name: 'description', title: 'Descripción', type: 'string' }),
-    defineField({ name: 'duration', title: 'Duración', type: 'string' }),
-    defineField({ name: 'popular', title: 'Popular', type: 'boolean', initialValue: false }),
-    defineField({ name: 'icon', title: 'Icono (opcional)', type: 'string', description: 'plane | map-pin | clock' }),
-  ],
-})
-
-export const extraCharge = defineType({
-  name: 'extraCharge',
-  title: 'Cargo adicional',
-  type: 'object',
-  fields: [
-    defineField({ name: 'icon', title: 'Icono', type: 'string' }),
-    defineField({ name: 'text', title: 'Texto', type: 'string', validation: (r) => r.required() }),
-    defineField({ name: 'price', title: 'Precio (texto)', type: 'string', validation: (r) => r.required() }),
-  ],
-})
-
-export const specialTransfer = defineType({
-  name: 'specialTransfer',
-  title: 'Traslado especial',
-  type: 'object',
-  fields: [
-    defineField({ name: 'title', title: 'Título', type: 'string', validation: (r) => r.required() }),
-    defineField({ name: 'subtitle', title: 'Subtítulo', type: 'string' }),
-    defineField({ name: 'price', title: 'Precio (texto)', type: 'string', validation: (r) => r.required() }),
-    defineField({ name: 'icon', title: 'Icono', type: 'string' }),
-    defineField({ name: 'notes', title: 'Notas', type: 'string' }),
-  ],
-})
+// Nuevo modelo: cada traslado es un documento independiente, similar a tours.
+// El contenido global (textos, extraCharges) se mantiene en transfersSectionContent.
 
 export default defineType({
   name: 'transfers',
-  title: 'Traslados (Sección)',
+  title: 'Traslado',
   type: 'document',
   fields: [
-    defineField({ name: 'title', title: 'Título', type: 'string', initialValue: 'Nuestros Traslados' }),
-    defineField({ name: 'subtitle', title: 'Subtítulo', type: 'text', rows: 3 }),
-    defineField({ name: 'routes', title: 'Rutas', type: 'array', of: [{ type: transferRoute.name }] }),
-    defineField({ name: 'extraCharges', title: 'Cargos adicionales', type: 'array', of: [{ type: extraCharge.name }] }),
-    defineField({ name: 'specials', title: 'Traslados especiales', type: 'array', of: [{ type: specialTransfer.name }] }),
-    defineField({ name: 'footnote', title: 'Nota al pie', type: 'string' }),
+    defineField({ name: 'from', title: 'Desde', type: 'string', validation: r => r.required() }),
+    defineField({ name: 'to', title: 'Hasta', type: 'string', validation: r => r.required() }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'slug',
+      description: 'Generado automáticamente a partir de Desde y Hasta. Puede ajustarse manualmente si es necesario.',
+      options: {
+        source: (doc:any) => `${(doc.from||'').toString()}-${(doc.to||'').toString()}`,
+        slugify: (input:string) => input
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/\p{Diacritic}/gu, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 80)
+      },
+      validation: r => r.required()
+    }),
+    defineField({ name: 'price', title: 'Precio (texto, ej: 65€ o 65€/h)', type: 'string', validation: r => r.required() }),
+    defineField({ name: 'description', title: 'Descripción', type: 'string' }),
+    defineField({ name: 'duration', title: 'Duración', type: 'string' }),
+    defineField({ name: 'popular', title: 'Popular', type: 'boolean', initialValue: false }),
+    defineField({ name: 'icon', title: 'Icono', type: 'string', description: 'plane | map-pin | clock', options: { list: [ {title:'Avión', value:'plane'}, {title:'Mapa', value:'map-pin'}, {title:'Reloj', value:'clock'} ] } }),
+    defineField({ name: 'isSpecial', title: 'Es traslado especial', type: 'boolean', initialValue: false }),
+    defineField({ name: 'subtitle', title: 'Subtítulo (especial)', type: 'string', hidden: ({ parent }) => !parent?.isSpecial }),
+    defineField({ name: 'notes', title: 'Notas (especial)', type: 'string', hidden: ({ parent }) => !parent?.isSpecial }),
+    defineField({ name: 'order', title: 'Orden', type: 'number', description: 'Para ordenar manualmente (menor primero)' }),
   ],
+  preview: {
+    select: { from: 'from', to: 'to', price: 'price', special: 'isSpecial' },
+    prepare: ({ from, to, price, special }) => ({
+      title: `${from || '?'} → ${to || '?'}`,
+      subtitle: `${price || ''}${special ? ' (Especial)' : ''}`
+    })
+  }
 })
+

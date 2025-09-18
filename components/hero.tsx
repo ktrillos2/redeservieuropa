@@ -81,7 +81,36 @@ export function Hero({
     subtipoTour: "" as "" | "diurno" | "nocturno",
   })
 
-  const [formError, setFormError] = useState<string>("")
+  const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({})
+
+  // Scroll helpers
+  const scrollToElement = (id: string) => {
+    try {
+      const el = document.getElementById(id)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        // Pequeño highlight visual opcional
+        el.classList.add('ring', 'ring-accent/40')
+        setTimeout(() => el.classList.remove('ring', 'ring-accent/40'), 1200)
+      }
+    } catch {}
+  }
+
+  const handlePrimaryScroll = () => {
+    scrollToElement('hero-booking-form')
+  }
+
+  const handleSecondaryScroll = () => {
+    // Prioridad: sección de servicios ("servicios"), fallback a traslados
+    const targetIds = ['servicios', 'traslados']
+    for (const id of targetIds) {
+      const el = document.getElementById(id)
+      if (el) {
+        scrollToElement(id)
+        return
+      }
+    }
+  }
 
   // Helpers de precios desde módulo compartido
   const getBasePrice = (from?: string, to?: string, pax?: number) => calcBaseTransferPrice(from, to, pax)
@@ -133,18 +162,28 @@ export function Hero({
   }, [bookingData.vehiculo])
 
   const validateHard = (): boolean => {
+    const errs: Record<string,string> = {}
     const pax = parsePassengers(bookingData.pasajeros)
     const cap = getVehicleCap(bookingData.vehiculo)
-    if (pax < 1) {
-      setFormError("Debes seleccionar al menos 1 pasajero.")
+    if (!bookingData.tipoReserva) errs.tipoReserva = 'Requerido'
+    if (pax < 1) errs.pasajeros = '≥1'
+    if (pax > cap) errs.pasajeros = `Máx ${cap}`
+    if (bookingData.tipoReserva === 'traslado') {
+      if (!bookingData.origen) errs.origen = 'Requerido'
+      if (!bookingData.destino) errs.destino = 'Requerido'
+      if (!bookingData.fecha) errs.fecha = 'Requerido'
+      if (!bookingData.hora) errs.hora = 'Requerido'
+    } else if (bookingData.tipoReserva === 'tour') {
+      if (!bookingData.categoriaTour && !bookingData.subtipoTour) errs.categoriaTour = 'Requerido'
+      if (!bookingData.fecha) errs.fecha = 'Requerido'
+      if (!bookingData.hora) errs.hora = 'Requerido'
+    }
+    setFieldErrors(errs)
+    if (Object.keys(errs).length) {
+      const first = Object.keys(errs)[0]
+      try { document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus() } catch {}
       return false
     }
-    if (pax > cap) {
-      const vehLabel = bookingData.vehiculo === 'coche' ? 'Coche (4)' : bookingData.vehiculo === 'minivan' ? 'Minivan (6)' : 'Van (8)'
-      setFormError(`Para ${vehLabel} el máximo es ${cap} pasajero(s).`)
-      return false
-    }
-    setFormError("")
     return true
   }
 
@@ -276,7 +315,6 @@ export function Hero({
                 {title}
                 <span className="text-accent block animate-pulse drop-shadow-lg">{highlight}</span>
               </h1>
-              {/* Slider de evento, pequeño, justo debajo del título */}
               {events && events.length > 0 && (
                 <div className="mb-6">
                   <EventsSlider events={events} />
@@ -284,7 +322,6 @@ export function Hero({
               )}
               <div className="mb-8 text-white/95 text-pretty drop-shadow-md text-justify">
                 {(() => {
-                  // Construir un único párrafo a partir de Portable Text o string
                   let text = ""
                   if (Array.isArray(description)) {
                     try {
@@ -303,7 +340,6 @@ export function Hero({
                   } else {
                     text = String(description || "")
                   }
-                  // Normalizar espacios y saltos de línea a espacios simples
                   text = text.replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim()
                   return <p className="text-xl leading-relaxed">{text}</p>
                 })()}
@@ -312,6 +348,7 @@ export function Hero({
                 <Button
                   size="lg"
                   className="bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300 shadow-lg"
+                  onClick={handlePrimaryScroll}
                 >
                   {primaryCtaLabel}
                 </Button>
@@ -319,6 +356,7 @@ export function Hero({
                   size="lg"
                   variant="outline"
                   className="border-2 border-white text-white hover:bg-white hover:text-primary bg-transparent transform hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-sm"
+                  onClick={handleSecondaryScroll}
                 >
                   {secondaryCtaLabel}
                 </Button>
@@ -326,9 +364,10 @@ export function Hero({
             </div>
           </AnimatedSection>
 
+          {/* Booking Form */}
           {
           <AnimatedSection animation="fade-up" delay={300}>
-            <Card className="bg-card/98 backdrop-blur-md transform hover:scale-102 transition-all duration-300 shadow-2xl border-white/20">
+            <Card id="hero-booking-form" className="bg-card/98 backdrop-blur-md transform hover:scale-102 transition-all duration-300 shadow-2xl border-white/20 scroll-mt-24">
               <CardContent className="p-6">
                 <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">{bookingForm?.title || 'Reserva tu Servicio'}</h3>
                 <div className="space-y-4">
@@ -422,7 +461,7 @@ export function Hero({
                           }
                         }}
                       >
-                        <SelectTrigger className="cursor-pointer">
+                        <SelectTrigger data-field="categoriaTour" className={"cursor-pointer " + (fieldErrors.categoriaTour ? 'border-destructive focus-visible:ring-destructive' : '')}>
                           <SelectValue placeholder="Selecciona: Diurno, Nocturno o Escala" />
                         </SelectTrigger>
                         <SelectContent>
@@ -444,9 +483,11 @@ export function Hero({
                             {bookingForm?.dateField?.label || 'Fecha'}
                           </label>
                           <Input
+                            data-field="fecha"
                             type="date"
                             value={bookingData.fecha}
-                            onChange={(e) => setBookingData({ ...bookingData, fecha: e.target.value })}
+                            onChange={(e) => { setBookingData({ ...bookingData, fecha: e.target.value }); if (fieldErrors.fecha) setFieldErrors(f=>{const c={...f}; delete c.fecha; return c}) }}
+                            className={fieldErrors.fecha ? 'border-destructive focus-visible:ring-destructive' : ''}
                           />
                         </div>
                         <div className="space-y-2">
@@ -455,9 +496,11 @@ export function Hero({
                             {bookingForm?.timeField?.label || 'Hora'}
                           </label>
                           <Input
+                            data-field="hora"
                             type="time"
                             value={bookingData.hora}
-                            onChange={(e) => setBookingData({ ...bookingData, hora: e.target.value })}
+                            onChange={(e) => { setBookingData({ ...bookingData, hora: e.target.value }); if (fieldErrors.hora) setFieldErrors(f=>{const c={...f}; delete c.hora; return c}) }}
+                            className={fieldErrors.hora ? 'border-destructive focus-visible:ring-destructive' : ''}
                           />
                         </div>
                       </div>
@@ -471,7 +514,7 @@ export function Hero({
                             value={bookingData.pasajeros}
                             onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
                           >
-                            <SelectTrigger className="cursor-pointer">
+                            <SelectTrigger data-field="pasajeros" className={"cursor-pointer " + (fieldErrors.pasajeros ? 'border-destructive focus-visible:ring-destructive' : '')}>
                               <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
                             </SelectTrigger>
                             <SelectContent className="max-h-72">
@@ -497,7 +540,7 @@ export function Hero({
                               setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
                             }}
                           >
-                            <SelectTrigger className="cursor-pointer">
+                            <SelectTrigger data-field="vehiculo" className="cursor-pointer">
                               <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
                             </SelectTrigger>
                             <SelectContent>
@@ -544,7 +587,7 @@ export function Hero({
                           setBookingData({ ...bookingData, origen: value, destino: "" })
                         }
                       >
-                        <SelectTrigger className="cursor-pointer">
+                        <SelectTrigger data-field="origen" className={"cursor-pointer " + (fieldErrors.origen ? 'border-destructive focus-visible:ring-destructive' : '')}>
                           <SelectValue placeholder="Seleccionar origen" />
                         </SelectTrigger>
                         <SelectContent>
@@ -562,7 +605,7 @@ export function Hero({
                         {bookingForm?.destinationField?.label || 'Destino'}
                       </label>
                       <Select value={bookingData.destino} onValueChange={(value) => setBookingData({ ...bookingData, destino: value })}>
-                        <SelectTrigger disabled={!bookingData.origen} className="cursor-pointer disabled:cursor-not-allowed">
+                        <SelectTrigger data-field="destino" disabled={!bookingData.origen} className={"cursor-pointer disabled:cursor-not-allowed " + (fieldErrors.destino ? 'border-destructive focus-visible:ring-destructive' : '')}>
                           <SelectValue placeholder={bookingData.origen ? "Seleccionar destino" : "Selecciona el origen primero"} />
                         </SelectTrigger>
                         <SelectContent>
@@ -593,9 +636,11 @@ export function Hero({
                         {bookingForm?.dateField?.label || 'Fecha'}
                       </label>
                       <Input
+                        data-field="fecha"
                         type="date"
                         value={bookingData.fecha}
-                        onChange={(e) => setBookingData({ ...bookingData, fecha: e.target.value })}
+                        onChange={(e) => { setBookingData({ ...bookingData, fecha: e.target.value }); if (fieldErrors.fecha) setFieldErrors(f=>{const c={...f}; delete c.fecha; return c}) }}
+                        className={fieldErrors.fecha ? 'border-destructive focus-visible:ring-destructive' : ''}
                       />
                     </div>
                     <div className="space-y-2">
@@ -604,9 +649,11 @@ export function Hero({
                         {bookingForm?.timeField?.label || 'Hora'}
                       </label>
                       <Input
+                        data-field="hora"
                         type="time"
                         value={bookingData.hora}
-                        onChange={(e) => setBookingData({ ...bookingData, hora: e.target.value })}
+                        onChange={(e) => { setBookingData({ ...bookingData, hora: e.target.value }); if (fieldErrors.hora) setFieldErrors(f=>{const c={...f}; delete c.hora; return c}) }}
+                        className={fieldErrors.hora ? 'border-destructive focus-visible:ring-destructive' : ''}
                       />
                     </div>
                     
@@ -624,7 +671,7 @@ export function Hero({
                         value={bookingData.pasajeros}
                         onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
                       >
-                        <SelectTrigger className="cursor-pointer">
+                        <SelectTrigger data-field="pasajeros" className={"cursor-pointer " + (fieldErrors.pasajeros ? 'border-destructive focus-visible:ring-destructive' : '')}>
                           <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
                         </SelectTrigger>
                         <SelectContent className="max-h-72">
@@ -652,7 +699,7 @@ export function Hero({
                           setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
                         }}
                       >
-                        <SelectTrigger className="cursor-pointer">
+                        <SelectTrigger data-field="vehiculo" className="cursor-pointer">
                           <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
                         </SelectTrigger>
                         <SelectContent>
@@ -772,9 +819,7 @@ export function Hero({
                     </div>
                   </div>
 
-                  {formError && (
-                    <p className="text-sm text-destructive text-center">{formError}</p>
-                  )}
+                  {/* Sin mensaje global; campos inválidos se marcan en rojo */}
 
                   <Button
                     className="w-full bg-accent hover:bg-accent/90 shadow-lg"

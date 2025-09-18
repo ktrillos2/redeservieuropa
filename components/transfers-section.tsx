@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { client } from "@/sanity/lib/client"
-import { TRANSFERS_QUERY } from "@/sanity/lib/queries"
+import { TRANSFERS_LIST_QUERY, TRANSFERS_SECTION_CONTENT_QUERY } from "@/sanity/lib/queries"
 
 const localTransferRoutes = [
   {
@@ -85,15 +85,20 @@ export function TransfersSection() {
   const router = useRouter()
   // Captura mínima: la información detallada se pedirá en la página de pago
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<any | null>(null)
+  const [list, setList] = useState<any[] | null>(null)
+  const [content, setContent] = useState<any | null>(null)
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
-        const res = await client.fetch(TRANSFERS_QUERY)
+        const [listRes, contentRes] = await Promise.all([
+          client.fetch(TRANSFERS_LIST_QUERY),
+          client.fetch(TRANSFERS_SECTION_CONTENT_QUERY)
+        ])
         if (!mounted) return
-        setData(res)
+        setList(listRes)
+        setContent(contentRes)
       } catch (e) {
         console.warn('[TransfersSection] No se pudo cargar transfers desde Sanity, usaré fallback local.', e)
       } finally {
@@ -112,7 +117,7 @@ export function TransfersSection() {
 
   const defaultPassengers = 1
 
-  type Route = { from: string; to: string; price: string; description?: string; duration?: string; popular?: boolean }
+  type Route = { from: string; to: string; price: string; description?: string; duration?: string; popular?: boolean; slug?: { current: string } }
   type Charge = { icon?: string; text: string; price: string }
   type Special = { title: string; subtitle?: string; price: string; icon?: string; notes?: string }
   const handleReserve = (route: Route) => {
@@ -192,27 +197,45 @@ export function TransfersSection() {
   }, [])
 
   const routes: Route[] = useMemo(() => {
-    if (data?.routes && Array.isArray(data.routes)) return data.routes
+    if (Array.isArray(list)) {
+      return list.filter((t:any) => !t.isSpecial).map(t => ({
+        from: t.from,
+        to: t.to,
+        price: t.price,
+        description: t.description,
+        duration: t.duration,
+        popular: t.popular,
+        slug: t.slug
+      }))
+    }
     return localTransferRoutes
-  }, [data])
-
-  const charges: Charge[] = useMemo(() => {
-    if (data?.extraCharges && Array.isArray(data.extraCharges)) return data.extraCharges
-    return localAdditionalCharges
-  }, [data])
+  }, [list])
 
   const specials: Special[] = useMemo(() => {
-    if (data?.specials && Array.isArray(data.specials)) return data.specials
+    if (Array.isArray(list)) {
+      return list.filter((t:any) => t.isSpecial).map(t => ({
+        title: `${t.from} → ${t.to}`,
+        subtitle: t.subtitle,
+        price: t.price,
+        icon: t.icon,
+        notes: t.notes,
+      }))
+    }
     return [
       { title: 'Versailles', subtitle: 'Desde París. Hasta 4 pax', price: '65€', icon: 'map-pin', notes: '+10€ por pasajero adicional (Versailles)' },
       { title: 'Parque Asterix', subtitle: 'Desde París u Orly', price: '70€', icon: 'plane', notes: '+20€ por persona adicional (Asterix)' },
       { title: 'Casa de Monet (Giverny)', subtitle: 'Desde París · hasta 4 pax', price: '100€', icon: 'map-pin', notes: 'Persona adicional 12€ (Giverny)' },
     ]
-  }, [data])
+  }, [list])
 
-  const sectionTitle = data?.title || 'Nuestros Traslados'
-  const sectionSubtitle = data?.subtitle || 'Tarifas transparentes para todos nuestros servicios de transporte premium en París.'
-  const footnote = data?.footnote || 'Nota: Para grupos de 5+ pasajeros, se combina la tarifa base + tarifa de vehículo adicional. Ejemplo: 9 pasajeros = Tarifa de 5 + Tarifa de 4 adicionales.'
+  const charges: Charge[] = useMemo(() => {
+    if (content?.extraCharges && Array.isArray(content.extraCharges)) return content.extraCharges
+    return localAdditionalCharges
+  }, [content])
+
+  const sectionTitle = content?.title || 'Nuestros Traslados'
+  const sectionSubtitle = content?.subtitle || 'Tarifas transparentes para todos nuestros servicios de transporte premium en París.'
+  const footnote = content?.footnote || 'Nota: Para grupos de 5+ pasajeros, se combina la tarifa base + tarifa de vehículo adicional. Ejemplo: 9 pasajeros = Tarifa de 5 + Tarifa de 4 adicionales.'
 
   return (
     <section id="traslados" className="py-20 bg-muted/30">
@@ -227,7 +250,7 @@ export function TransfersSection() {
           <Carousel opts={{ align: "start", loop: true }}>
             <CarouselContent className="py-6">
               {routes.map((route: Route, index: number) => (
-                <CarouselItem key={`${route.from}-${route.to}-${index}`} className="basis-full sm:basis-1/2 lg:basis-1/3">
+                <CarouselItem key={`${route.slug?.current || route.from+'-'+route.to}-${index}`} className="basis-full sm:basis-1/2 lg:basis-1/3">
                   <AnimatedSection animation="zoom-in" delay={index * 100}>
                     <Card
                       className={`relative bg-card border-border hover-lift hover-glow h-full flex flex-col ${

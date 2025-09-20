@@ -10,6 +10,7 @@ import testimonialsSection, { testimonialItem } from './testimonialsSection'
 import contactSection from './contactSection'
 import footerSection, { footerColumn } from './footerSection'
 import transfersSectionContent from './transfersSection'
+import order from './order'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
@@ -30,5 +31,6 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     contactSection,
     footerColumn,
     footerSection,
+    order,
   ],
 }

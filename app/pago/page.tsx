@@ -44,8 +44,8 @@ export default function PaymentPage() {
       const now = new Date()
       const hour = now.getHours()
       const isNight = hour >= 21 || hour < 6
-      // Sólo aplicar automáticamente si el registro aún no tenía isNightTime true y no es un tour-paris (que ya maneja tarifa diferente por hora)
-      if (isNight && !bookingData.isNightTime && !["tour-paris", "tour-nocturno"].includes(bookingData.tourId || "")) {
+      // Sólo aplicar automáticamente si el registro aún no tenía isNightTime true y NO es un tour (los tours ya incorporan lógica propia)
+      if (isNight && !bookingData.isNightTime && !bookingData.tourId) {
         setBookingData((prev: any) => {
           if (!prev) return prev
           const next = { ...prev, isNightTime: true, totalPrice: Number(prev.totalPrice || 0) + 5 }
@@ -162,7 +162,7 @@ export default function PaymentPage() {
     bookingData?.isEvent ||
       bookingData?.tourHours !== undefined ||
       bookingData?.routeOption !== undefined ||
-      ["tour-paris", "tour-nocturno", "paris-dl-dl"].includes(bookingData?.tourId || ""),
+      (bookingData?.tourId && typeof bookingData.tourId === 'string'),
   )
   // Si tenemos una ruta y pasajeros, recalcular base con la nueva lógica
   let computedBase = Number(bookingData?.basePrice || 0)
@@ -182,7 +182,7 @@ export default function PaymentPage() {
     if (typeof baseCalc === "number") computedBase = baseCalc
   } catch {}
   const total = Number(bookingData?.totalPrice || computedBase || 0)
-  const deposit = paymentMethod === "cash" ? (isTour ? Number((total * 0.1).toFixed(2)) : 5) : 0
+  const deposit = paymentMethod === "cash" ? 5 : 0
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)))
   const amountNow = isQuick ? 5 : (paymentMethod === "cash" ? deposit : total)
   const clientHour = (() => { try { return new Date().getHours() } catch { return undefined } })()
@@ -214,8 +214,11 @@ export default function PaymentPage() {
         : `${bookingData?.luggageCount || 0} maleta(s)`
 
       const extraLines: string[] = []
-      if (bookingData?.isNightTime) extraLines.push("Recargo nocturno: +5€")
-      if (bookingData?.extraLuggage) extraLines.push("Equipaje extra: +10€")
+      const isTourMsg = Boolean(bookingData?.tourId)
+      if (!isTourMsg) {
+        if (bookingData?.isNightTime) extraLines.push("Recargo nocturno: +5€")
+        if (bookingData?.extraLuggage) extraLines.push("Equipaje extra: +10€")
+      }
       if (bookingData?.routeOption) extraLines.push(`Opción: ${bookingData.routeOption}`)
       if (bookingData?.tourHours) extraLines.push(`Duración: ${bookingData.tourHours}h`)
 
@@ -455,7 +458,52 @@ export default function PaymentPage() {
                     <Separator />
 
                     {/* Contact Info: editable para traslados */}
-                    {isTour ? (
+                    {bookingData.isEvent ? (
+                      <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                        <h4 className="font-medium text-primary">Información de Contacto</h4>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium">Nombre Completo</label>
+                          <Input
+                            placeholder="Tu nombre completo"
+                            data-field="contactName"
+                            className={fieldErrors.contactName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                            value={bookingData.contactName || ''}
+                            onChange={(e) => updateBookingField('contactName', e.target.value)}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Teléfono</label>
+                            <Input
+                              placeholder="+33 1 23 45 67 89"
+                              data-field="contactPhone"
+                              className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              value={bookingData.contactPhone || ''}
+                              onChange={(e) => updateBookingField('contactPhone', e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Email</label>
+                            <Input
+                              type="email"
+                              placeholder="tu@email.com"
+                              data-field="contactEmail"
+                              className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              value={bookingData.contactEmail || ''}
+                              onChange={(e) => updateBookingField('contactEmail', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium">Solicitudes Especiales (opcional)</label>
+                          <Input
+                            placeholder="Asiento bebé, parada extra, etc."
+                            value={bookingData.specialRequests || ''}
+                            onChange={(e) => updateBookingField('specialRequests', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ) : isTour ? (
                       <div className="space-y-2">
                         <h4 className="font-medium text-primary">Información de Contacto:</h4>
                         <p className="text-sm">{bookingData.contactName}</p>
@@ -658,13 +706,13 @@ export default function PaymentPage() {
                           </div>
                         </>
                       )}
-                      {!isQuick && bookingData.isNightTime && (
+                      {!isQuick && bookingData.isNightTime && !isTour && (
                         <div className="flex justify-between text-sm">
                           <span>Recargo nocturno</span>
                           <span>+5€</span>
                         </div>
                       )}
-                      {!isQuick && bookingData.extraLuggage && (
+                      {!isQuick && bookingData.extraLuggage && !isTour && (
                         <div className="flex justify-between text-sm">
                           <span>Equipaje extra</span>
                           <span>+10€</span>
@@ -768,8 +816,8 @@ export default function PaymentPage() {
                       ) : paymentMethod === "cash" ? (
                         <>
                           <div className="flex justify-between">
-                            <span>Confirmar tu reserva (depósito {isTour ? "10%" : "fijo"})</span>
-                            <span>{deposit}€</span>
+                            <span>Confirmar tu reserva (depósito fijo)</span>
+                            <span>5€</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Valor a pagar el día del servicio</span>
@@ -785,7 +833,7 @@ export default function PaymentPage() {
                               servicio en efectivo, tarjeta o PayPal según prefieras.
                             </p>
                             <p>
-                              Importe del depósito: {isTour ? "10% para tours/eventos" : "5€ para traslados"}.
+                              Importe del depósito: 5€ (fijo).
                             </p>
                           </div>
                         </>
@@ -841,9 +889,12 @@ export default function PaymentPage() {
                           if (!bookingData.passengers || Number(bookingData.passengers) < 1) errors.passengers = 'Requerido'
                           if (!bookingData.date) errors.date = 'Requerido'
                           if (!bookingData.time) errors.time = 'Requerido'
-                          if (!bookingData.contactName) errors.contactName = 'Requerido'
-                          if (!bookingData.contactPhone) errors.contactPhone = 'Requerido'
-                          if (!bookingData.contactEmail) errors.contactEmail = 'Requerido'
+                          const requiresContact = !bookingData.quickDeposit && (bookingData.isEvent || !isTour)
+                          if (requiresContact) {
+                            if (!bookingData.contactName) errors.contactName = 'Requerido'
+                            if (!bookingData.contactPhone) errors.contactPhone = 'Requerido'
+                            if (!bookingData.contactEmail) errors.contactEmail = 'Requerido'
+                          }
                           const needsAddresses = !bookingData.isEvent && !bookingData.isTourQuick && !bookingData.tourId
                           if (needsAddresses) {
                             if (!bookingData.pickupAddress) errors.pickupAddress = 'Requerido'
@@ -867,11 +918,41 @@ export default function PaymentPage() {
                             })
                             return
                           }
-                          if (paymentMethod === 'cash') {
-                            sendWhatsApp()
-                          } else {
-                            console.log('Procesar pago (integración pendiente)')
+                          // Crear pago en backend (Mollie) y redirigir a checkout
+                          const doPay = async () => {
+                            try {
+                              const description = bookingData?.isEvent
+                                ? `Evento: ${bookingData?.eventTitle || 'Reserva'}`
+                                : bookingData?.tourId
+                                ? `Reserva tour: ${bookingData.tourId}`
+                                : `Reserva traslado ${bookingData?.pickupAddress || ''} -> ${bookingData?.dropoffAddress || ''}`
+                              const amount = Number(amountNow || 0)
+                              const res = await fetch('/api/mollie/create', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  amount,
+                                  description,
+                                  method: paymentMethod,
+                                  booking: bookingData,
+                                  metadata: { source: 'web' },
+                                }),
+                              })
+                              if (!res.ok) throw new Error(`Error creando pago: ${res.status}`)
+                              const json = await res.json()
+                              const url = json?.checkoutUrl
+                              try { if (json?.id) localStorage.setItem('lastPaymentId', String(json.id)) } catch {}
+                              if (typeof url === 'string') {
+                                window.location.href = url
+                              } else {
+                                throw new Error('checkoutUrl no recibido')
+                              }
+                            } catch (e) {
+                              console.error('No se pudo iniciar el pago:', e)
+                              alert('No se pudo iniciar el pago. Intenta nuevamente más tarde.')
+                            }
                           }
+                          doPay()
                         }}
                       >
             {isQuick ? "Pagar 5€ y confirmar" : "Pagar ahora"}

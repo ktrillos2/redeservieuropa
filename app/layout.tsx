@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Jost, Playfair_Display } from "next/font/google"
 import { Suspense } from "react"
 import { ScrollToTopButton } from "@/components/scroll-to-top-button"
+import { SanityLive } from '@/sanity/lib/live'
 import { AnimationGuardian } from "@/components/animation-guardian"
 import "./globals.css"
 
@@ -45,7 +46,8 @@ export default function RootLayout({
       <head />
       <body className="font-sans">
         <Suspense fallback={null}>{children}</Suspense>
-        <ScrollToTopButton />
+  <ScrollToTopButton />
+  <SanityLive />
         <AnimationGuardian />
         {/* pre-anim removido para evitar ocultar contenido antes de las animaciones */}
       </body>

@@ -18,9 +18,11 @@
     "seed:sanity:tours-section": "tsx scripts/seed-tours-section.ts",
     "seed:sanity:testimonials-section": "tsx scripts/seed-testimonials-section.ts",
     "seed:sanity:contact-section": "tsx scripts/seed-contact-section.ts",
-    "seed:sanity:footer-section": "tsx scripts/seed-footer-section.ts"
+    "seed:sanity:footer-section": "tsx scripts/seed-footer-section.ts",
+    "seed:sanity:orders": "tsx scripts/seed-orders.ts"
   },
   "dependencies": {
+    "@mollie/api-client": "^4.3.3",
     "@hookform/resolvers": "^3.10.0",
     "@portabletext/react": "^4.0.3",
     "@radix-ui/react-accordion": "1.2.2",

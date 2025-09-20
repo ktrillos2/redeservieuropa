@@ -25,7 +25,7 @@ export const HERO_QUERY = `
 `
 
 export const EVENTS_FOR_HERO_QUERY = `
-*[_type == "events" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc)[0...10]{
+*[_type in ["events","event"] && (isActive == true || !defined(isActive))] | order(coalesce(order, 999) asc, _createdAt asc)[0...10]{
   _id,
   title,
   image,

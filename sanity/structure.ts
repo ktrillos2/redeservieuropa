@@ -93,7 +93,15 @@ export const structure: StructureResolver = (S) =>
             .schemaType('footerSection')
             .documentId('footerSection')
         ),
+      // Pedidos
+      S.listItem()
+        .title('Pedidos')
+        .id('orders')
+        .child(
+          S.documentTypeList('order')
+            .title('Pedidos')
+        ),
       S.divider(),
       // Fallback: other document lists (excluir singletons para evitar IDs duplicados)
-  ...S.documentTypeListItems().filter((item) => !['generalInfo','header','toursSection','testimonialsSection','contactSection','footerSection','hero','transfersSectionContent'].includes(item.getId() || '')),
+    ...S.documentTypeListItems().filter((item) => !['generalInfo','header','toursSection','testimonialsSection','contactSection','footerSection','hero','transfersSectionContent','order'].includes(item.getId() || '')),
     ])

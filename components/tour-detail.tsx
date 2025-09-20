@@ -166,34 +166,53 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
     }
     const hasExtraSections = Array.isArray(tourFromCms.extraSections) && tourFromCms.extraSections.length > 0
     const calcCmsPrice = () => {
-      // Si hay selección manual de pricingOption: usar como base pero permitir recargo por pasajeros extra (>4) si queremos coherencia.
+      // Base según opción seleccionada o tablas
+      let baseTotal = 0
+      // 1) Opción seleccionada: usar su precio y añadir recargo por pasajeros extra (>4) proporcional a horas
       if (selectedPricingOption) {
         const baseIncluded = 4
         const extraPassengers = Math.max(0, passengers - baseIncluded)
-        if (extraPassengers > 0) {
-          // Reutilizamos la lógica de recargos (diurno/nocturno) si hay basePriceDay/Night, si no un fallback genérico de 10€/h.
-          const isNight = isNightTime
-          const perHourExtra = isNight ? 12 : 10
-          const hours = selectedPricingOption.hours ?? 1
-          return selectedPricingOption.price + extraPassengers * perHourExtra * hours
+        const perHourExtra = isNightTime ? 12 : 10
+        const hours = selectedPricingOption.hours ?? 1
+        baseTotal = selectedPricingOption.price + (extraPassengers > 0 ? extraPassengers * perHourExtra * hours : 0)
+      } else {
+        // 2) Buscar precio por pax en pricing; si no, usar basePrice; si tampoco, mínimo de pricingOptions
+        const p: any = tourFromCms.pricing
+        const po: any[] = Array.isArray((tour as any).pricingOptions) ? (tour as any).pricingOptions : []
+        let foundPrice: number | undefined = undefined
+        if (Array.isArray(p)) {
+          const found = p.find((x: any) => x && Number(x.pax) === Number(passengers))
+          if (found && typeof found.price === 'number') foundPrice = found.price
         }
-        return selectedPricingOption.price
+        if (typeof foundPrice !== 'number') {
+          if (typeof tourFromCms.basePrice === 'number' && !Number.isNaN(tourFromCms.basePrice)) {
+            foundPrice = tourFromCms.basePrice
+          } else if (Array.isArray(po) && po.length > 0) {
+            // Usar la opción más barata como "desde" para evitar 0€ inicial
+            const minOpt = po.reduce((min: any, curr: any) => (curr?.price < (min?.price ?? Infinity) ? curr : min), null)
+            if (minOpt && typeof minOpt.price === 'number') {
+              const baseIncluded = 4
+              const extraPassengers = Math.max(0, passengers - baseIncluded)
+              const perHourExtra = isNightTime ? 12 : 10
+              const hours = typeof minOpt.hours === 'number' ? minOpt.hours : 1
+              foundPrice = minOpt.price + (extraPassengers > 0 ? extraPassengers * perHourExtra * hours : 0)
+            }
+          }
+        }
+        if (typeof foundPrice === 'number') {
+          baseTotal = foundPrice
+        } else {
+          // Fallback seguro para evitar 0€ cuando no hay datos estructurados.
+          // Asunción basada en teaser del sitio: "Desde 180€".
+          baseTotal = 180
+        }
       }
-      // Buscar precio por pax en pricing; si no, usar basePrice
-      const p: any = tourFromCms.pricing
-      if (Array.isArray(p)) {
-        const found = p.find((x: any) => x && Number(x.pax) === Number(passengers))
-        if (found && typeof found.price === 'number') return found.price
-      }
-      // Fallback: aplicar basePrice y recargo por pasajeros extra >4 si existe basePrice
-      const base = tourFromCms.basePrice ?? 0
-      const baseIncluded = 4
-      const extraPassengers = Math.max(0, passengers - baseIncluded)
-      if (extraPassengers > 0) {
-        // sin horas definidas, asumimos paquete único (1x) y recargo plano 10€ por pasajero extra.
-        return base + extraPassengers * 10
-      }
-      return tourFromCms.basePrice ?? 0
+
+      // 3) Recargos globales: nocturno (+5) y equipaje voluminoso (+10) si aplica
+      const extraLugg = Number(luggage23kg || 0) > 3
+      const nightFee = isNightTime ? 5 : 0
+      const luggageFee = extraLugg ? 10 : 0
+      return baseTotal + nightFee + luggageFee
     }
 
     const cmsTotal = calcCmsPrice()
@@ -742,17 +761,22 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
     if (effectiveTourId === "paris-dl-dl") {
       if (!routeOption) return NaN
+      let base = NaN
       if (passengers >= 1 && passengers <= 4) {
         const map = tour.pricingP4
         if (!map) return NaN
-        return routeOption === "threeH" ? map.threeH : routeOption === "twoH" ? map.twoH : map.eiffelArco
-      }
-      if (passengers === 5) {
+        const val = routeOption === "threeH" ? map.threeH : routeOption === "twoH" ? map.twoH : map.eiffelArco
+        base = typeof val === 'number' ? val : NaN
+      } else if (passengers === 5) {
         const map = tour.pricingP5
         if (!map) return NaN
-        return routeOption === "threeH" ? map.threeH : routeOption === "twoH" ? map.twoH : map.eiffelArco
+        const val = routeOption === "threeH" ? map.threeH : routeOption === "twoH" ? map.twoH : map.eiffelArco
+        base = typeof val === 'number' ? val : NaN
       }
-      return NaN
+      const nightFee = isNightTime ? 5 : 0
+      const extraLugg = Number(luggage23kg || 0) > 3
+      const luggageFee = extraLugg ? 10 : 0
+      return Number(base) + nightFee + luggageFee
     }
 
     const getBaseFromPricing = (): number | undefined => {

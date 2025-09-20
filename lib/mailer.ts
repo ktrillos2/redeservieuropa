@@ -1,5 +1,4 @@
 import nodemailer, { type Transporter } from 'nodemailer'
-
 let transporter: Transporter | null = null
 
 function getEnv(name: string, fallback?: string) {
@@ -43,6 +42,7 @@ export async function sendMail({ to, subject, html, text, from, replyTo, bcc }: 
   if (toList.length === 0) {
     throw new Error('No recipients defined (to)')
   }
+  console.log('[mailer] sendMail attempt', { to: toList, bcc, subject, hasHtml: !!html, hasText: !!text, visibleFrom: sender, envelopeFrom: smtpUser })
   const info = await tx.sendMail({
     from: sender,
     to: toList,
@@ -53,6 +53,12 @@ export async function sendMail({ to, subject, html, text, from, replyTo, bcc }: 
     replyTo: replyTo || process.env.SMTP_REPLY_TO,
     // Al definir envelope, incluir también los destinatarios para evitar EENVELOPE
     envelope: { from: smtpUser, to: toList },
+  })
+  console.log('[mailer] sendMail result', {
+    messageId: (info as any)?.messageId,
+    accepted: (info as any)?.accepted,
+    rejected: (info as any)?.rejected,
+    response: (info as any)?.response,
   })
   return info
 }

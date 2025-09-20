@@ -1,10 +1,11 @@
 const baseStyles = {
-  bg: '#fffdf0',
-  text: '#021e29',
+  // Paleta corporativa: beige y azul
+  bg: '#fff7e9',
+  text: '#0e2a36',
   card: '#ffffff',
-  border: '#e2e8f0',
-  primary: '#021e29',
-  accent: '#875417',
+  border: '#e5ddd0',
+  primary: '#0e2a36', // azul profundo
+  accent: '#b68c5a',  // beige dorado para botones
 }
 
 export function renderBrandEmail({ title, intro, contentHtml, footerNote }: {
@@ -14,6 +15,9 @@ export function renderBrandEmail({ title, intro, contentHtml, footerNote }: {
   footerNote?: string
 }) {
   const { bg, text, card, border, primary, accent } = baseStyles
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || ''
+  // Usa EMAIL_LOGO_URL si está; si no, intenta un logo PNG legible; fallback final a favicon
+  const logoUrl = process.env.EMAIL_LOGO_URL || `${siteUrl}/placeholder-logo.png`
   return `
   <!doctype html>
   <html>
@@ -22,19 +26,24 @@ export function renderBrandEmail({ title, intro, contentHtml, footerNote }: {
       <meta name="viewport" content="width=device-width, initial-scale=1"/>
       <title>${escapeHtml(title)}</title>
       <style>
-        body { margin:0; padding:0; background:${bg}; color:${text}; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+        body { margin:0; padding:0; background:${bg}; color:${text}; font-family: 'Helvetica Neue', Arial, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
         .container { max-width:640px; margin:0 auto; padding:24px; }
-        .card { background:${card}; border:1px solid ${border}; border-radius:8px; padding:24px; }
-        .title { font-family: Georgia, 'Times New Roman', Times, serif; color:${primary}; font-size:22px; margin:0 0 8px; }
-        .subtitle { color:#475569; margin:0 0 16px; }
-        .button { display:inline-block; background:${accent}; color:#fffdf0; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600; }
-        .muted { color:#475569; font-size:12px; }
+        .brand { text-align:center; margin: 8px 0 16px; }
+  .brand img { display:inline-block; height:64px; }
+        .card { background:${card}; border:1px solid ${border}; border-radius:12px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+        .title { font-family: Georgia, 'Times New Roman', Times, serif; color:${primary}; font-size:22px; margin:0 0 8px; letter-spacing: 0.2px; }
+        .subtitle { color:#3b5763; margin:0 0 16px; }
+        .button { display:inline-block; background:${accent}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600; }
+        .muted { color:#5f7b87; font-size:12px; }
         .hr { border: none; border-top: 1px solid ${border}; margin: 16px 0; }
         .list li { margin-bottom: 6px; }
       </style>
     </head>
     <body>
       <div class="container">
+        <div class="brand">
+          <img src="${logoUrl}" alt="Redeservi Europa" />
+        </div>
         <div class="card">
           <h1 class="title">${escapeHtml(title)}</h1>
           ${intro ? `<p class="subtitle">${escapeHtml(intro)}</p>` : ''}
@@ -70,11 +79,11 @@ export function paymentStatusEs(status?: string): string {
 
 export function paymentMethodLabel(method?: string | null): string {
   switch ((method || '').toLowerCase()) {
-    case 'creditcard': return 'Tarjeta (Mollie)'
-    case 'paypal': return 'PayPal (Mollie)'
-    case 'bancontact': return 'Bancontact (Mollie)'
-    case 'ideal': return 'iDEAL (Mollie)'
-    case 'banktransfer': return 'Transferencia bancaria (Mollie)'
+    case 'creditcard': return 'Tarjeta'
+    case 'paypal': return 'PayPal'
+    case 'bancontact': return 'Bancontact'
+    case 'ideal': return 'iDEAL'
+    case 'banktransfer': return 'Transferencia bancaria'
     default: return method || '—'
   }
 }
@@ -135,7 +144,7 @@ export function renderClientThanksEmail(params: {
       <li><b>Servicio:</b> ${escapeHtml(params.service?.title || 'Reserva')}</li>
       <li><b>Fecha:</b> ${escapeHtml(params.service?.date || '—')} ${escapeHtml(params.service?.time || '')}</li>
       <li><b>Importe pagado:</b> ${typeof params.amount === 'number' ? params.amount.toFixed(2) : (params.amount || '—')} ${params.currency || 'EUR'}</li>
-      <li><b>Referencia de pago (Mollie):</b> ${escapeHtml(params.mollieId)}</li>
+      <li><b>Referencia de pago:</b> ${escapeHtml(params.mollieId)}</li>
     </ul>
     <p>Muy pronto nos pondremos en contacto si necesitamos información adicional. Si tienes alguna duda, puedes responder directamente a este correo.</p>
   `
@@ -152,6 +161,7 @@ export function renderAdminNewServiceEmail(params: {
   amount?: number | string
   currency?: string
   method?: string | null
+  requestedMethod?: string | null
   contact?: { name?: string; email?: string; phone?: string }
   service?: { type?: string; title?: string; date?: string; time?: string; totalPrice?: number; pickupAddress?: string; dropoffAddress?: string; flightNumber?: string; passengers?: number }
 }) {
@@ -161,7 +171,8 @@ export function renderAdminNewServiceEmail(params: {
     <ul class="list">
       <li><b>Referencia Mollie:</b> ${escapeHtml(params.mollieId)}</li>
       <li><b>Importe:</b> ${typeof params.amount === 'number' ? params.amount.toFixed(2) : (params.amount || '—')} ${params.currency || 'EUR'}</li>
-      <li><b>Método:</b> ${paymentMethodLabel(params.method)}</li>
+      <li><b>Método final (Mollie):</b> ${paymentMethodLabel(params.method)}</li>
+      <li><b>Método solicitado (web):</b> ${params.requestedMethod ? (params.requestedMethod === 'card' ? 'Tarjeta' : params.requestedMethod === 'cash' ? 'Efectivo' : params.requestedMethod === 'paypal' ? 'PayPal' : params.requestedMethod) : '—'}</li>
     </ul>
     <h3>Servicio</h3>
     <ul class="list">

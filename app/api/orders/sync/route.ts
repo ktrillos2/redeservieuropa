@@ -44,13 +44,15 @@ export async function POST(req: Request) {
         status: status === 'paid' ? 'paid' : (status === 'failed' || status === 'canceled' || status === 'expired' ? 'failed' : 'pending'),
         'metadata.updatedAt': new Date().toISOString(),
       }
-      await serverClient.patch(found._id).set(patch).commit()
+  await serverClient.patch(found._id).set(patch).commit()
+  console.log('[orders/sync] order patched', { orderId: found._id, status: patch.status, paidAt: patch['payment.paidAt'] })
       // Ya no enviamos correos de estado desde aquí para evitar confusión
 
       // Crear evento si está pagado y no existe aún (idempotente por paymentId) y, al crearse por primera vez, disparar emails de confirmación
       try {
         if (status === 'paid') {
           const order = await serverClient.fetch<{ _id: string | null; status?: string; calendar?: { eventId?: string | null; htmlLink?: string | null }; contact?: any; service?: any }>(`*[_type == "order" && payment.paymentId == $pid][0]{ _id, status, calendar{eventId,htmlLink}, contact, service }`, { pid: paymentId })
+          console.log('[orders/sync] paid path', { orderId: order?._id, hasEvent: !!order?.calendar?.eventId })
           if (order && order._id && !order.calendar?.eventId) {
             const payload = buildOrderEventPayload(order)
             const evt = await createCalendarEvent(payload, paymentId)
@@ -58,34 +60,65 @@ export async function POST(req: Request) {
               await serverClient.patch(order._id).set({
                 calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
               }).commit()
-              // Enviar emails de confirmación solo en esta primera creación (evitar duplicados con webhook)
+              console.log('[orders/sync] event created', { eventId: evt.id })
+            }
+          }
+          // Enviar correos de respaldo aunque el evento ya exista (si no se han enviado)
+          try {
+            const already = await serverClient.fetch<{ sent?: string; lock?: { at?: string } | null; rev?: string }>(`*[_type == "order" && _id == $id][0]{ "sent": notifications.paidEmailsSentAt, "lock": notifications.paidEmailsLock, "rev": _rev }`, { id: order?._id })
+            const ttlMs = Number(process.env.MAIL_LOCK_TTL_MS || 600000)
+            const lockAtMs = already?.lock?.at ? Date.parse(already.lock.at) : 0
+            const lockStale = !!lockAtMs && (Date.now() - lockAtMs > ttlMs)
+            console.log('[orders/sync][mail-backup] state', { sentAt: already?.sent, lock: already?.lock, ttlMs, lockStale })
+            if (order && order._id && !already?.sent && (!already?.lock || lockStale)) {
+              // Adquirir lock antes de enviar
+              let acquired = false
               try {
-                const { renderAdminNewServiceEmail, renderClientThanksEmail } = await import('@/lib/email-templates')
-                // Admin: nuevo servicio (solo a Gmail operativo)
-                const adminHtml = renderAdminNewServiceEmail({
+                if (already?.rev) {
+                  await serverClient
+                    .patch(order._id!)
+                    .setIfMissing({ notifications: {} as any })
+                    .set({ 'notifications.paidEmailsLock': { at: new Date().toISOString(), by: 'sync', paymentId } })
+                    .ifRevisionId(already.rev as any)
+                    .commit()
+                  acquired = true
+                  console.log('[orders/sync][mail-backup] lock acquired/renewed')
+                }
+              } catch (e) {
+                console.error('[orders/sync][mail-backup] lock not acquired', e)
+              }
+              if (!acquired) {
+                return NextResponse.json({ ok: true, status, note: 'mail-skipped-lock' })
+              }
+              const { renderAdminNewServiceEmail, renderClientThanksEmail } = await import('@/lib/email-templates')
+              const adminHtml = renderAdminNewServiceEmail({
+                mollieId: paymentId,
+                amount: (payment && (payment.amount as any)?.value) || found.payment?.amount,
+                currency: found.payment?.currency || 'EUR',
+                method: (payment as any)?.method || found.payment?.method || null,
+                requestedMethod: found.payment?.requestedMethod || null,
+                contact: order.contact || {},
+                service: order.service || {},
+              })
+              await sendMail({ to: 'redeservieuropa@gmail.com', bcc: 'info@redeservieuropa.com', subject: `Nuevo ${order.service?.type || 'servicio'} – ${order.service?.title || 'Reserva'}`, html: adminHtml, replyTo: order.contact?.email || undefined, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
+              if (order.contact?.email) {
+                const clientHtml = renderClientThanksEmail({
                   mollieId: paymentId,
-                  amount: (payment.amount as any)?.value || found.payment?.amount,
+                  amount: (payment && (payment.amount as any)?.value) || found.payment?.amount,
                   currency: found.payment?.currency || 'EUR',
-                  method: (payment as any)?.method || found.payment?.method || null,
                   contact: order.contact || {},
                   service: order.service || {},
                 })
-                await sendMail({ to: 'redeservieuropa@gmail.com', bcc: 'info@redeservieuropa.com', subject: `Nuevo ${order.service?.type || 'servicio'} – ${order.service?.title || 'Reserva'}`, html: adminHtml, replyTo: order.contact?.email || undefined, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
-                // Cliente: gracias
-                if (order.contact?.email) {
-                  const clientHtml = renderClientThanksEmail({
-                    mollieId: paymentId,
-                    amount: (payment.amount as any)?.value || found.payment?.amount,
-                    currency: found.payment?.currency || 'EUR',
-                    contact: order.contact || {},
-                    service: order.service || {},
-                  })
-                  await sendMail({ to: order.contact.email, subject: '¡Gracias por tu pago!', html: clientHtml, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
-                }
-              } catch (err) {
-                console.error('[orders/sync][mail-paid] No se pudo enviar emails de confirmación', err)
+                await sendMail({ to: order.contact.email, subject: '¡Gracias por tu pago!', html: clientHtml, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
               }
+              await serverClient.patch(order._id).set({ 'notifications.paidEmailsSentAt': new Date().toISOString(), 'notifications.paidEmailsBy': 'sync' }).commit()
+              console.log('[orders/sync][mail-backup] marked sent')
+            } else if (order && order._id && !already?.sent) {
+              // Hay lock vigente; informar nota para trazabilidad
+              return NextResponse.json({ ok: true, status, note: 'mail-skipped-lock-active' })
             }
+          } catch (e) {
+            console.error('[orders/sync][mail-backup-2] No se pudo enviar/registrar notificaciones', e)
           }
         }
       } catch (err) {

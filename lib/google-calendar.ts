@@ -32,6 +32,42 @@ export async function createCalendarEvent(input: CalendarEventInput, dedupeKey?:
   const auth = getOAuth2Client()
   const calendar = google.calendar({ version: 'v3', auth })
   const calendarId = getEnv('GOOGLE_CALENDAR_ID', 'primary')
+  const tz = input.start.timeZone
+
+  function timingDiffers(existing: any) {
+    try {
+      const exStart = existing?.start?.dateTime
+      const exEnd = existing?.end?.dateTime
+      const exTzStart = existing?.start?.timeZone
+      const exTzEnd = existing?.end?.timeZone
+      const sameStart = exStart === input.start.dateTime && (exTzStart || tz) === tz
+      const sameEnd = exEnd === input.end.dateTime && (exTzEnd || tz) === tz
+      return !(sameStart && sameEnd)
+    } catch { return true }
+  }
+
+  async function patchIfNeeded(eventId: string, existing?: any) {
+    try {
+      const shouldPatch = !existing || timingDiffers(existing)
+      if (!shouldPatch) return existing
+      const res = await calendar.events.patch({
+        calendarId,
+        eventId,
+        requestBody: {
+          summary: input.summary,
+          description: input.description,
+          location: input.location,
+          start: input.start,
+          end: input.end,
+          attendees: input.attendees,
+        },
+      })
+      return res.data
+    } catch (e) {
+      // Si falla el patch, devolver el existente para no romper el flujo
+      return existing || null
+    }
+  }
   // Si hay dedupeKey, generar un ID determinista y buscar por ID primero
   let deterministicId: string | undefined
   if (dedupeKey) {
@@ -56,7 +92,10 @@ export async function createCalendarEvent(input: CalendarEventInput, dedupeKey?:
     deterministicId = `e${out}`
     try {
       const got = await calendar.events.get({ calendarId, eventId: deterministicId })
-      if (got.data?.id) return got.data
+      if (got.data?.id) {
+        const updated = await patchIfNeeded(deterministicId, got.data)
+        return updated
+      }
     } catch (err: any) {
       const code = err?.code || err?.response?.status
       if (code && Number(code) !== 404) {
@@ -75,7 +114,10 @@ export async function createCalendarEvent(input: CalendarEventInput, dedupeKey?:
       orderBy: 'startTime'
     })
     const existing = list.data.items?.[0]
-    if (existing) return existing
+    if (existing) {
+      const updated = await patchIfNeeded(existing.id as string, existing)
+      return updated
+    }
   }
   const res = await calendar.events.insert({
     calendarId,
@@ -135,13 +177,41 @@ export async function getCalendarEventById(eventId: string) {
 export function buildOrderEventPayload(order: any) {
   const tz = process.env.GOOGLE_CALENDAR_TZ || 'Europe/Paris'
   const date = order?.service?.date // YYYY-MM-DD
-  const time = order?.service?.time || '00:00'
+  let time = order?.service?.time || '00:00'
+  // Normalizar hora a 24h (acepta '2:50 pm', '02:50 PM', etc.)
+  try {
+    const raw = String(time).trim()
+    const m = raw.match(/^\s*(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?\s*$/)
+    if (m) {
+      let hh = parseInt(m[1], 10)
+      const mm = parseInt(m[2], 10)
+      const mer = m[3]?.toLowerCase()
+      if (mer === 'pm' && hh < 12) hh += 12
+      if (mer === 'am' && hh === 12) hh = 0
+      if (hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) {
+        time = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+      }
+    }
+  } catch {}
   const startLocal = `${date}T${time}:00`
   // Duración por defecto: 1.5h para traslados, usar horas del tour si está
   const hours = order?.service?.selectedPricingOption?.hours || (order?.service?.type === 'tour' ? 3 : 1.5)
-  const endDate = new Date(`${startLocal}`)
-  const endLocal = new Date(endDate.getTime() + hours * 60 * 60 * 1000)
-  const endStr = `${endLocal.getFullYear()}-${String(endLocal.getMonth() + 1).padStart(2, '0')}-${String(endLocal.getDate()).padStart(2, '0')}T${String(endLocal.getHours()).padStart(2, '0')}:${String(endLocal.getMinutes()).padStart(2, '0')}:00`
+  // Calcular end como aritmética local (evita desfases por TZ del servidor)
+  const [y, m, d] = (date || '1970-01-01').split('-').map((v: string) => parseInt(v, 10))
+  const [hh, mm] = (time || '00:00').split(':').map((v: string) => parseInt(v, 10))
+  const addMinutes = Math.round(Number(hours) * 60)
+  let endMinutesTotal = hh * 60 + mm + addMinutes
+  let endDayOffset = Math.floor(endMinutesTotal / (24 * 60))
+  endMinutesTotal = endMinutesTotal % (24 * 60)
+  let endH = Math.floor(endMinutesTotal / 60)
+  let endM = endMinutesTotal % 60
+  // Avanzar la fecha en endDayOffset días
+  const endDateObj = new Date(Date.UTC(y, (m || 1) - 1, d || 1))
+  endDateObj.setUTCDate(endDateObj.getUTCDate() + endDayOffset)
+  const endY = endDateObj.getUTCFullYear()
+  const endMo = String(endDateObj.getUTCMonth() + 1).padStart(2, '0')
+  const endD = String(endDateObj.getUTCDate()).padStart(2, '0')
+  const endStr = `${endY}-${endMo}-${endD}T${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`
 
   const lines: string[] = []
   lines.push(`Tipo: ${order?.service?.type || '—'}`)

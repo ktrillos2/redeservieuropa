@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 export default function PaymentPage() {
   const [bookingData, setBookingData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [payFullNow, setPayFullNow] = useState(false)
   // Mapa de errores por campo para resaltar inputs faltantes
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   /*
@@ -164,6 +165,12 @@ export default function PaymentPage() {
       bookingData?.routeOption !== undefined ||
       (bookingData?.tourId && typeof bookingData.tourId === 'string'),
   )
+  const isEvent = Boolean(bookingData?.isEvent)
+  const isTourBooking = !isEvent && Boolean(
+    bookingData?.tourHours !== undefined ||
+    bookingData?.routeOption !== undefined ||
+    (bookingData?.tourId && typeof bookingData.tourId === 'string')
+  )
   // Si tenemos una ruta y pasajeros, recalcular base con la nueva lógica
   let computedBase = Number(bookingData?.basePrice || 0)
   try {
@@ -182,9 +189,11 @@ export default function PaymentPage() {
     if (typeof baseCalc === "number") computedBase = baseCalc
   } catch {}
   const total = Number(bookingData?.totalPrice || computedBase || 0)
-  const deposit = paymentMethod === "cash" ? 5 : 0
+  const depositPercent = isEvent ? 0.2 : (isTourBooking ? 0.2 : 0.1)
+  const depositPercentInt = Math.round(depositPercent * 100)
+  const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)))
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)))
-  const amountNow = isQuick ? 5 : (paymentMethod === "cash" ? deposit : total)
+  const amountNow = payFullNow ? total : deposit
   const clientHour = (() => { try { return new Date().getHours() } catch { return undefined } })()
 
   // Etiquetas seguras para servicio/route en quick
@@ -564,16 +573,16 @@ export default function PaymentPage() {
                       {isQuick ? (
                         <>
                           <div className="flex justify-between text-sm">
-                            <span>Pago de confirmación ahora</span>
-                            <span>5€</span>
+                            <span>Depósito para confirmar</span>
+                            <span>{deposit}€</span>
                           </div>
                           {total > 0 && (
                             <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Importe estimado del servicio</span>
+                              <span>Importe total estimado del servicio</span>
                               <span>{total}€</span>
                             </div>
                           )}
-                          <p className="text-xs text-muted-foreground">Después del pago completarás los datos faltantes para finalizar tu reserva.</p>
+                          <p className="text-xs text-muted-foreground">El resto del servicio ({remaining}€) se paga el día del servicio.</p>
                         </>
                       ) : bookingData.isEvent ? (
                         <>
@@ -584,6 +593,14 @@ export default function PaymentPage() {
                           <div className="flex justify-between text-sm">
                             <span>Cupos</span>
                             <span>x{bookingData.passengers || 1}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Depósito (20%)</span>
+                            <span>{deposit}€</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Saldo el día del servicio</span>
+                            <span>{remaining}€</span>
                           </div>
                         </>
                       ) : (["tour-paris", "tour-nocturno"].includes(bookingData.tourId || "")) ? (
@@ -697,12 +714,29 @@ export default function PaymentPage() {
                               <span>+10€</span>
                             </div>
                           )}
+                          {/* Depósito/Saldo para traslados */}
+                          <div className="flex justify-between text-sm">
+                            <span>Depósito ({Math.round(depositPercent*100)}%)</span>
+                            <span>{deposit}€</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Saldo el día del servicio</span>
+                            <span>{remaining}€</span>
+                          </div>
                         </>
                       ) : (
                         <>
                           <div className="flex justify-between text-sm">
                             <span>Subtotal</span>
                             <span>{bookingData.totalPrice}€</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Depósito ({Math.round(depositPercent*100)}%)</span>
+                            <span>{deposit}€</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Saldo el día del servicio</span>
+                            <span>{remaining}€</span>
                           </div>
                         </>
                       )}
@@ -719,9 +753,17 @@ export default function PaymentPage() {
                         </div>
                       )}
                       <Separator />
-                      <div className="flex justify-between font-bold text-lg">
-                        <span>Total a Pagar</span>
-                        <span className="text-accent animate-pulse">{amountNow}€</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={payFullNow} onChange={(e) => setPayFullNow(e.target.checked)} />
+                          ¿Deseas pagar todo ahora?
+                        </label>
+                        <div className="flex items-baseline gap-3 font-bold text-lg">
+                          <span>
+                            Total a pagar ahora {payFullNow ? '(100%)' : `(depósito ${depositPercentInt}%)`}
+                          </span>
+                          <span className="text-accent animate-pulse">{amountNow}€</span>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -816,8 +858,8 @@ export default function PaymentPage() {
                       ) : paymentMethod === "cash" ? (
                         <>
                           <div className="flex justify-between">
-                            <span>Confirmar tu reserva (depósito fijo)</span>
-                            <span>5€</span>
+                            <span>Confirmar tu reserva (depósito)</span>
+                            <span>{deposit}€</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Valor a pagar el día del servicio</span>
@@ -832,18 +874,28 @@ export default function PaymentPage() {
                               ¿Cómo se paga? El depósito se abona ahora de forma segura. El resto ({remaining}€) se paga el día del
                               servicio en efectivo, tarjeta o PayPal según prefieras.
                             </p>
-                            <p>
-                              Importe del depósito: 5€ (fijo).
-                            </p>
+                            {isTourBooking ? (
+                              <p>Importe del depósito: 20% del valor del tour ({deposit}€).</p>
+                            ) : (
+                              <p>Importe del depósito: 5€ (fijo).</p>
+                            )}
                           </div>
                         </>
                       ) : (
                         <>
                           <div className="flex justify-between">
-                            <span>Total a pagar ahora</span>
-                            <span>{total}€</span>
+                            <span>Total a pagar ahora {payFullNow ? '(100%)' : `(depósito ${depositPercentInt}%)`}</span>
+                            <span>{amountNow}€</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">Puedes pagar con tarjeta o PayPal de forma segura.</p>
+                          {!payFullNow && (
+                            <div className="flex justify-between">
+                              <span>Saldo el día del servicio</span>
+                              <span>{remaining}€</span>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Puedes pagar con tarjeta o PayPal de forma segura. {payFullNow ? 'Se cobrará el total ahora.' : `Si prefieres, marca "¿Deseas pagar todo ahora?" para abonar el 100%. En caso contrario, se cobrará el depósito del ${depositPercentInt}% y el resto se paga el día del servicio.`}
+                          </p>
                           <p className="text-[11px] text-muted-foreground mt-1">
                             * Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.
                             {typeof clientHour === 'number' && (
@@ -955,7 +1007,7 @@ export default function PaymentPage() {
                           doPay()
                         }}
                       >
-            {isQuick ? "Pagar 5€ y confirmar" : "Pagar ahora"}
+            {payFullNow ? `Pagar todo (${total}€)` : `Pagar depósito ${deposit}€`}
                       </Button>
                       {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
 

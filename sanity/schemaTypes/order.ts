@@ -33,13 +33,14 @@ export default defineType({
       name: 'payment',
       title: 'Pago',
       type: 'object',
-      options: { collapsible: true, collapsed: false },
+      options: { collapsible: true, collapsed: true },
       fields: [
         defineField({ name: 'provider', title: 'Proveedor', type: 'string' }),
         defineField({ name: 'paymentId', title: 'ID de pago', type: 'string' }),
         defineField({ name: 'status', title: 'Estado de pago', type: 'string' }),
         defineField({ name: 'amount', title: 'Importe', type: 'number' }),
         defineField({ name: 'currency', title: 'Moneda', type: 'string', initialValue: 'EUR' }),
+        defineField({ name: 'requestedMethod', title: 'Método solicitado (web)', type: 'string', description: 'Preferencia elegida en la web (no forzada en Mollie).' }),
         defineField({ name: 'method', title: 'Método', type: 'string' }),
         defineField({ name: 'createdAt', title: 'Creado en', type: 'datetime' }),
         defineField({ name: 'paidAt', title: 'Pagado en', type: 'datetime' }),
@@ -50,7 +51,7 @@ export default defineType({
       name: 'contact',
       title: 'Contacto',
       type: 'object',
-      options: { collapsible: true, collapsed: false },
+      options: { collapsible: true, collapsed: true },
       fields: [
         defineField({ name: 'name', title: 'Nombre', type: 'string' }),
         defineField({ name: 'email', title: 'Email', type: 'string' }),
@@ -61,7 +62,7 @@ export default defineType({
       name: 'service',
       title: 'Servicio',
       type: 'object',
-      options: { collapsible: true, collapsed: false },
+      options: { collapsible: true, collapsed: true },
       fields: [
         defineField({ name: 'type', title: 'Tipo', type: 'string', description: 'traslado | tour | evento' }),
         defineField({ name: 'title', title: 'Título/Label', type: 'string' }),
@@ -76,11 +77,17 @@ export default defineType({
         defineField({ name: 'isNightTime', title: 'Recargo nocturno', type: 'boolean' }),
         defineField({ name: 'extraLuggage', title: 'Equipaje extra', type: 'boolean' }),
         defineField({ name: 'totalPrice', title: 'Total calculado', type: 'number' }),
-        defineField({ name: 'selectedPricingOption', title: 'Opción de precio', type: 'object', fields: [
-          defineField({ name: 'label', title: 'Etiqueta', type: 'string' }),
-          defineField({ name: 'price', title: 'Precio', type: 'number' }),
-          defineField({ name: 'hours', title: 'Horas', type: 'number' }),
-        ]}),
+        defineField({
+          name: 'selectedPricingOption',
+          title: 'Opción de precio',
+          type: 'object',
+          options: { collapsible: true, collapsed: true },
+          fields: [
+            defineField({ name: 'label', title: 'Etiqueta', type: 'string' }),
+            defineField({ name: 'price', title: 'Precio', type: 'number' }),
+            defineField({ name: 'hours', title: 'Horas', type: 'number' }),
+          ]
+        }),
         defineField({ name: 'notes', title: 'Notas del cliente', type: 'text' }),
       ]
     }),
@@ -109,7 +116,18 @@ export default defineType({
     prepare({ title, status, amount, date, name }) {
       const who = title || name || 'Cliente'
       const amt = typeof amount === 'number' && Number.isFinite(amount) ? `€${amount.toFixed(2)}` : '€0.00'
-      const st = status || 'nuevo'
+      const st = (() => {
+        switch (status) {
+          case 'new': return 'nuevo'
+          case 'pending': return 'pendiente'
+          case 'paid': return 'pagado'
+          case 'processing': return 'en proceso'
+          case 'completed': return 'completado'
+          case 'cancelled': return 'cancelado'
+          case 'failed': return 'fallido'
+          default: return String(status || 'nuevo')
+        }
+      })()
       return {
         title: `${who} – ${amt} – ${st}`,
         subtitle: date ? new Date(date).toLocaleDateString() : undefined,

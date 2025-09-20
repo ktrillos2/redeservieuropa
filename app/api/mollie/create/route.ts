@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       source: (body?.metadata && body.metadata.source) || 'web',
       short: true,
     }
-    const methodFromBody: string | undefined = typeof body?.method === 'string' ? body.method : undefined
+  const methodFromBody: string | undefined = typeof body?.method === 'string' ? body.method : undefined
 
     if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
       return NextResponse.json({ error: 'Monto inválido' }, { status: 400 })
@@ -66,7 +66,9 @@ export async function POST(req: Request) {
           status: 'open',
           amount: amountNumber,
           currency: 'EUR',
-          // No establecer método aquí para no preseleccionar; se actualizará por webhook/sync
+          // Guardar preferencia elegida en la web (no forzada en Mollie)
+          requestedMethod: methodFromBody || undefined,
+          // No establecer método real aquí; se actualizará por webhook/sync
           createdAt: new Date().toISOString(),
           raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links })
   },

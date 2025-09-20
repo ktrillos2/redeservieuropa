@@ -9,7 +9,7 @@ type Order = {
   _id: string
   orderNumber?: string
   status?: string
-  payment?: { provider?: string; paymentId?: string; status?: string; amount?: number; currency?: string; method?: string; createdAt?: string; paidAt?: string }
+  payment?: { provider?: string; paymentId?: string; status?: string; amount?: number; currency?: string; method?: string; requestedMethod?: string; createdAt?: string; paidAt?: string }
   contact?: { name?: string; email?: string; phone?: string }
   service?: {
     type?: string; title?: string; date?: string; time?: string; passengers?: number;
@@ -78,7 +78,25 @@ export default function GraciasPage() {
     totalPrice: booking?.totalPrice, selectedPricingOption: booking?.selectedPricingOption, notes: booking?.specialRequests,
   } : null)
   const contact = o?.contact || (booking ? { name: booking?.contactName, email: booking?.contactEmail, phone: booking?.contactPhone } : null)
-  const payment = o?.payment || (paymentId ? { provider: 'mollie', paymentId, status, amount: booking?.totalPrice, currency: 'EUR', method: 'card' } : null)
+  const payment = o?.payment || (paymentId ? { provider: 'mollie', paymentId, status, amount: booking?.totalPrice, currency: 'EUR', method: undefined, requestedMethod: booking?.paymentMethod } : null)
+
+  const labelRequested = (m?: string | null) => {
+    switch ((m || '').toLowerCase()) {
+      case 'card': return 'Tarjeta'
+      case 'paypal': return 'PayPal'
+      case 'cash': return 'Efectivo'
+      default: return m || '—'
+    }
+  }
+  const labelMollie = (m?: string | null) => {
+    switch ((m || '').toLowerCase()) {
+      case 'creditcard': return 'Tarjeta (Mollie)'
+      case 'paypal': return 'PayPal (Mollie)'
+      case 'bancontact': return 'Bancontact (Mollie)'
+      case 'ideal': return 'iDEAL (Mollie)'
+      default: return m || '—'
+    }
+  }
 
   return (
     <main className="min-h-screen">
@@ -101,6 +119,8 @@ export default function GraciasPage() {
                       <div><span className="text-muted-foreground">Estado:</span> {payment.status || status || '—'}</div>
                       <div><span className="text-muted-foreground">Importe:</span> {typeof payment.amount === 'number' ? `${payment.amount} €` : '—'}</div>
                       <div><span className="text-muted-foreground">Moneda:</span> {payment.currency || 'EUR'}</div>
+                      <div><span className="text-muted-foreground">Método solicitado:</span> {labelRequested(payment.requestedMethod)}</div>
+                      <div><span className="text-muted-foreground">Método final (Mollie):</span> {labelMollie(payment.method)}</div>
                       {payment.paymentId && <div className="sm:col-span-2"><span className="text-muted-foreground">Referencia:</span> {payment.paymentId}</div>}
                     </div>
                   </div>

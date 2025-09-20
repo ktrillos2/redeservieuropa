@@ -40,8 +40,8 @@ export async function createCalendarEvent(input: CalendarEventInput, dedupeKey?:
       const exEnd = existing?.end?.dateTime
       const exTzStart = existing?.start?.timeZone
       const exTzEnd = existing?.end?.timeZone
-      const sameStart = exStart === input.start.dateTime && (exTzStart || tz) === tz
-      const sameEnd = exEnd === input.end.dateTime && (exTzEnd || tz) === tz
+      const sameStart = exStart === input.start.dateTime && (!input.start.timeZone || (exTzStart || tz) === input.start.timeZone)
+      const sameEnd = exEnd === input.end.dateTime && (!input.end.timeZone || (exTzEnd || tz) === input.end.timeZone)
       return !(sameStart && sameEnd)
     } catch { return true }
   }
@@ -176,6 +176,7 @@ export async function getCalendarEventById(eventId: string) {
 
 export function buildOrderEventPayload(order: any) {
   const tz = process.env.GOOGLE_CALENDAR_TZ || 'Europe/Paris'
+  const useDefaultTz = String(process.env.GOOGLE_CALENDAR_USE_DEFAULT_TZ || '').trim() === '1'
   const date = order?.service?.date // YYYY-MM-DD
   let time = order?.service?.time || '00:00'
   // Normalizar hora a 24h (acepta '2:50 pm', '02:50 PM', etc.)
@@ -212,6 +213,7 @@ export function buildOrderEventPayload(order: any) {
   const endMo = String(endDateObj.getUTCMonth() + 1).padStart(2, '0')
   const endD = String(endDateObj.getUTCDate()).padStart(2, '0')
   const endStr = `${endY}-${endMo}-${endD}T${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`
+  console.log('[calendar][buildPayload]', { tz, useDefaultTz, date, time, startLocal, endStr })
 
   const lines: string[] = []
   lines.push(`Tipo: ${order?.service?.type || '—'}`)
@@ -232,6 +234,18 @@ export function buildOrderEventPayload(order: any) {
 
   const attendees = [] as Array<{ email: string; displayName?: string }>
   if (order?.contact?.email) attendees.push({ email: order.contact.email, displayName: order?.contact?.name })
+
+  // Si useDefaultTz=1, omitimos timeZone para que Google use la zona horaria por defecto del calendario.
+  if (useDefaultTz) {
+    return {
+      summary,
+      description,
+      start: { dateTime: startLocal, timeZone: undefined as unknown as string },
+      end: { dateTime: endStr, timeZone: undefined as unknown as string },
+      location: order?.service?.pickupAddress ? `${order.service.pickupAddress}${order?.service?.dropoffAddress ? ` → ${order.service.dropoffAddress}` : ''}` : undefined,
+      attendees,
+    } as unknown as CalendarEventInput
+  }
 
   return {
     summary,

@@ -43,10 +43,24 @@ export function Contact() {
   }, [])
 
   const [submitted, setSubmitted] = useState(false)
-  const onSubmit = (values: ContactFormValues) => {
-    console.log('[contact] submit', values)
-    setSubmitted(true)
-    form.reset()
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const onSubmit = async (values: ContactFormValues) => {
+    setErrorMsg(null)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || `Error ${res.status}`)
+      }
+      setSubmitted(true)
+      form.reset()
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'No se pudo enviar el mensaje. Inténtalo nuevamente.')
+    }
   }
 
   return (
@@ -181,6 +195,9 @@ export function Contact() {
                 >
                   {form.formState.isSubmitting ? 'Enviando...' : 'Enviar Mensaje'}
                 </Button>
+                {errorMsg && (
+                  <p className="text-center text-sm text-destructive">{errorMsg}</p>
+                )}
                 {submitted && !Object.keys(form.formState.errors).length && (
                   <p className="text-center text-sm text-green-600">Enviado correctamente.</p>
                 )}

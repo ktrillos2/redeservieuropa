@@ -47,6 +47,17 @@ export default defineType({
   defineField({ name: 'raw', title: 'Datos sin procesar (JSON)', type: 'text', rows: 6 }),
       ]
     }),
+    {
+      name: 'calendar',
+      title: 'Google Calendar',
+      type: 'object',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        { name: 'eventId', type: 'string', title: 'Event ID' },
+        { name: 'htmlLink', type: 'url', title: 'Event Link' },
+        { name: 'createdAt', type: 'datetime', title: 'Creado en' },
+      ],
+    },
     defineField({
       name: 'contact',
       title: 'Contacto',

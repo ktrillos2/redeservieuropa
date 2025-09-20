@@ -47,6 +47,9 @@ export async function POST(req: Request) {
         createdAt: new Date().toISOString(),
       },
     })
+    if (!webhookUrlFromEnv && webhookToken) {
+      console.log('[Mollie][create] Webhook interno activado:', `${siteUrl}/api/mollie/webhook?token=***`)
+    }
 
     const checkoutUrl = (payment as any)?._links?.checkout?.href
     if (!checkoutUrl) {

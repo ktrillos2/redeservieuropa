@@ -3,17 +3,35 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 import { getMollieClient } from '@/app/api/mollie/client'
 import { serverClient } from '@/sanity/lib/server-client'
+import { sendMail } from '@/lib/mailer'
+import { buildOrderEventPayload, createCalendarEvent, getCalendarEventById } from '@/lib/google-calendar'
 
 export async function POST(req: Request) {
   try {
     const { paymentId } = await req.json().catch(() => ({})) as { paymentId?: string }
     if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 })
+    const url = new URL(req.url)
+    const token = url.searchParams.get('token') || undefined
+  const bypass = url.searchParams.get('bypass') === '1'
+    const found = await serverClient.fetch<{ _id: string | null; payment?: { amount?: number; paidAt?: string | null; method?: string | null; requestedMethod?: string | null; currency?: string; status?: string | null }; contact?: { name?: string; email?: string; phone?: string }; service?: { type?: string; title?: string; date?: string; time?: string; totalPrice?: number; pickupAddress?: string; dropoffAddress?: string; flightNumber?: string; selectedPricingOption?: { hours?: number } }; calendar?: { eventId?: string | null; htmlLink?: string | null }; status?: string }>(`*[_type == "order" && payment.paymentId == $pid][0]{ _id, status, payment{amount,paidAt,method,requestedMethod,currency,status}, contact{name,email,phone}, service{type,title,date,time,totalPrice,pickupAddress,dropoffAddress,flightNumber,selectedPricingOption{hours}}, calendar{eventId,htmlLink} }`, { pid: paymentId })
     const mollie = getMollieClient()
-    const payment = await mollie.payments.get(paymentId)
-  const status = payment.status
-  const chosenMethod = (payment as any)?.method
-
-    const found = await serverClient.fetch<{ _id: string | null; payment?: { amount?: number } }>(`*[_type == "order" && payment.paymentId == $pid][0]{ _id, payment{amount} }`, { pid: paymentId })
+    let payment: any | undefined
+    let status: string = 'pending'
+    let chosenMethod: string | undefined
+    try {
+      payment = await mollie.payments.get(paymentId)
+      status = payment.status
+      chosenMethod = (payment as any)?.method
+    } catch (err) {
+      // Fallback de prueba: permitido solo si el token de test coincide y bypass=1 está presente
+      const expected = process.env.MAIL_TEST_TOKEN
+      if (expected && token === expected && bypass) {
+        status = (found?.payment?.status as any) || found?.status || 'pending'
+        chosenMethod = found?.payment?.method || undefined
+      } else {
+        throw err
+      }
+    }
     if (found && found._id) {
       const patch: any = {
         'payment.provider': 'mollie',
@@ -21,17 +39,98 @@ export async function POST(req: Request) {
         'payment.status': status,
         'payment.paidAt': status === 'paid' ? new Date().toISOString() : undefined,
         // Si no hay amount guardado aún, usar el de Mollie
-        ...(typeof found.payment?.amount !== 'number' && payment.amount && payment.amount.value ? { 'payment.amount': Number(payment.amount.value) } : {}),
+        ...(typeof found.payment?.amount !== 'number' && payment && payment.amount && payment.amount.value ? { 'payment.amount': Number(payment.amount.value) } : {}),
         ...(chosenMethod ? { 'payment.method': String(chosenMethod) } : {}),
         status: status === 'paid' ? 'paid' : (status === 'failed' || status === 'canceled' || status === 'expired' ? 'failed' : 'pending'),
         'metadata.updatedAt': new Date().toISOString(),
       }
       await serverClient.patch(found._id).set(patch).commit()
+      // Ya no enviamos correos de estado desde aquí para evitar confusión
+
+      // Crear evento si está pagado y no existe aún (idempotente por paymentId) y, al crearse por primera vez, disparar emails de confirmación
+      try {
+        if (status === 'paid') {
+          const order = await serverClient.fetch<{ _id: string | null; status?: string; calendar?: { eventId?: string | null; htmlLink?: string | null }; contact?: any; service?: any }>(`*[_type == "order" && payment.paymentId == $pid][0]{ _id, status, calendar{eventId,htmlLink}, contact, service }`, { pid: paymentId })
+          if (order && order._id && !order.calendar?.eventId) {
+            const payload = buildOrderEventPayload(order)
+            const evt = await createCalendarEvent(payload, paymentId)
+            if (evt?.id) {
+              await serverClient.patch(order._id).set({
+                calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
+              }).commit()
+              // Enviar emails de confirmación solo en esta primera creación (evitar duplicados con webhook)
+              try {
+                const { renderAdminNewServiceEmail, renderClientThanksEmail } = await import('@/lib/email-templates')
+                // Admin: nuevo servicio (solo a Gmail operativo)
+                const adminHtml = renderAdminNewServiceEmail({
+                  mollieId: paymentId,
+                  amount: (payment.amount as any)?.value || found.payment?.amount,
+                  currency: found.payment?.currency || 'EUR',
+                  method: (payment as any)?.method || found.payment?.method || null,
+                  contact: order.contact || {},
+                  service: order.service || {},
+                })
+                await sendMail({ to: 'redeservieuropa@gmail.com', bcc: 'info@redeservieuropa.com', subject: `Nuevo ${order.service?.type || 'servicio'} – ${order.service?.title || 'Reserva'}`, html: adminHtml, replyTo: order.contact?.email || undefined, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
+                // Cliente: gracias
+                if (order.contact?.email) {
+                  const clientHtml = renderClientThanksEmail({
+                    mollieId: paymentId,
+                    amount: (payment.amount as any)?.value || found.payment?.amount,
+                    currency: found.payment?.currency || 'EUR',
+                    contact: order.contact || {},
+                    service: order.service || {},
+                  })
+                  await sendMail({ to: order.contact.email, subject: '¡Gracias por tu pago!', html: clientHtml, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
+                }
+              } catch (err) {
+                console.error('[orders/sync][mail-paid] No se pudo enviar emails de confirmación', err)
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[orders/sync][calendar] No se pudo crear el evento', err)
+      }
     }
 
     return NextResponse.json({ ok: true, status })
   } catch (e: any) {
     console.error('[Orders][sync] Error', e)
+    return NextResponse.json({ error: e?.message || 'Error' }, { status: 500 })
+  }
+}
+
+// Crear evento cuando esté pagado y no exista aún
+export async function PUT(req: Request) {
+  try {
+    const { paymentId } = await req.json().catch(() => ({})) as { paymentId?: string }
+    if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 })
+    const order = await serverClient.fetch<{ _id: string | null; status?: string; calendar?: { eventId?: string | null }; contact?: any; service?: any }>(`*[_type == "order" && payment.paymentId == $pid][0]{ _id, status, calendar{eventId}, contact, service }`, { pid: paymentId })
+    if (order && order._id && order.status === 'paid') {
+      let exists = false
+      if (order.calendar?.eventId) {
+        const evt = await getCalendarEventById(order.calendar.eventId)
+        exists = Boolean(evt?.id)
+      }
+      if (!exists) {
+        const payload = buildOrderEventPayload(order)
+        const evt = await createCalendarEvent(payload, paymentId)
+        if (evt?.id) {
+          await serverClient.patch(order._id).set({
+            calendar: {
+              eventId: evt.id,
+              htmlLink: evt.htmlLink,
+              createdAt: new Date().toISOString(),
+            },
+          }).commit()
+        }
+        return NextResponse.json({ ok: true, created: Boolean(evt?.id), event: evt || null })
+      }
+  return NextResponse.json({ ok: true, created: false, exists: true, event: { id: order.calendar?.eventId || null, htmlLink: (order as any)?.calendar?.htmlLink || null } })
+    }
+    return NextResponse.json({ ok: true, created: false, exists: false })
+  } catch (e: any) {
+    console.error('[Orders][sync PUT] Error', e)
     return NextResponse.json({ error: e?.message || 'Error' }, { status: 500 })
   }
 }

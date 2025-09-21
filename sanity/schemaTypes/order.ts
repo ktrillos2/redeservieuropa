@@ -6,6 +6,13 @@ export default defineType({
   type: 'document',
   fields: [
     defineField({
+      name: 'whatsappTemplateKey',
+      title: 'Plantilla WhatsApp (opcional)',
+      type: 'reference',
+      to: [{ type: 'whatsappTemplate' }],
+      description: 'Selecciona una plantilla para generar un enlace rápido de WhatsApp.'
+    }),
+    defineField({
       name: 'orderNumber',
       title: 'Número de pedido',
       type: 'string',

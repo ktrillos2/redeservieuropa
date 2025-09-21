@@ -1,0 +1,2 @@
+/* Oculta header y footer dentro de la ruta /mensajes */
+header, footer { display: none !important; }

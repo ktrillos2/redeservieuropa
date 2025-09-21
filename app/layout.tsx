@@ -6,6 +6,7 @@ import { ScrollToTopButton } from "@/components/scroll-to-top-button"
 import { SanityLive } from '@/sanity/lib/live'
 import { AnimationGuardian } from "@/components/animation-guardian"
 import "./globals.css"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const jost = Jost({
   subsets: ["latin"],
@@ -45,7 +46,8 @@ export default function RootLayout({
   <html lang="es" className={`${jost.variable} ${playfair.variable} antialiased`}>
       <head />
       <body className="font-sans">
-        <Suspense fallback={null}>{children}</Suspense>
+      
+        <Suspense fallback={null}>{children}<SpeedInsights /></Suspense>
   <ScrollToTopButton />
   <SanityLive />
         <AnimationGuardian />

@@ -12,6 +12,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
 import { calcBaseTransferPrice, isNightTime as pricingIsNightTime } from "@/lib/pricing"
+import { formatPhonePretty, ensureLeadingPlus } from "@/lib/utils"
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 
@@ -33,7 +34,17 @@ export default function PaymentPage() {
   useEffect(() => {
     const data = localStorage.getItem("bookingData")
     if (data) {
-      setBookingData(JSON.parse(data))
+      try {
+        const parsed = JSON.parse(data)
+        if (parsed?.contactPhone) {
+          const withPlus = ensureLeadingPlus(String(parsed.contactPhone))
+          parsed.contactPhone = formatPhonePretty(withPlus)
+          localStorage.setItem("bookingData", JSON.stringify(parsed))
+        }
+        setBookingData(parsed)
+      } catch {
+        setBookingData(JSON.parse(data))
+      }
     }
     setIsLoading(false)
   }, [])
@@ -134,6 +145,8 @@ export default function PaymentPage() {
       return computed
     })
   }
+
+  
 
   if (isLoading) {
     return (
@@ -488,7 +501,8 @@ export default function PaymentPage() {
                               data-field="contactPhone"
                               className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
                               value={bookingData.contactPhone || ''}
-                              onChange={(e) => updateBookingField('contactPhone', e.target.value)}
+                              onChange={(e) => updateBookingField('contactPhone', ensureLeadingPlus(e.target.value))}
+                              onBlur={(e) => updateBookingField('contactPhone', formatPhonePretty(ensureLeadingPlus(e.target.value)))}
                             />
                           </div>
                           <div className="space-y-2">
@@ -540,7 +554,8 @@ export default function PaymentPage() {
                               data-field="contactPhone"
                               className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
                               value={bookingData.contactPhone || ''}
-                              onChange={(e) => updateBookingField('contactPhone', e.target.value)}
+                              onChange={(e) => updateBookingField('contactPhone', ensureLeadingPlus(e.target.value))}
+                              onBlur={(e) => updateBookingField('contactPhone', formatPhonePretty(ensureLeadingPlus(e.target.value)))}
                             />
                           </div>
                           <div className="space-y-2">

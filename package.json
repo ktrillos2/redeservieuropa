@@ -19,7 +19,8 @@
     "seed:sanity:testimonials-section": "tsx scripts/seed-testimonials-section.ts",
     "seed:sanity:contact-section": "tsx scripts/seed-contact-section.ts",
     "seed:sanity:footer-section": "tsx scripts/seed-footer-section.ts",
-    "seed:sanity:orders": "tsx scripts/seed-orders.ts"
+    "seed:sanity:orders": "tsx scripts/seed-orders.ts",
+    "hash:pwd": "tsx scripts/gen-bcrypt-hash.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -55,7 +56,9 @@
     "@sanity/image-url": "^1.2.0",
     "@sanity/vision": "^4.8.1",
     "@vercel/analytics": "1.3.1",
+    "@vercel/speed-insights": "^1.2.0",
     "autoprefixer": "^10.4.20",
+    "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",

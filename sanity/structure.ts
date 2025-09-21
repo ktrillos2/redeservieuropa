@@ -101,7 +101,27 @@ export const structure: StructureResolver = (S) =>
           S.documentTypeList('order')
             .title('Pedidos')
         ),
+      // Plantillas de WhatsApp
+      S.listItem()
+        .title('WhatsApp – Plantillas')
+        .id('whatsappTemplates')
+        .child(
+          S.documentTypeList('whatsappTemplate')
+            .title('Plantillas de WhatsApp')
+        ),
+      // Usuarios para Mensajes
+      S.listItem()
+        .title('Usuarios – Mensajes')
+        .id('messageUsers')
+        .child(
+          S.documentTypeList('messageUser')
+            .title('Usuarios de Mensajes')
+        ),
       S.divider(),
       // Fallback: other document lists (excluir singletons para evitar IDs duplicados)
-    ...S.documentTypeListItems().filter((item) => !['generalInfo','header','toursSection','testimonialsSection','contactSection','footerSection','hero','transfersSectionContent','order'].includes(item.getId() || '')),
+    ...S.documentTypeListItems().filter((item) => ![
+      'generalInfo','header','toursSection','testimonialsSection','contactSection','footerSection','hero','transfersSectionContent','order',
+      // Evitar duplicados: ya tenemos entradas dedicadas para estos
+      'whatsappTemplate','messageUser'
+    ].includes(item.getId() || '')),
     ])

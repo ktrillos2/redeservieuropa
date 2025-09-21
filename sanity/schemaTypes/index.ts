@@ -11,6 +11,8 @@ import contactSection from './contactSection'
 import footerSection, { footerColumn } from './footerSection'
 import transfersSectionContent from './transfersSection'
 import order from './order'
+import whatsappTemplate from './whatsappTemplate'
+import messageUser from './messageUser'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
@@ -31,6 +33,8 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     contactSection,
     footerColumn,
     footerSection,
-    order,
+     order,
+     whatsappTemplate,
+     messageUser,
   ],
 }

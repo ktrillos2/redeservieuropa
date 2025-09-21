@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { formatPhonePretty, ensureLeadingPlus } from "@/lib/utils"
 import { PortableText } from "@portabletext/react"
 import { useRouter } from "next/navigation"
 import { tourData } from "@/lib/tours"
@@ -587,7 +588,8 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                           data-field="contactPhone"
                           placeholder="+33 1 23 45 67 89"
                           value={contactPhone}
-                          onChange={(e) => { setContactPhone(e.target.value); if (fieldErrors.contactPhone) setFieldErrors(f => { const c={...f}; delete c.contactPhone; return c }) }}
+                          onChange={(e) => { setContactPhone(ensureLeadingPlus(e.target.value)); if (fieldErrors.contactPhone) setFieldErrors(f => { const c={...f}; delete c.contactPhone; return c }) }}
+                          onBlur={(e) => setContactPhone(formatPhonePretty(ensureLeadingPlus(e.target.value)))}
                           className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
                         />
                         {fieldErrors.contactPhone && <p className="text-xs text-destructive">{fieldErrors.contactPhone}</p>}
@@ -1457,7 +1459,8 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                         data-field="contactPhone"
                         placeholder="+33 1 23 45 67 89"
                         value={contactPhone}
-                        onChange={(e) => { setContactPhone(e.target.value); if (fieldErrors.contactPhone) setFieldErrors(f => { const c={...f}; delete c.contactPhone; return c }) }}
+                        onChange={(e) => { setContactPhone(ensureLeadingPlus(e.target.value)); if (fieldErrors.contactPhone) setFieldErrors(f => { const c={...f}; delete c.contactPhone; return c }) }}
+                        onBlur={(e) => setContactPhone(formatPhonePretty(ensureLeadingPlus(e.target.value)))}
                         className={(fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive ' : '') + 'transform focus:scale-105 transition-all duration-300'}
                       />
                       {fieldErrors.contactPhone && <p className="text-xs text-destructive">{fieldErrors.contactPhone}</p>}

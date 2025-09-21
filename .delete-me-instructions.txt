@@ -1,0 +1,1 @@
+If the deletion tool fails, please remove app/mensajes/order-row.tsx manually.

@@ -12,6 +12,7 @@ import {structureTool} from 'sanity/structure'
 import {apiVersion, dataset, projectId} from './sanity/env'
 import {schema} from './sanity/schemaTypes'
 import {structure} from './sanity/structure'
+import hashOnPublish from './sanity/actions/hashOnPublish'
 
 export default defineConfig({
   basePath: '/admin',
@@ -25,4 +26,13 @@ export default defineConfig({
     // https://www.sanity.io/docs/the-vision-plugin
     visionTool({defaultApiVersion: apiVersion}),
   ],
+  document: {
+    actions: (prev, ctx) => {
+      // Reemplaza Publish para messageUser
+      if (ctx.schemaType === 'messageUser') {
+        return prev.map((action) => (action.action === 'publish' ? hashOnPublish : action))
+      }
+      return prev
+    },
+  },
 })

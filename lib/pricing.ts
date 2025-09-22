@@ -38,6 +38,16 @@ export const routeTierPrices: Record<string, RouteTier> = {
   // París <-> Disneyland
   "paris->disneyland": { upTo4: 70, upTo5: 90, upTo6: 106, upTo7: 118, upTo8: 134 },
   "disneyland->paris": { upTo4: 70, upTo5: 90, upTo6: 106, upTo7: 118, upTo8: 134 },
+
+  // París <-> Versailles
+  "paris->versailles": { upTo4: 65, upTo5: 75, upTo6: 85, upTo7: 95, upTo8: 105 },
+  "versailles->paris": { upTo4: 65, upTo5: 75, upTo6: 85, upTo7: 95, upTo8: 105 },
+
+  // París/Orly <-> Parc Astérix (aprox.)
+  "paris->asterix": { upTo4: 70, upTo5: 90, upTo6: 110, upTo7: 130, upTo8: 150 },
+  "asterix->paris": { upTo4: 70, upTo5: 90, upTo6: 110, upTo7: 130, upTo8: 150 },
+  "orly->asterix": { upTo4: 70, upTo5: 90, upTo6: 110, upTo7: 130, upTo8: 150 },
+  "asterix->orly": { upTo4: 70, upTo5: 90, upTo6: 110, upTo7: 130, upTo8: 150 },
 }
 
 export const routeLabelMap: Record<string, string> = {
@@ -46,6 +56,8 @@ export const routeLabelMap: Record<string, string> = {
   beauvais: "Aeropuerto Beauvais",
   paris: "París Centro",
   disneyland: "Disneyland",
+  asterix: "Parc Astérix",
+  versailles: "Versalles",
 }
 
 export function calcBaseTransferPrice(from?: string, to?: string, pax?: number): number | undefined {

@@ -54,6 +54,7 @@ export function Hero({
   secondaryCtaLabel = 'Ver Servicios',
   bookingForm,
   events,
+  toursList,
 }: {
   title?: string
   highlight?: string
@@ -63,6 +64,7 @@ export function Hero({
   secondaryCtaLabel?: string
   bookingForm?: any
   events?: SliderEventItem[]
+  toursList?: { title: string; slug?: string; basePrice?: number; basePriceDay?: number; basePriceNight?: number }[]
 }) {
   const router = useRouter()
   // Eliminado FadeOnMount para no ocultar contenido con opacity 0
@@ -75,10 +77,12 @@ export function Hero({
     pasajeros: "1",
     vehiculo: "coche",
     flightNumber: "",
+    idaYVuelta: false,
   tipoReserva: "traslado" as "" | "traslado" | "tour",
     tipoTour: "" as "diurno" | "nocturno" | "escala" | "",
     categoriaTour: "" as "" | "ciudad" | "escala",
     subtipoTour: "" as "" | "diurno" | "nocturno",
+    selectedTourSlug: "",
   })
 
   const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({})
@@ -129,12 +133,18 @@ export function Hero({
       beauvais: "Aeropuerto Beauvais",
       paris: "París Centro",
       disneyland: "Disneyland",
+      asterix: "Parc Astérix",
+      versailles: "Versalles",
     }),
     []
   )
 
   // Destinos disponibles según el origen seleccionado
-  const availableDestinations = useMemo(() => pricingGetAvailableDestinations(bookingData.origen), [bookingData.origen])
+  const availableDestinations = useMemo(() => {
+    // Requisito: origen y destino deben ofrecer el mismo conjunto de opciones
+    const full = Object.keys(labelMap)
+    return full.filter((k) => k !== bookingData.origen)
+  }, [bookingData.origen, labelMap])
 
   const parsePassengers = (paxStr?: string) => {
     const n = parseInt(paxStr || "", 10)
@@ -144,11 +154,11 @@ export function Hero({
 
   // Lógicas de vehículo y capacidad
   const vehicleCaps: Record<string, number> = {
-    coche: 4,
-    minivan: 6,
-    van: 8,
+    coche: 56,
+    minivan: 56,
+    van: 56,
   }
-  const getVehicleCap = (v?: string) => (v && vehicleCaps[v]) || 4
+  const getVehicleCap = (_v?: string) => 56
 
   // Ajustar pasajeros al cambiar de vehículo
   useEffect(() => {
@@ -207,7 +217,8 @@ export function Hero({
     const extraPax = Math.max(0, pax - 8)
     const extraPaxCharge = extraPax * 20
 
-    const total = base + nightCharge + extraPaxCharge
+    let total = base + nightCharge + extraPaxCharge
+    if (bookingData.idaYVuelta) total = total * 2
     return {
       base,
       nightCharge,
@@ -215,7 +226,7 @@ export function Hero({
       extraPaxCharge,
       total,
     }
-  }, [bookingData.origen, bookingData.destino, bookingData.hora, bookingData.pasajeros, bookingData.vehiculo])
+  }, [bookingData.origen, bookingData.destino, bookingData.hora, bookingData.pasajeros, bookingData.vehiculo, bookingData.idaYVuelta])
 
   // Estimación de precio para Tours según reglas provistas
   const tourQuote = useMemo(() => {
@@ -224,6 +235,20 @@ export function Hero({
     const veh = bookingData.vehiculo
     const cat = bookingData.categoriaTour || (bookingData.tipoTour === "escala" ? "escala" : "ciudad")
     const sub = bookingData.subtipoTour || (bookingData.tipoTour === "escala" ? "" : bookingData.tipoTour)
+
+    // Si hay un tour específico seleccionado desde CMS, usar su tarifa base diurna/nocturna como referencia
+    if (bookingData.selectedTourSlug) {
+      const t = (toursList || []).find(x => (x.slug || x.title) === bookingData.selectedTourSlug)
+      if (t) {
+        const isNight = sub === 'nocturno' || isNightTime(bookingData.hora)
+        const rate = isNight ? (t.basePriceNight ?? t.basePrice ?? 0) : (t.basePriceDay ?? t.basePrice ?? 0)
+        const hours = isNight ? 3 : 2
+        const extraPax = Math.max(0, pax - 4)
+        const extraPerHour = 10 * extraPax
+        const total = rate * hours + extraPerHour * hours
+        return { total, label: `Estimado: ${total}€ (${hours}h ${isNight ? 'nocturno' : 'diurno'})` }
+      }
+    }
 
   // Tour ciudad nocturno en Minivan: base 400€ desde 6 pax, incluye hasta 8; extra >8: +20€/pax
   if (cat === "ciudad" && sub === "nocturno" && veh === "minivan" && pax >= 6) {
@@ -244,7 +269,7 @@ export function Hero({
 
     // En otros casos no hay tarifa fija definida
     return { total: undefined, label: "Precio a confirmar según duración, horario y vehículo" }
-  }, [bookingData.tipoReserva, bookingData.pasajeros, bookingData.vehiculo, bookingData.categoriaTour, bookingData.subtipoTour, bookingData.tipoTour])
+  }, [bookingData.tipoReserva, bookingData.pasajeros, bookingData.vehiculo, bookingData.categoriaTour, bookingData.subtipoTour, bookingData.tipoTour, bookingData.selectedTourSlug, toursList, bookingData.hora])
 
   // Enviar a página de pago con un depósito de confirmación de 5€ (quick deposit)
   const goToPayment = () => {
@@ -268,6 +293,7 @@ export function Hero({
           pickupAddress: (labelMap as any)[bookingData.origen] || bookingData.origen || "",
           dropoffAddress: (labelMap as any)[bookingData.destino] || bookingData.destino || "",
           flightNumber: bookingData.flightNumber || "",
+          roundtrip: bookingData.idaYVuelta === true,
         })
       } else if (bookingData.tipoReserva === "tour") {
         Object.assign(data, {
@@ -279,6 +305,7 @@ export function Hero({
           date: bookingData.fecha || "",
           time: bookingData.hora || "",
           vehicleType: bookingData.vehiculo || "",
+          tourId: bookingData.selectedTourSlug || undefined,
           // Para quick deposit, si no hay estimación, mantenemos 0 como estimado, pero el pago ahora será 5€.
           totalPrice: typeof tourQuote?.total === "number" ? tourQuote.total : 0,
         })
@@ -431,6 +458,25 @@ export function Hero({
                         {bookingForm?.typePicker?.tourLabel || 'Tour'}
                       </Button>
                     </div>
+                    {/* Selector de tours disponibles */}
+                    {bookingData.tipoReserva === 'tour' && Array.isArray(toursList) && toursList.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Tour</label>
+                        <Select
+                          value={bookingData.selectedTourSlug}
+                          onValueChange={(value) => setBookingData({ ...bookingData, selectedTourSlug: value })}
+                        >
+                          <SelectTrigger data-field="tour" className="cursor-pointer">
+                            <SelectValue placeholder="Selecciona un tour" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            {toursList.map((t, idx) => (
+                              <SelectItem key={idx} value={t.slug || t.title}>{t.title}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Tipo de tour (unificado: Diurno, Nocturno o Escala) */}
@@ -450,6 +496,7 @@ export function Hero({
                               categoriaTour: "escala",
                               subtipoTour: "",
                               tipoTour: "escala",
+                              selectedTourSlug: "",
                             })
                           } else {
                             setBookingData({
@@ -457,6 +504,7 @@ export function Hero({
                               categoriaTour: "ciudad",
                               subtipoTour: value as any, // diurno | nocturno
                               tipoTour: value as any,
+                              selectedTourSlug: "",
                             })
                           }
                         }}
@@ -596,6 +644,8 @@ export function Hero({
                           <SelectItem value="beauvais">{labelMap.beauvais}</SelectItem>
                           <SelectItem value="paris">{labelMap.paris}</SelectItem>
                           <SelectItem value="disneyland">{labelMap.disneyland}</SelectItem>
+                          <SelectItem value="asterix">{labelMap.asterix}</SelectItem>
+                          <SelectItem value="versailles">{labelMap.versailles}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -656,7 +706,18 @@ export function Hero({
                         className={fieldErrors.hora ? 'border-destructive focus-visible:ring-destructive' : ''}
                       />
                     </div>
-                    
+                    {/* Ida y vuelta */}
+                    <div className="col-span-2 flex items-center justify-center gap-2">
+                      <label className="text-sm font-medium">¿Ida y regreso?</label>
+                      <button
+                        type="button"
+                        className={`px-3 py-1 rounded border ${bookingData.idaYVuelta ? 'bg-accent text-accent-foreground' : 'bg-background'}`}
+                        onClick={() => setBookingData({ ...bookingData, idaYVuelta: !bookingData.idaYVuelta })}
+                        aria-pressed={bookingData.idaYVuelta}
+                      >
+                        {bookingData.idaYVuelta ? 'Sí' : 'No'}
+                      </button>
+                    </div>
                   </div>
                   )}
 
@@ -703,9 +764,9 @@ export function Hero({
                           <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="coche">Coche (4 personas)</SelectItem>
-                          <SelectItem value="minivan">Minivan (6 pasajeros)</SelectItem>
-                          <SelectItem value="van">Van (8 pasajeros)</SelectItem>
+                          <SelectItem value="coche">Coche</SelectItem>
+                          <SelectItem value="minivan">Minivan</SelectItem>
+                          <SelectItem value="van">Van</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -805,6 +866,9 @@ export function Hero({
                           )}
                           {quote.extraPax > 0 && (
                             <p className="text-xs text-muted-foreground">+{quote.extraPaxCharge}€ por {quote.extraPax} pasajero(s) extra</p>
+                          )}
+                          {bookingData.idaYVuelta && (
+                            <p className="text-xs text-muted-foreground">x2 por ida y regreso</p>
                           )}
                           <p className="text-lg font-bold text-primary mt-1">
                             Total estimado: {quote.total}€

@@ -1,11 +1,13 @@
 import { ensureAndGetHero } from '@/sanity/lib/hero'
 import { urlFor } from '@/sanity/lib/image'
 import { getActiveEventsForHero } from '@/sanity/lib/events'
+import { getToursList } from '@/sanity/lib/tours'
 import { Hero } from './hero'
 
 export default async function HeroServer() {
   const hero = await ensureAndGetHero()
   const events = await getActiveEventsForHero()
+  const tours = await getToursList()
   const bgUrl = hero?.backgroundImage ? urlFor(hero.backgroundImage).width(2000).url() : undefined
   const mappedEvents = (events || []).map((e) => ({
     id: e._id,
@@ -33,6 +35,13 @@ export default async function HeroServer() {
       secondaryCtaLabel={hero?.secondaryCta?.label}
       bookingForm={hero?.bookingForm as any}
       events={mappedEvents}
+      toursList={(tours || []).map(t => ({
+        title: t.title,
+        slug: t.slug?.current,
+        basePrice: typeof t.basePrice === 'number' ? t.basePrice : undefined,
+        basePriceDay: typeof t.basePriceDay === 'number' ? t.basePriceDay : undefined,
+        basePriceNight: typeof t.basePriceNight === 'number' ? t.basePriceNight : undefined,
+      }))}
     />
   )
 }

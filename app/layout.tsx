@@ -46,7 +46,7 @@ export default function RootLayout({
   <html lang="es" className={`${jost.variable} ${playfair.variable} antialiased`}>
       <head />
       <body className="font-sans">
-      c
+      
         <Suspense fallback={null}>{children}<SpeedInsights /></Suspense>
   <ScrollToTopButton />
   <SanityLive />

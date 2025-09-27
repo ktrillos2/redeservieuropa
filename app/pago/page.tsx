@@ -10,19 +10,24 @@ const labelMap = {
   asterix: "Parc Astérix",
   versailles: "Versalles",
 };
+    // idaYVuelta removed: round-trip option deprecated
+    // Removed idaYVuelta from modalForm initialization
+    // Removed idaYVuelta from bookingData
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, CheckCircle, CreditCard, Shield, Clock, MapPin, Users, Luggage } from "lucide-react"
+import { ArrowLeft, CheckCircle, CreditCard, Shield, Clock, MapPin, Users, Luggage, Map, Car, Plane, Calendar } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
-import { calcBaseTransferPrice, isNightTime as pricingIsNightTime } from "@/lib/pricing"
+import { useToast } from "@/hooks/use-toast"
+import { calcBaseTransferPrice, isNightTime as pricingIsNightTime, getAvailableDestinations as pricingGetAvailableDestinations } from "@/lib/pricing"
 import { formatPhonePretty, ensureLeadingPlus } from "@/lib/utils"
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
@@ -37,6 +42,392 @@ export default function PaymentPage() {
   const [paymentDropoffAddress, setPaymentDropoffAddress] = useState<string>('')
   // Mapa de errores por campo para resaltar inputs faltantes
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  // Carrito de cotizaciones (traslados / tours añadidos)
+  const [carritoState, setCarritoState] = useState<any[]>([])
+  const { toast } = useToast()
+  // Modal para crear/editar cotización (pasos)
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false)
+  const [modalEditingId, setModalEditingId] = useState<number | null>(null)
+  const [modalStep, setModalStep] = useState(1)
+  const [modalForm, setModalForm] = useState<any>(() => ({
+    tipo: 'traslado',
+    origen: '',
+    destino: '',
+    pickupAddress: '',
+    dropoffAddress: '',
+    date: '',
+    time: '',
+    passengers: '1',
+    ninos: 0,
+    vehicle: 'coche',
+       // idaYVuelta removed
+    selectedTourSlug: '',
+    categoriaTour: '',
+    subtipoTour: '',
+    flightNumber: '',
+    totalPrice: 0,
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
+  }))
+  // Errores locales para el modal (validación por paso)
+  const [modalFieldErrors, setModalFieldErrors] = useState<Record<string,string>>({})
+
+  // Lista de tours para los selects dentro del modal (cargada desde API)
+  const [toursList, setToursList] = useState<Array<{title:string;slug?:string}>>([])
+
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/tours')
+      .then(res => res.json())
+      .then(data => { if (mounted) setToursList(data?.tours || []) })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [])
+
+  // Exponer en el body un atributo cuando el modal de cotización esté abierto
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (quoteModalOpen) document.body.setAttribute('data-quote-modal', 'open')
+    else document.body.removeAttribute('data-quote-modal')
+  }, [quoteModalOpen])
+
+  // Fallbacks y helpers para la sección copiada del hero
+  const bookingForm: any = useMemo(() => ({
+    dateField: { label: 'Fecha' },
+    timeField: { label: 'Hora' },
+    passengersField: { label: 'Pasajeros', singular: 'Pasajero', plural: 'Pasajeros' },
+    vehicleField: { label: 'Tipo de vehículo', labelCoche: 'Coche (4 personas)', labelMinivan: 'Minivan (6 pasajeros)', labelVan: 'Van (8 pasajeros)' },
+    notes: { minivan6: 'Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.', minivan5: 'Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.' },
+  }), [])
+
+  const minDateStr = useMemo(() => new Date().toISOString().slice(0,10), [])
+
+  const parsePassengers = (paxStr: any) => {
+    const n = parseInt(String(paxStr || ''), 10)
+    if (!Number.isFinite(n)) return 1
+    return Math.min(56, Math.max(1, n))
+  }
+
+  const getVehicleCap = (_v?: string) => {
+    const caps: Record<string, number> = { coche: 4, minivan: 6, van: 8 }
+    return caps[_v || 'coche'] || 56
+  }
+
+  const availableDestinations = useMemo(() => {
+    try {
+      // derivar destinos disponibles según el origen seleccionado en el modal
+      const from = modalForm?.origen
+      return pricingGetAvailableDestinations(from)
+    } catch {
+      return []
+    }
+  }, [modalForm?.origen])
+
+  const openNewQuoteModal = () => {
+    // iniciar formulario con valores públicos del booking si existen
+    setModalForm({
+      tipo: bookingData?.isEvent ? 'tour' : (bookingData?.tipoReserva || 'traslado'),
+      origen: bookingData?.origen || '',
+      destino: bookingData?.destino || '',
+      pickupAddress: paymentPickupAddress || bookingData?.pickupAddress || '',
+      dropoffAddress: paymentDropoffAddress || bookingData?.dropoffAddress || '',
+      date: bookingData?.date || bookingData?.fecha || '',
+      time: bookingData?.time || bookingData?.hora || '',
+  passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
+      ninos: bookingData?.ninos || 0,
+      vehicle: bookingData?.vehicle || bookingData?.vehiculo || 'coche',
+         // idaYVuelta removed
+      selectedTourSlug: bookingData?.selectedTourSlug || '',
+      categoriaTour: bookingData?.categoriaTour || '',
+      subtipoTour: bookingData?.subtipoTour || '',
+      flightNumber: bookingData?.flightNumber || '',
+      totalPrice: Number(bookingData?.totalPrice || total || 0),
+      contactName: bookingData?.contactName || '',
+      contactPhone: bookingData?.contactPhone || '',
+      contactEmail: bookingData?.contactEmail || '',
+    })
+    setModalEditingId(null)
+    setModalStep(1)
+    setQuoteModalOpen(true)
+  }
+
+  const openEditModal = (item: any) => {
+    setModalForm({
+      tipo: item.tipo || 'traslado',
+      origen: item.origen || '',
+      destino: item.destino || '',
+      pickupAddress: item.pickupAddress || '',
+      dropoffAddress: item.dropoffAddress || '',
+      date: item.date || '',
+      time: item.time || '',
+  passengers: String(item.passengers || 1),
+      ninos: item.ninos || 0,
+      vehicle: item.vehicle || 'coche',
+         // idaYVuelta removed
+      selectedTourSlug: item.selectedTourSlug || '',
+      categoriaTour: item.categoriaTour || '',
+      subtipoTour: item.subtipoTour || '',
+      flightNumber: item.flightNumber || '',
+      totalPrice: Number(item.totalPrice || 0),
+      contactName: item.contactName || '',
+      contactPhone: item.contactPhone || '',
+      contactEmail: item.contactEmail || '',
+    })
+    setModalEditingId(item.id)
+    setModalStep(1)
+    setQuoteModalOpen(true)
+  }
+
+  // Calcular precio automático para traslados dentro del modal cuando cambian campos relevantes
+  const computeModalPrice = (mf: any) => {
+    try {
+      if (!mf) return 0
+      if (mf.tipo !== 'traslado') return mf.totalPrice || 0
+      // intentar deducir códigos desde origen/destino (si el usuario seleccionó etiqueta)
+      const normalize = (v: string | undefined) => {
+        if (!v) return undefined
+        const low = String(v).toLowerCase()
+        if (Object.keys(labelMap).includes(low)) return low
+        // si el usuario puso un texto que contiene 'cdg'/'orly' etc.
+        if (low.includes('cdg')) return 'cdg'
+        if (low.includes('orly')) return 'orly'
+        if (low.includes('beauvais') || low.includes('bva')) return 'beauvais'
+        if (low.includes('disney')) return 'disneyland'
+        if (low.includes('paris') || low.includes('parís')) return 'paris'
+        return undefined
+      }
+      const from = normalize(mf.origen) || normalize(mf.pickupAddress)
+      const to = normalize(mf.destino) || normalize(mf.dropoffAddress)
+      const pax = Math.max(1, Number(mf.passengers || 1))
+      const baseCalc = calcBaseTransferPrice(from, to, pax)
+      const base = typeof baseCalc === 'number' ? baseCalc : Number(mf.basePrice || 0)
+      const isNight = (() => {
+        if (!mf.time) return false
+        const [hh] = String(mf.time).split(':').map(Number)
+        const h = hh || 0
+        return h >= 21 || h < 6
+      })()
+          const extraLuggage = Number(mf.luggage23kg ?? 0) > 3
+      const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0)
+      const total = Number((base + extrasSum).toFixed(2))
+      return total
+    } catch {
+      return mf.totalPrice || 0
+    }
+  }
+
+  // Mantener total calculado cuando cambian campos relevantes
+  useEffect(() => {
+    try {
+      const total = computeModalPrice(modalForm)
+      setModalForm((s:any) => ({ ...s, totalPrice: total, basePrice: s.basePrice || undefined }))
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalForm.tipo, modalForm.origen, modalForm.destino, modalForm.pickupAddress, modalForm.dropoffAddress, modalForm.time, modalForm.passengers, modalForm.luggage23kg, modalForm.luggage10kg])
+
+  // Validación por paso del modal
+  const validateModalStep = (step: number) : { valid: boolean; errors: Record<string,string> } => {
+    const errs: Record<string,string> = {}
+    const mf = modalForm || {}
+    // Step 1: tipo presente
+    if (step === 1) {
+      if (!mf.tipo) errs.tipo = 'Selecciona tipo'
+      return { valid: Object.keys(errs).length === 0, errors: errs }
+    }
+    // Step 2: Campos principales (origen/destino/fecha/hora/pasajeros/vehículo)
+    if (step === 2) {
+      // Campos comunes que deben existir antes de avanzar
+      const passengers = mf.passengers || mf.pasajeros
+      if (!passengers || Number(passengers) < 1) errs.passengers = 'Requerido'
+      if (!mf.time || String(mf.time).trim() === '') errs.time = 'Requerido'
+      if (!mf.date || String(mf.date).trim() === '') errs.date = 'Requerido'
+      if (!mf.vehicle && !mf.vehiculo) errs.vehicle = 'Requerido'
+
+      if (mf.tipo === 'traslado') {
+        // Para traslados: origen y destino son obligatorios
+        if (!mf.origen) errs.origen = 'Requerido'
+        if (!mf.destino) errs.destino = 'Requerido'
+      }
+
+      if (mf.tipo === 'tour') {
+        // para tours: asegurar que haya una selección o categoría
+        if (!mf.selectedTourSlug && !mf.categoriaTour && !mf.subtipoTour) errs.selectedTourSlug = 'Selecciona un tour o categoría'
+      }
+
+      return { valid: Object.keys(errs).length === 0, errors: errs }
+    }
+    // Step 3: Información de contacto + comprobaciones finales (fecha/hora/pasajeros)
+      // Step 3: Información de contacto (separado del paso de direcciones)
+      if (step === 3) {
+        if (!mf.contactName || String(mf.contactName).trim() === '') errs.contactName = 'Requerido'
+        if (!mf.contactPhone || String(mf.contactPhone).trim() === '') errs.contactPhone = 'Requerido'
+        if (!mf.contactEmail || String(mf.contactEmail).trim() === '') errs.contactEmail = 'Requerido'
+        else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+          if (!emailRegex.test(String(mf.contactEmail))) errs.contactEmail = 'Formato inválido'
+        }
+        return { valid: Object.keys(errs).length === 0, errors: errs }
+      }
+      // Step 4: Direcciones y equipaje (final) + comprobaciones finales (fecha/hora/pasajeros)
+      if (step === 4) {
+        if (mf.tipo === 'traslado') {
+          if (!mf.pickupAddress || String(mf.pickupAddress).trim() === '') errs.pickupAddress = 'Requerido'
+          if (!mf.dropoffAddress || String(mf.dropoffAddress).trim() === '') errs.dropoffAddress = 'Requerido'
+          // Allow luggage counts to be zero or omitted; do not require explicit luggage fields here
+        }
+        const passengers = mf.passengers || mf.pasajeros
+        const date = mf.date || mf.fecha
+        const time = mf.time || mf.hora
+        if (!passengers || Number(passengers) < 1) errs.passengers = 'Requerido'
+        if (!date || !String(date).trim()) errs.date = 'Requerido'
+        if (!time || !String(time).trim()) errs.time = 'Requerido'
+        return { valid: Object.keys(errs).length === 0, errors: errs }
+      }
+    return { valid: true, errors: {} }
+  }
+
+  const handleModalNext = () => {
+    const { valid, errors } = validateModalStep(modalStep)
+    if (!valid) {
+      setModalFieldErrors(errors)
+      // focus first field
+      const first = Object.keys(errors)[0]
+      requestAnimationFrame(() => {
+        const selector = `[data-modal-field="${first}"]`
+        const el = document.querySelector(selector) as HTMLElement | null
+        if (el) el.focus()
+      })
+      return
+    }
+    // limpiar errores del paso actual
+    setModalFieldErrors({})
+    setModalStep((s) => Math.min(4, s + 1))
+  }
+
+  const handleModalSave = (isEdit = false) => {
+    const { valid, errors } = validateModalStep(4)
+    if (!valid) {
+      setModalFieldErrors(errors)
+      requestAnimationFrame(() => {
+        const first = Object.keys(errors)[0]
+        const selector = `[data-modal-field="${first}"]`
+        const el = document.querySelector(selector) as HTMLElement | null
+        if (el) el.focus()
+      })
+      return
+    }
+    setModalFieldErrors({})
+    if (isEdit) {
+      updateExistingItem()
+    } else {
+      saveModalAsNew()
+    }
+    return true
+  }
+
+  const persistCarrito = (next: any[]) => {
+    try { localStorage.setItem('carritoCotizaciones', JSON.stringify(next)) } catch {}
+    setCarritoState(next)
+  }
+
+  const removeCartItem = (id: number) => {
+    try {
+      const next = carritoState.filter(it => it.id !== id)
+      persistCarrito(next)
+      toast({ title: 'Eliminado', description: 'Cotización eliminada del carrito.' })
+    } catch (e) {
+      console.error('No se pudo eliminar item del carrito', e)
+    }
+  }
+
+  const saveModalAsNew = () => {
+    // Construir la etiqueta visible del servicio usando las ubicaciones generales (labelMap)
+    let serviceLabel = 'Traslado'
+    if (modalForm.tipo === 'tour') {
+      serviceLabel = 'Tour'
+    } else {
+      const originLabel = modalForm.origen ? (labelMap[modalForm.origen as keyof typeof labelMap] || modalForm.origen) : (modalForm.pickupAddress || '')
+      const destLabel = modalForm.destino ? (labelMap[modalForm.destino as keyof typeof labelMap] || modalForm.destino) : (modalForm.dropoffAddress || '')
+      if (originLabel || destLabel) serviceLabel = `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
+    }
+
+    const item = {
+      id: Date.now(),
+      tipo: modalForm.tipo,
+      // serviceLabel muestra la ubicación general (Aeropuerto CDG, París Centro, etc.)
+      serviceLabel,
+      origen: modalForm.origen || '',
+      destino: modalForm.destino || '',
+      // pickup/dropoff mantienen la dirección exacta como detalle adicional
+      pickupAddress: modalForm.pickupAddress || '',
+      dropoffAddress: modalForm.dropoffAddress || '',
+      date: modalForm.date || '',
+      time: modalForm.time || '',
+      passengers: modalForm.passengers || 1,
+      ninos: modalForm.ninos || 0,
+  vehicle: modalForm.vehicle || 'coche',
+      selectedTourSlug: modalForm.selectedTourSlug || '',
+      categoriaTour: modalForm.categoriaTour || '',
+      subtipoTour: modalForm.subtipoTour || '',
+      flightNumber: modalForm.flightNumber || '',
+  luggage23kg: modalForm.luggage23kg ?? 0,
+  luggage10kg: modalForm.luggage10kg ?? 0,
+      specialRequests: modalForm.specialRequests || '',
+      totalPrice: Number(modalForm.totalPrice || 0),
+      contactName: modalForm.contactName || '',
+      contactPhone: modalForm.contactPhone || '',
+      contactEmail: modalForm.contactEmail || '',
+    }
+    const updated = [...carritoState, item]
+    persistCarrito(updated)
+    // reset modal editing state and close
+    setModalEditingId(null)
+    setModalStep(1)
+    setQuoteModalOpen(false)
+    toast({ title: 'Añadido', description: 'Cotización añadida al carrito.' })
+  }
+
+  const updateExistingItem = () => {
+    if (modalEditingId === null) return
+    const updated = carritoState.map((it) => it.id === modalEditingId ? {
+      ...it,
+      tipo: modalForm.tipo,
+      // Reconstruir etiqueta visible usando ubicaciones generales (origen/destino via labelMap)
+      serviceLabel: (modalForm.tipo === 'tour') ? 'Tour' : ((): string => {
+        const originLabel = modalForm.origen ? (labelMap[modalForm.origen as keyof typeof labelMap] || modalForm.origen) : (modalForm.pickupAddress || it.pickupAddress || '')
+        const destLabel = modalForm.destino ? (labelMap[modalForm.destino as keyof typeof labelMap] || modalForm.destino) : (modalForm.dropoffAddress || it.dropoffAddress || '')
+        if (!originLabel && !destLabel) return it.serviceLabel || 'Traslado'
+        return `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
+      })(),
+      origen: modalForm.origen || it.origen,
+      destino: modalForm.destino || it.destino,
+      pickupAddress: modalForm.pickupAddress,
+      dropoffAddress: modalForm.dropoffAddress,
+      date: modalForm.date,
+      time: modalForm.time,
+      passengers: modalForm.passengers,
+      ninos: modalForm.ninos || it.ninos,
+  vehicle: modalForm.vehicle,
+      selectedTourSlug: modalForm.selectedTourSlug || it.selectedTourSlug,
+      categoriaTour: modalForm.categoriaTour || it.categoriaTour,
+      subtipoTour: modalForm.subtipoTour || it.subtipoTour,
+      flightNumber: modalForm.flightNumber || it.flightNumber,
+  luggage23kg: modalForm.luggage23kg ?? it.luggage23kg,
+  luggage10kg: modalForm.luggage10kg ?? it.luggage10kg,
+      specialRequests: modalForm.specialRequests || it.specialRequests,
+      totalPrice: Number(modalForm.totalPrice || it.totalPrice || 0),
+      contactName: modalForm.contactName || it.contactName,
+      contactPhone: modalForm.contactPhone || it.contactPhone,
+      contactEmail: modalForm.contactEmail || it.contactEmail,
+    } : it)
+    persistCarrito(updated)
+    // close modal and clear editing state
+    setQuoteModalOpen(false)
+    setModalEditingId(null)
+    setModalStep(1)
+    toast({ title: 'Guardado', description: 'Cotización actualizada.' })
+  }
   /*
    * === RECARGO NOCTURNO AUTOMÁTICO ===
    * Ahora, además de calcular el recargo nocturno según la hora seleccionada en la reserva (time),
@@ -61,6 +452,10 @@ export default function PaymentPage() {
         setBookingData(JSON.parse(data))
       }
     }
+      try {
+        const raw = localStorage.getItem('carritoCotizaciones')
+        if (raw) setCarritoState(JSON.parse(raw))
+      } catch {}
     setIsLoading(false)
   }, [])
 
@@ -91,8 +486,8 @@ export default function PaymentPage() {
       const recalc = (n: any) => {
         // Normalizar campos numéricos
         n.passengers = Math.max(1, Math.min(9, Number(n.passengers || 1)))
-        n.luggage23kg = Math.max(0, Number(n.luggage23kg || 0))
-        n.luggage10kg = Math.max(0, Number(n.luggage10kg || 0))
+          n.luggage23kg = Math.max(0, Number(n.luggage23kg ?? 0))
+        n.luggage10kg = Math.max(0, Number(n.luggage10kg ?? 0))
 
         // Eventos: total = precio por persona * cupos
         if (n.isEvent && typeof n.pricePerPerson === "number") {
@@ -125,11 +520,11 @@ export default function PaymentPage() {
             return h >= 21 || h < 6
           })()
           // Equipaje voluminoso: más de 3 maletas de 23Kg
-          const extraLuggage = Number(n.luggage23kg || 0) > 3
+          const extraLuggage = Number(n.luggage23kg ?? 0) > 3
           const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0)
           n.isNightTime = isNight
           n.extraLuggage = extraLuggage
-          n.luggageCount = Number(n.luggage23kg || 0) + Number(n.luggage10kg || 0)
+          n.luggageCount = Number(n.luggage23kg ?? 0) + Number(n.luggage10kg ?? 0)
           n.totalPrice = Number((base + extrasSum).toFixed(2))
           n.basePrice = base
           return n
@@ -263,8 +658,7 @@ export default function PaymentPage() {
       if (!paymentDropoffAddress || !String(paymentDropoffAddress).trim()) return false
     }
 
-    // Equipaje: requerir que el usuario haya indicado cantidades (aunque sean 0)
-    if (typeof bookingData.luggage23kg === 'undefined' || typeof bookingData.luggage10kg === 'undefined') return false
+  // Equipaje: no requerimos que el usuario haya indicado cantidades aquí (0 es válido)
 
     // Contacto: siempre requerimos nombre, teléfono y email para poder pagar el depósito
     if (!bookingData.contactName || !String(bookingData.contactName).trim()) return false
@@ -300,7 +694,7 @@ export default function PaymentPage() {
         : (bookingData?.tourId ? bookingData.tourId.split("-").join(" → ").toUpperCase() : "Servicio")
       const paxLabel = isEvent ? "Cupos" : "Pasajeros"
       const equipaje = isEvent
-        ? `23kg: ${bookingData?.luggage23kg || 0} | 10kg: ${bookingData?.luggage10kg || 0}`
+    ? `23kg: ${bookingData?.luggage23kg ?? 0} | 10kg: ${bookingData?.luggage10kg ?? 0}`
         : `${bookingData?.luggageCount || 0} maleta(s)`
 
       const extraLines: string[] = []
@@ -346,19 +740,71 @@ export default function PaymentPage() {
     }
   }
 
-  // Leer carrito de cotizaciones
-  let carrito: any[] = []
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = localStorage.getItem('carritoCotizaciones')
-      if (raw) carrito = JSON.parse(raw)
-    } catch {}
-  }
+  // Sumar total del carrito desde state
+  const totalCarrito = carritoState.reduce((acc: number, item: any) => acc + Number(item.totalPrice || 0), 0)
+  const tieneTour = carritoState.some((item: any) => item.tipo === 'tour')
+  const tieneTraslado = carritoState.some((item: any) => item.tipo === 'traslado')
 
-  // Sumar total del carrito
-  const totalCarrito = carrito.reduce((acc: number, item: any) => acc + Number(item.totalPrice || 0), 0)
-  const tieneTour = carrito.some((item: any) => item.tipo === 'tour')
-  const tieneTraslado = carrito.some((item: any) => item.tipo === 'traslado')
+  // Calcular importes combinados (cuando hay carrito):
+  // - combinedTotal: suma de totales de carrito + booking actual
+  // - combinedDepositSum: suma de depósitos (según tipo) de cada item + depósito del booking actual
+  const combinedTotal = Number((totalCarrito + Number(bookingData.totalPrice || total || 0)).toFixed(2))
+  const computeDepositForItem = (itm: any) => {
+    const price = Number(itm.totalPrice || 0)
+    // asumir 20% para tours/eventos, 10% para traslados
+    const percent = itm.tipo === 'tour' || itm.tipo === 'event' ? 0.2 : 0.1
+    return Math.max(1, Number((price * percent).toFixed(2)))
+  }
+  const combinedDepositSum = carritoState.reduce((acc: number, it: any) => acc + computeDepositForItem(it), 0) + (payFullNow ? 0 : deposit)
+  // Si el usuario marca pagar todo ahora, el importe a cobrar es el total combinado; si no, es la suma de depósitos
+  const getCombinedAmountToCharge = () => payFullNow ? combinedTotal : combinedDepositSum
+
+  // Añadir el servicio/quote actual al carrito y mantener al usuario en la misma página
+  const addCurrentToCart = () => {
+    if (!bookingData) return
+    try {
+      const item = {
+        id: Date.now(),
+        tipo: bookingData.isEvent ? 'tour' : (bookingData.tipoReserva || (bookingData.tourId ? 'tour' : 'traslado')),
+        // Mostrar etiqueta basada en ubicaciones generales (labelMap) y mantener direcciones exactas como detalle
+        serviceLabel: (() => {
+          if (bookingData.isEvent) return serviceLabel
+          const originLabel = bookingData.origen ? (labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen) : (bookingData.pickupAddress || paymentPickupAddress || '')
+          const destLabel = bookingData.destino ? (labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino) : (bookingData.dropoffAddress || paymentDropoffAddress || '')
+          if (!originLabel && !destLabel) return serviceLabel
+          return `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
+        })(),
+        origen: bookingData.origen || '',
+        destino: bookingData.destino || '',
+        pickupAddress: bookingData.pickupAddress || paymentPickupAddress || '',
+        dropoffAddress: bookingData.dropoffAddress || paymentDropoffAddress || '',
+        date: bookingData.date || bookingData.fecha || '',
+        time: bookingData.time || bookingData.hora || '',
+        passengers: bookingData.passengers || bookingData.pasajeros || 1,
+        vehicle: bookingData.vehicle || bookingData.vehiculo || '',
+        totalPrice: Number(bookingData.totalPrice || total || 0),
+      }
+      const updated = [...carritoState, item]
+      localStorage.setItem('carritoCotizaciones', JSON.stringify(updated))
+      setCarritoState(updated)
+      try {
+        // Mostrar confirmación al usuario sin redirigir
+        try {
+          toast({
+            title: 'Añadido al carrito',
+            description: 'Tu cotización se añadió al carrito. Puedes continuar cotizando o pagar todo junto.',
+          })
+        } catch (tErr) {
+          console.info('Cotización añadida al carrito')
+        }
+      } catch (e) {
+        // noop
+      }
+    } catch (e) {
+      console.error('No se pudo agregar al carrito', e)
+      alert('No se pudo agregar al carrito. Intenta nuevamente.')
+    }
+  }
 
   return (
     <main className="min-h-screen">
@@ -533,7 +979,7 @@ export default function PaymentPage() {
                             <Input
                               type="number"
                               min={0}
-                              value={bookingData.luggage23kg || 0}
+                              value={bookingData.luggage23kg ?? 0}
                               onChange={(e) => updateBookingField("luggage23kg", Number(e.target.value))}
                             />
                           </div>
@@ -542,7 +988,7 @@ export default function PaymentPage() {
                             <Input
                               type="number"
                               min={0}
-                              value={bookingData.luggage10kg || 0}
+                              value={bookingData.luggage10kg ?? 0}
                               onChange={(e) => updateBookingField("luggage10kg", Number(e.target.value))}
                             />
                           </div>
@@ -1034,6 +1480,58 @@ export default function PaymentPage() {
 
           {/* Confirmation Button */}
                     <div className="space-y-4">
+                      {/* Carrito rápido: mostrar items añadidos y opción de agregar otro */}
+                      {carritoState && carritoState.length > 0 && (
+                        <div className="space-y-3 p-3 bg-muted/20 rounded">
+                          <h4 className="font-medium">Carrito de Cotizaciones</h4>
+                          <div className="space-y-2 max-h-40 overflow-auto">
+                            {carritoState.map((it) => (
+                              <div key={it.id} className="relative flex items-center justify-between p-2 border rounded bg-background/80">
+                                {/* Delete button top-right: small, always visible, icon turns red on hover, button flush to corner */}
+                                <button
+                                  aria-label={`Eliminar cotización ${it.id}`}
+                                  onClick={() => removeCartItem(it.id)}
+                                  className="absolute right-0 top-0 w-7 h-7 rounded-full border border-transparent flex items-center justify-center transition-colors duration-150 text-muted-foreground group cursor-pointer"
+                                  title="Eliminar"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-muted-foreground group-hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                                <div className="text-sm">
+                                  <div className="font-medium">{it.serviceLabel}</div>
+                                  {/* Mostrar direcciones exactas solo como detalle adicional */}
+                                  {(it.pickupAddress || it.dropoffAddress) ? (
+                                    <div className="text-xs text-muted-foreground">{it.pickupAddress || ''}{(it.pickupAddress && it.dropoffAddress) ? ' → ' : ''}{it.dropoffAddress || ''}</div>
+                                  ) : null}
+                                  <div className="text-xs text-muted-foreground">{it.date} {it.time} • {it.passengers} pax</div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="text-sm font-bold">{it.totalPrice}€</div>
+                                  <Button size="sm" variant="ghost" onClick={() => openEditModal(it)}>Editar</Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm">Total carrito</div>
+                            <div className="font-bold">{totalCarrito}€</div>
+                          </div>
+                          <div className="pt-2">
+                            <Button size="sm" variant="outline" onClick={openNewQuoteModal}>Añadir cotización</Button>
+                          </div>
+                        </div>
+                      )}
+                      {/* Texto informativo para cotizar ida y vuelta */}
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Si deseas un <strong>ida y vuelta</strong>, pulsa
+                          <Button size="sm" variant="outline" className="mx-2 align-middle" onClick={openNewQuoteModal}>
+                            aquí
+                          </Button>
+                          y podrás cotizar otro traslado o tour.
+                        </p>
+                      </div>
                       <Button
                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300"
                         size="lg"
@@ -1105,20 +1603,23 @@ export default function PaymentPage() {
                                 : bookingData?.tourId
                                 ? `Reserva tour: ${bookingData.tourId}`
                                 : `Reserva traslado ${bookingData?.pickupAddress || ''} -> ${bookingData?.dropoffAddress || ''}`
-                              const amount = Number(amountNow || 0)
+                              // Si hay items en el carrito, hacemos un único cobro combinado (carrito + cotización actual)
+                              const amount = carritoState && carritoState.length > 0 ? getCombinedAmountToCharge() : Number(amountNow || 0)
                               const res = await fetch('/api/mollie/create', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                   amount,
-                                  description,
+                                  description: carritoState && carritoState.length > 0 ? `Pago combinado (${(carritoState.length + 1)} servicios)` : description,
                                   method: paymentMethod,
+                                  // Enviamos el booking actual y el carrito para que el backend pueda crear una única orden
                                   booking: {
                                     ...bookingData,
                                     paymentPickupAddress,
                                     paymentDropoffAddress,
                                   },
-                                  metadata: { source: 'web' },
+                                  carrito: carritoState || [],
+                                  metadata: { source: 'web', combinedPayment: !!(carritoState && carritoState.length > 0), itemsCount: (carritoState?.length || 0) + 1 },
                                 }),
                               })
                               if (!res.ok) throw new Error(`Error creando pago: ${res.status}`)
@@ -1151,7 +1652,12 @@ export default function PaymentPage() {
                 <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                 Procesando...
               </span>
-            ) : (payFullNow ? `Pagar todo (${total}€)` : `Pagar depósito ${deposit}€`)}
+            ) : (
+              // Mostrar importes combinados si existen items en carrito
+              carritoState && carritoState.length > 0
+                ? (payFullNow ? `Pagar todo (${combinedTotal}€)` : `Pagar depósitos (${combinedDepositSum}€)`)
+                : (payFullNow ? `Pagar todo (${total}€)` : `Pagar depósito ${deposit}€`)
+            )}
                       </Button>
                       {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
 
@@ -1202,6 +1708,518 @@ export default function PaymentPage() {
           </div>
         </div>
       </div>
+      {/* Modal para crear/editar cotizaciones (wizard multi-paso) */}
+      <Dialog open={quoteModalOpen} onOpenChange={(v) => setQuoteModalOpen(v)}>
+        <DialogContent className="max-w-3xl">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{modalEditingId ? 'Editar cotización' : 'Nueva cotización'}</h3>
+
+            {/* Paso 1: Tipo de servicio (usar mismo selector visual que Hero) */}
+            {modalStep === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Map className="w-4 h-4 text-accent" />
+                    {bookingForm?.typePicker?.label || 'Tipo de reserva'}
+                  </label>
+                  <div className="flex flex-wrap gap-4 justify-center w-full">
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant={modalForm.tipo === "traslado" ? "default" : "outline"}
+                      className={`cursor-pointer h-12 px-8 text-base md:text-lg min-w-[150px] shadow-md hover:shadow-lg hover:scale-[1.02] transition-all ${modalForm.tipo === "traslado" ? "ring-2 ring-accent bg-gradient-to-r from-primary to-primary/80" : "border-2"}`}
+                      aria-pressed={modalForm.tipo === "traslado"}
+                      onClick={() => {
+                        setModalForm((prev:any) => ({
+                          ...prev,
+                          tipo: "traslado",
+                          origen: prev.origen || '',
+                          destino: prev.destino || '',
+                        }))
+                        setModalStep(2)
+                      }}
+                    >
+                      <Car className="w-5 h-5" />
+                      {bookingForm?.typePicker?.trasladoLabel || 'Traslado'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant={modalForm.tipo === "tour" ? "default" : "outline"}
+                      className={`cursor-pointer h-12 px-8 text-base md:text-lg min-w-[150px] shadow-md hover:shadow-lg hover:scale-[1.02] transition-all ${modalForm.tipo === "tour" ? "ring-2 ring-accent bg-gradient-to-r from-primary to-primary/80" : "border-2"}`}
+                      aria-pressed={modalForm.tipo === "tour"}
+                      onClick={() => {
+                        setModalForm((prev:any) => ({
+                          ...prev,
+                          tipo: "tour",
+                          origen: "",
+                          destino: "",
+                          tipoTour: '',
+                          categoriaTour: '',
+                          subtipoTour: '' as any,
+                        }))
+                        setModalStep(2)
+                      }}
+                    >
+                      <Map className="w-5 h-5" />
+                      {bookingForm?.typePicker?.tourLabel || 'Tour'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Paso 2: Campos principales (copiado desde hero, adaptado a modalForm) */}
+            {modalStep === 2 && (
+              <>
+                {/* Título dinámico según tipo de reserva */}
+                <h4 className="text-xl font-semibold text-center mb-2">
+                  {modalForm.tipo === "traslado"
+                    ? "Cotización Traslado"
+                    : modalForm.tipo === "tour"
+                    ? "Cotización Tour"
+                    : "Cotización"}
+                </h4>
+                <div className="space-y-4">
+                  {/* Campos para traslado */}
+                  {modalForm.tipo === "traslado" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-accent" />
+                          {`Origen${modalForm.origen ? ` ${(labelMap[modalForm.origen as keyof typeof labelMap] || modalForm.origen)}` : ''}`}
+                        </label>
+                        <Select
+                          value={modalForm.origen}
+                          onValueChange={(value) => setModalForm({ ...modalForm, origen: value, destino: "" })}
+                        >
+                          <SelectTrigger data-modal-field="origen" className={"cursor-pointer " + (modalFieldErrors.origen ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                            <SelectValue placeholder="Seleccionar origen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.keys(labelMap).map((k) => (
+                              <SelectItem key={k} value={k}>{labelMap[k as keyof typeof labelMap]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-accent" />
+                          {`Destino${modalForm.destino ? ` ${(labelMap[modalForm.destino as keyof typeof labelMap] || modalForm.destino)}` : ''}`}
+                        </label>
+                        <Select value={modalForm.destino} onValueChange={(value) => setModalForm({ ...modalForm, destino: value })}>
+                          <SelectTrigger data-modal-field="destino" disabled={!modalForm.origen} className={"cursor-pointer disabled:cursor-not-allowed " + (modalFieldErrors.destino ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                            <SelectValue placeholder={modalForm.origen ? "Seleccionar destino" : "Selecciona el origen primero"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableDestinations && availableDestinations.length > 0 ? (
+                              availableDestinations.map((d) => (
+                                <SelectItem key={d} value={d}>{labelMap[d as keyof typeof labelMap] || d}</SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="-" disabled>
+                                {modalForm.origen ? "No hay destinos disponibles" : "Selecciona el origen primero"}
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-accent" />
+                          {bookingForm?.dateField?.label || 'Fecha'}
+                        </label>
+                        <Input
+                          data-modal-field="date"
+                          type="date"
+                          min={minDateStr}
+                          value={modalForm.date}
+                          onChange={(e) => { setModalForm({ ...modalForm, date: e.target.value }); if (modalFieldErrors.date) setModalFieldErrors(f=>{const c={...f}; delete c.date; return c}) }}
+                          className={modalFieldErrors.date ? 'border-destructive focus-visible:ring-destructive' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-accent" />
+                          {bookingForm?.timeField?.label || 'Hora'}
+                        </label>
+                        <Input
+                          data-modal-field="time"
+                          type="time"
+                          value={modalForm.time}
+                          onChange={(e) => { setModalForm({ ...modalForm, time: e.target.value }); if (modalFieldErrors.time) setModalFieldErrors(f=>{const c={...f}; delete c.time; return c}) }}
+                          className={modalFieldErrors.time ? 'border-destructive focus-visible:ring-destructive' : ''}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Users className="w-4 h-4 text-accent" />
+                          Pasajeros
+                        </label>
+                        <Select
+                          value={String(modalForm.passengers)}
+                          onValueChange={(value) => setModalForm({ ...modalForm, passengers: String(value) })}
+                        >
+                          <SelectTrigger data-modal-field="passengers" className={"cursor-pointer " + (modalFieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                            <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(modalForm.vehicle)})`} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            {Array.from({ length: getVehicleCap(modalForm.vehicle) }, (_, i) => i + 1).map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                {n} {n === 1 ? "Pasajero" : "Pasajeros"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Users className="w-4 h-4 text-accent" />
+                          Niños (0-12)
+                        </label>
+                        <Select
+                          value={String(modalForm.ninos ?? 0)}
+                          onValueChange={value => {
+                            const maxNinos = parsePassengers(modalForm.passengers as any)
+                            let n = Number(value)
+                            if (n > maxNinos) n = maxNinos
+                            setModalForm({ ...modalForm, ninos: n })
+                          }}
+                        >
+                          <SelectTrigger data-modal-field="ninos" className="cursor-pointer">
+                            <SelectValue>
+                              {modalForm.ninos === 0 || modalForm.ninos ? `${modalForm.ninos} ${modalForm.ninos === 1 ? 'niño' : 'niños'}` : 'Cantidad de niños'}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            {Array.from({ length: parsePassengers(modalForm.passengers as any) + 1 }, (_, i) => i).map((n) => (
+                              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex flex-col md:flex-row gap-4 col-span-2">
+                        <div className="flex-1 space-y-2">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <Car className="w-4 h-4 text-accent" />
+                            Tipo de vehículo
+                          </label>
+                          <Select
+                            value={modalForm.vehicle}
+                            onValueChange={(value) => {
+                              const cap = getVehicleCap(value)
+                              const pax = parsePassengers(modalForm.passengers as any)
+                              const clamped = Math.min(Math.max(pax, 1), cap)
+                              setModalForm({ ...modalForm, vehicle: value, passengers: String(clamped) })
+                            }}
+                          >
+                            <SelectTrigger data-modal-field="vehicle" className="cursor-pointer">
+                              <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="coche">Coche</SelectItem>
+                              <SelectItem value="minivan">Minivan</SelectItem>
+                              <SelectItem value="van">Van</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {/* round-trip option removed */}
+                      </div>
+                    </div>
+                  )}
+                  {/* Campos para tour */}
+                  {modalForm.tipo === "tour" && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Array.isArray(toursList) && toursList.length > 0 && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <Map className="w-4 h-4 text-accent" />
+                              Tour
+                            </label>
+                            <Select
+                              value={modalForm.selectedTourSlug}
+                              onValueChange={(value) => setModalForm({ ...modalForm, selectedTourSlug: value })}
+                            >
+                              <SelectTrigger data-modal-field="selectedTourSlug" className="cursor-pointer">
+                                <SelectValue placeholder="Selecciona un tour" />
+                              </SelectTrigger>
+                              <SelectContent portal={false} className="max-h-72">
+                                {toursList.map((t, idx) => (
+                                  <SelectItem key={idx} value={t.slug || t.title}>{t.title}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <Plane className="w-4 h-4 text-accent" />
+                            Tipo de tour
+                          </label>
+                          <Select
+                            value={modalForm.categoriaTour === "escala" ? "escala" : modalForm.subtipoTour || ""}
+                            onValueChange={(value) => {
+                              if (value === "escala") {
+                                setModalForm({
+                                  ...modalForm,
+                                  categoriaTour: "escala",
+                                  subtipoTour: "",
+                                  tipoTour: "escala",
+                                  selectedTourSlug: "",
+                                })
+                              } else {
+                                setModalForm({
+                                  ...modalForm,
+                                  categoriaTour: "ciudad",
+                                  subtipoTour: value as any,
+                                  tipoTour: value as any,
+                                  selectedTourSlug: "",
+                                })
+                              }
+                            }}
+                          >
+                            <SelectTrigger data-modal-field="categoriaTour" className={"cursor-pointer " + (modalFieldErrors.categoriaTour ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                  <SelectValue placeholder="Selecciona una opción" />
+                            </SelectTrigger>
+                            <SelectContent portal={false}>
+                              <SelectItem value="diurno">Tour diurno</SelectItem>
+                              <SelectItem value="nocturno">Tour nocturno</SelectItem>
+                              <SelectItem value="escala">Tour escala</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-accent" />
+                            {bookingForm?.dateField?.label || 'Fecha'}
+                          </label>
+                          <Input
+                            data-modal-field="date"
+                            type="date"
+                            min={minDateStr}
+                            value={modalForm.date}
+                            onChange={(e) => { setModalForm({ ...modalForm, date: e.target.value }); if (modalFieldErrors.date) setModalFieldErrors(f=>{const c={...f}; delete c.date; return c}) }}
+                            className={modalFieldErrors.date ? 'border-destructive focus-visible:ring-destructive' : ''}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-accent" />
+                            {bookingForm?.timeField?.label || 'Hora'}
+                          </label>
+                          <Input
+                            data-modal-field="time"
+                            type="time"
+                            value={modalForm.time}
+                            onChange={(e) => { setModalForm({ ...modalForm, time: e.target.value }); if (modalFieldErrors.time) setModalFieldErrors(f=>{const c={...f}; delete c.time; return c}) }}
+                            className={modalFieldErrors.time ? 'border-destructive focus-visible:ring-destructive' : ''}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <Users className="w-4 h-4 text-accent" />
+                            {bookingForm?.passengersField?.label || 'Pasajeros'}
+                          </label>
+                          <Select
+                            value={String(modalForm.passengers)}
+                            onValueChange={(value) => setModalForm({ ...modalForm, passengers: value })}
+                          >
+                            <SelectTrigger data-modal-field="passengers" className={"cursor-pointer " + (modalFieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                              <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(modalForm.vehicle)})`} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {Array.from({ length: getVehicleCap(modalForm.vehicle) }, (_, i) => i + 1).map((n) => (
+                                <SelectItem key={n} value={String(n)}>
+                                  {n} {n === 1 ? (bookingForm?.passengersField?.singular || 'Pasajero') : (bookingForm?.passengersField?.plural || 'Pasajeros')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <Users className="w-4 h-4 text-accent" />
+                            Niños (0-12)
+                          </label>
+                          <Select
+                            value={String(modalForm.ninos ?? 0)}
+                            onValueChange={value => {
+                              const maxNinos = parsePassengers(modalForm.passengers as any)
+                              let n = Number(value)
+                              if (n > maxNinos) n = maxNinos
+                              setModalForm({ ...modalForm, ninos: n })
+                            }}
+                          >
+                            <SelectTrigger data-modal-field="ninos" className="cursor-pointer">
+                              <SelectValue>
+                                {modalForm.ninos === 0 || modalForm.ninos ? `${modalForm.ninos} ${modalForm.ninos === 1 ? 'niño' : 'niños'}` : 'Cantidad de niños'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {Array.from({ length: parsePassengers(modalForm.passengers as any) + 1 }, (_, i) => i).map((n) => (
+                                <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium flex items-center gap-2">
+                            <Car className="w-4 h-4 text-accent" />
+                            {bookingForm?.vehicleField?.label || 'Tipo de vehículo'}
+                          </label>
+                          <Select
+                            value={modalForm.vehicle}
+                            onValueChange={(value) => {
+                              const cap = getVehicleCap(value)
+                              const pax = parsePassengers(modalForm.passengers as any)
+                              const clamped = Math.min(Math.max(pax, 1), cap)
+                              setModalForm({ ...modalForm, vehicle: value, passengers: String(clamped) })
+                            }}
+                          >
+                            <SelectTrigger data-modal-field="vehicle" className="cursor-pointer">
+                              <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="coche">{bookingForm?.vehicleField?.labelCoche || 'Coche (4 personas)'}</SelectItem>
+                              <SelectItem value="minivan">{bookingForm?.vehicleField?.labelMinivan || 'Minivan (6 pasajeros)'}</SelectItem>
+                              <SelectItem value="van">{bookingForm?.vehicleField?.labelVan || 'Van (8 pasajeros)'}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {/* Notas de equipaje para Minivan con 5 o 6 pasajeros */}
+                      {modalForm.vehicle === "minivan" && (() => {
+                        const pax = parsePassengers(modalForm.passengers as any)
+                        if (pax === 6) {
+                          return (
+                            <p className="text-xs text-muted-foreground text-center">
+                              {bookingForm?.notes?.minivan6 || 'Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.'}
+                            </p>
+                          )
+                        }
+                        if (pax === 5) {
+                          return (
+                            <p className="text-xs text-muted-foreground text-center">
+                              {bookingForm?.notes?.minivan5 || 'Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.'}
+                            </p>
+                          )
+                        }
+                        return null
+                      })()}
+                    </>
+                  )}
+
+                  {/* Nota: los campos de direcciones/equipaje/vuelo se completan en el Paso 3 tras la información de contacto */}
+                </div>
+              </>
+            )}
+
+            {/* Paso 3: Información de contacto */}
+            {modalStep === 3 && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Información de contacto</h4>
+                  <div>
+                    <label className="text-xs">Nombre completo</label>
+                    <Input data-modal-field="contactName" value={modalForm.contactName || ''} onChange={(e)=>setModalForm((s:any)=>({...s, contactName: e.target.value}))} className={modalFieldErrors.contactName ? 'border-destructive' : ''} />
+                    {modalFieldErrors.contactName && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactName}</p>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs">Teléfono</label>
+                      <Input data-modal-field="contactPhone" value={modalForm.contactPhone || ''} onChange={(e)=>setModalForm((s:any)=>({...s, contactPhone: ensureLeadingPlus(e.target.value)}))} onBlur={(e)=>setModalForm((s:any)=>({...s, contactPhone: formatPhonePretty(ensureLeadingPlus(e.target.value))}))} className={modalFieldErrors.contactPhone ? 'border-destructive' : ''} />
+                      {modalFieldErrors.contactPhone && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactPhone}</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs">Email</label>
+                      <Input data-modal-field="contactEmail" type="email" value={modalForm.contactEmail || ''} onChange={(e)=>setModalForm((s:any)=>({...s, contactEmail: e.target.value}))} onBlur={(e)=>{
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+                        if (!emailRegex.test(String(e.target.value))) setModalFieldErrors(fe => ({...fe, contactEmail: 'Formato inválido'}))
+                        else setModalFieldErrors(fe => { const c = {...fe}; delete c.contactEmail; return c })
+                      }} className={modalFieldErrors.contactEmail ? 'border-destructive' : ''} />
+                      {modalFieldErrors.contactEmail && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactEmail}</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs">Solicitudes especiales (opcional)</label>
+                    <Input value={modalForm.specialRequests || ''} onChange={(e)=>setModalForm((s:any)=>({...s, specialRequests: e.target.value}))} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Paso 4: Direcciones y equipaje (final) */}
+            {modalStep === 4 && (
+              <div className="space-y-3">
+                <div className="space-y-3 p-3 bg-muted/10 rounded">
+                  <h4 className="font-medium">Direcciones y equipaje</h4>
+                  <div>
+                    <label className="text-xs">Origen - Ubicación exacta</label>
+                    <Input data-modal-field="pickupAddress" placeholder="Ubicación exacta" value={modalForm.pickupAddress || ''} onChange={(e)=>setModalForm((s:any)=>({...s, pickupAddress: e.target.value}))} className={modalFieldErrors.pickupAddress ? 'border-destructive' : ''} />
+                    {modalFieldErrors.pickupAddress && <p className="text-xs text-destructive mt-1">{modalFieldErrors.pickupAddress}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs">Destino - Ubicación exacta</label>
+                    <Input data-modal-field="dropoffAddress" placeholder="Ubicación exacta" value={modalForm.dropoffAddress || ''} onChange={(e)=>setModalForm((s:any)=>({...s, dropoffAddress: e.target.value}))} className={modalFieldErrors.dropoffAddress ? 'border-destructive' : ''} />
+                    {modalFieldErrors.dropoffAddress && <p className="text-xs text-destructive mt-1">{modalFieldErrors.dropoffAddress}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs">Número de Vuelo (opcional)</label>
+                    <Input placeholder="AF1234, BA456" value={modalForm.flightNumber || ''} onChange={(e)=>setModalForm((s:any)=>({...s, flightNumber: e.target.value}))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs"># Maletas 23kg</label>
+                      <Input data-modal-field="luggage23kg" type="number" min={0} value={modalForm.luggage23kg ?? 0} onChange={(e)=>setModalForm((s:any)=>({...s, luggage23kg: Number(e.target.value)}))} />
+                      {modalFieldErrors.luggage23kg && <p className="text-xs text-destructive mt-1">{modalFieldErrors.luggage23kg}</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs"># Maletas 10kg</label>
+                      <Input data-modal-field="luggage10kg" type="number" min={0} value={modalForm.luggage10kg ?? 0} onChange={(e)=>setModalForm((s:any)=>({...s, luggage10kg: Number(e.target.value)}))} />
+                      {modalFieldErrors.luggage10kg && <p className="text-xs text-destructive mt-1">{modalFieldErrors.luggage10kg}</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Controles de navegación */}
+              <div className="flex items-center justify-between pt-4">
+              <div>
+                {modalStep > 1 && <Button variant="outline" size="sm" onClick={()=>{ setModalFieldErrors({}); setModalStep(s=>Math.max(1,s-1)) }}>Atrás</Button>}
+              </div>
+              <div className="flex items-center gap-2">
+                {modalStep < 4 && (
+                  <Button size="sm" onClick={handleModalNext} disabled={!validateModalStep(modalStep).valid}>Siguiente</Button>
+                )}
+                {modalStep === 4 && !modalEditingId && (
+                  <Button size="sm" onClick={() => {
+                    const ok = handleModalSave(false)
+                    if (ok) {
+                      // modal already closed in saveModalAsNew
+                    }
+                  }}>Añadir al carrito</Button>
+                )}
+                {modalStep === 4 && modalEditingId && (
+                  <Button size="sm" onClick={() => {
+                    const ok = handleModalSave(true)
+                    if (ok) {
+                      // modal already closed in updateExistingItem
+                    }
+                  }}>Guardar cambios</Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </main>
   )

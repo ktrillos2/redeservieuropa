@@ -79,7 +79,14 @@ export function Hero({
     pasajeros: "1",
     vehiculo: "coche",
     flightNumber: "",
-    idaYVuelta: false,
+    pickupAddress: "",
+    dropoffAddress: "",
+    luggage23kg: 0,
+    luggage10kg: 0,
+    contactName: "",
+    contactPhone: "",
+    contactEmail: "",
+  // idaYVuelta removed: round-trip option deprecated
     ninos: 0, // Selecciona automáticamente 0 niños
     tipoReserva: "traslado" as "" | "traslado" | "tour",
     tipoTour: "" as "diurno" | "nocturno" | "escala" | "",
@@ -207,6 +214,53 @@ export function Hero({
       if (!bookingData.fecha) errs.fecha = 'Requerido'
       if (!bookingData.hora) errs.hora = 'Requerido'
     }
+
+    // Validaciones adicionales para el paso final (contacto + direcciones)
+    // Solo se aplican cuando estamos en el paso 3 para no bloquear el avance desde el paso 2
+    try {
+      if (formStep >= 3) {
+        if (!bookingData.contactName) errs.contactName = 'Requerido'
+        if (!bookingData.contactPhone) errs.contactPhone = 'Requerido'
+        if (bookingData.tipoReserva === 'traslado') {
+          if (!bookingData.pickupAddress) errs.pickupAddress = 'Requerido'
+          if (!bookingData.dropoffAddress) errs.dropoffAddress = 'Requerido'
+          // Allow luggage counts to be zero; do not require explicit luggage fields here
+        }
+      }
+    } catch (e) {}
+    return errs
+  }
+
+  // Validation specifically for advancing from paso 2 -> paso 3.
+  // This ignores contact/address-specific errors which belong to paso 3.
+  const computeStep2Errors = (): Record<string, string> => {
+    const errs = computeValidationErrors()
+    // Remove errors that are only relevant to step 3 (contact / addresses / luggage)
+    const step3Only = [
+      'contactName',
+      'contactPhone',
+      'contactEmail',
+      'pickupAddress',
+      'dropoffAddress',
+      'luggage23kg',
+      'luggage10kg',
+      'flightNumber',
+    ]
+    for (const k of step3Only) delete errs[k]
+
+    // Enforce some additional required fields for paso 2 that weren't cubiertos
+    // previamente: vehiculo y, si aplica, selección de tour.
+    if (!bookingData.vehiculo) errs.vehiculo = 'Requerido'
+    const pax = parsePassengers(bookingData.pasajeros)
+    if (!bookingData.pasajeros || pax < 1) errs.pasajeros = '≥1'
+    if (bookingData.tipoReserva === 'tour') {
+      // Si hay una lista de tours visible, exigir selección explícita
+      if (Array.isArray(toursList) && toursList.length > 0) {
+        if (!bookingData.selectedTourSlug) errs.selectedTourSlug = 'Requerido'
+      } else {
+        if (!bookingData.categoriaTour && !bookingData.subtipoTour) errs.categoriaTour = 'Requerido'
+      }
+    }
     return errs
   }
 
@@ -226,6 +280,8 @@ export function Hero({
     hora: 'Hora',
     pasajeros: 'Pasajeros',
     categoriaTour: 'Categoría de tour',
+    vehiculo: 'Tipo de vehículo',
+    selectedTourSlug: 'Tour',
   }
 
   const isNightTime = (timeStr?: string) => {
@@ -248,8 +304,7 @@ export function Hero({
     const extraPax = Math.max(0, pax - 8)
     const extraPaxCharge = extraPax * 20
 
-    let total = base + nightCharge + extraPaxCharge
-    if (bookingData.idaYVuelta) total = total * 2
+  let total = base + nightCharge + extraPaxCharge
     return {
       base,
       nightCharge,
@@ -257,7 +312,7 @@ export function Hero({
       extraPaxCharge,
       total,
     }
-  }, [bookingData.origen, bookingData.destino, bookingData.hora, bookingData.pasajeros, bookingData.vehiculo, bookingData.idaYVuelta])
+  }, [bookingData.origen, bookingData.destino, bookingData.hora, bookingData.pasajeros, bookingData.vehiculo])
 
   // Estimación de precio para Tours según reglas provistas
   const tourQuote = useMemo(() => {
@@ -332,7 +387,7 @@ export function Hero({
           pickupAddress: (labelMap as any)[bookingData.origen] || bookingData.origen || "",
           dropoffAddress: (labelMap as any)[bookingData.destino] || bookingData.destino || "",
           flightNumber: bookingData.flightNumber || "",
-          roundtrip: bookingData.idaYVuelta === true,
+    // roundtrip removed
         })
       } else if (bookingData.tipoReserva === "tour") {
         Object.assign(data, {
@@ -370,30 +425,9 @@ export function Hero({
   }
 
   // Función para agregar la cotización actual al carrito
-  function handleAddToCart() {
-    // Construir item actual
-    const item = {
-      ...bookingData,
-      tipo: bookingData.tipoReserva,
-      fecha: bookingData.fecha,
-      hora: bookingData.hora,
-      origen: bookingData.origen,
-      destino: bookingData.destino,
-      ninos: bookingData.ninos,
-      pasajeros: bookingData.pasajeros,
-      vehiculo: bookingData.vehiculo,
-      tour: bookingData.selectedTourSlug || null,
-    };
-    // Guardar en localStorage
-    let carrito = [];
-    try {
-      const raw = localStorage.getItem('carritoCotizaciones')
-      if (raw) carrito = JSON.parse(raw)
-    } catch {}
-    carrito.push(item)
-    localStorage.setItem('carritoCotizaciones', JSON.stringify(carrito))
-    alert('Cotización añadida al carrito. Puedes seguir agregando más o ir a pagar.')
-  }
+  // Nota: el flujo ahora envía una "quick quote" a la página /pago
+  // donde se completarán contacto y direcciones. La función que
+  // añadía la cotización localmente fue removida del flujo principal.
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-primary pt-20">
@@ -716,17 +750,7 @@ export function Hero({
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="flex-1 flex flex-col items-center justify-center space-y-2">
-                              <label className="text-sm font-medium text-center">¿Ida y regreso?</label>
-                              <button
-                                type="button"
-                                className={`px-3 py-1 rounded border ${bookingData.idaYVuelta ? 'bg-accent text-accent-foreground' : 'bg-background'}`}
-                                onClick={() => setBookingData({ ...bookingData, idaYVuelta: !bookingData.idaYVuelta })}
-                                aria-pressed={bookingData.idaYVuelta}
-                              >
-                                {bookingData.idaYVuelta ? 'Sí' : 'No'}
-                              </button>
-                            </div>
+                            {/* round-trip option removed */}
                           </div>
                         </div>
                       )}
@@ -790,7 +814,7 @@ export function Hero({
                                 }}
                               >
                                 <SelectTrigger data-field="categoriaTour" className={"cursor-pointer " + (fieldErrors.categoriaTour ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                                  <SelectValue placeholder="Selecciona: Diurno, Nocturno o Escala" />
+                                  <SelectValue placeholder="Selecciona una opción" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="diurno">Tour diurno</SelectItem>
@@ -929,25 +953,44 @@ export function Hero({
                           )}
                         </>
                       )}
-                      {/* Botón Cotizar */}
+                      {/* Botón Siguiente (ir al paso 3: contacto y direcciones) */}
                       <div className="pt-4 flex flex-col gap-2">
-                        <Button
-                          className="w-full bg-accent hover:bg-accent/90 shadow-lg"
-                          size="lg"
-                          onClick={goToPayment}
-                          disabled={!isFormValid}
-                        >
-                          Cotizar
-                        </Button>
-                        {!isFormValid && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Campos faltantes: {Object.keys(computeValidationErrors()).map(k => fieldLabelMap[k] || k).join(', ')}
-                          </p>
-                        )}
+                        {(() => {
+                          const errs = computeStep2Errors()
+                          const disabled = Object.keys(errs).length > 0
+                          return (
+                            <>
+                              <Button
+                                className="w-full bg-accent hover:bg-accent/90 shadow-lg"
+                                size="lg"
+                                disabled={disabled}
+                                onClick={() => {
+                                  const errsClick = computeStep2Errors()
+                                  setFieldErrors(errsClick)
+                                  if (Object.keys(errsClick).length) {
+                                    const first = Object.keys(errsClick)[0]
+                                    try { document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus() } catch {}
+                                    return
+                                  }
+                                  // Enviar una cotización rápida a la página de pago
+                                  goToPayment()
+                                }}
+                              >
+                                Cotizar
+                              </Button>
+                              {disabled && (
+                                <p className="text-sm text-muted-foreground mt-2">
+                                  Campos faltantes: {Object.keys(errs).map(k => fieldLabelMap[k] || k).join(', ')}
+                                </p>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
                   </>
                 )}
+                
               </CardContent>
             </Card>
           </AnimatedSection>

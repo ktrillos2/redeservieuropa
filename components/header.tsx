@@ -59,6 +59,7 @@ export function Header({
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [isServicesOpenMobile, setIsServicesOpenMobile] = useState(false)
   const [servicesOpen, setServicesOpen] = useState(false)
   const hoverCloseTimeout = useRef<number | null>(null)
@@ -82,6 +83,23 @@ export function Header({
     document.body.setAttribute("data-page", isHomePage ? "home" : "other")
     document.body.setAttribute("data-scrolled", isScrolled.toString())
   }, [isHomePage, isScrolled])
+
+  // Observar cambios en el atributo data-quote-modal para hacer el header transparente
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const current = document.body.getAttribute('data-quote-modal')
+    setIsModalOpen(current === 'open')
+    const mo = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === 'attributes' && m.attributeName === 'data-quote-modal') {
+          const val = document.body.getAttribute('data-quote-modal')
+          setIsModalOpen(val === 'open')
+        }
+      }
+    })
+    mo.observe(document.body, { attributes: true })
+    return () => mo.disconnect()
+  }, [])
 
   // Builder de URL de WhatsApp sin número (abre selector con mensaje)
   const wa = (message: string) => `https://wa.me/?text=${encodeURIComponent(message)}`
@@ -107,7 +125,7 @@ export function Header({
   return (
     <header
       className={`fixed top-0 w-full z-[100] transition-all duration-500 ease-in-out h-auto ${
-        isScrolled ? "bg-background/95 backdrop-blur-sm border-b border-border py-2" : "bg-transparent py-3"
+        isModalOpen ? "bg-transparent py-3" : (isScrolled ? "bg-background/95 backdrop-blur-sm border-b border-border py-2" : "bg-transparent py-3")
       }`}
     >
       <div className="container mx-auto px-4" onClick={(e) => {

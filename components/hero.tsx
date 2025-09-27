@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,6 +14,7 @@ import EventsSlider, { type EventItem as SliderEventItem } from "@/components/ev
 import { calcBaseTransferPrice, getAvailableDestinations as pricingGetAvailableDestinations, getGlobalMinBase as pricingGetGlobalMinBase, getMinBaseFromOrigin as pricingGetMinBaseFromOrigin } from "@/lib/pricing"
 
 export function Hero({
+  // Props de la sección Hero
   title = 'Transporte',
   highlight = 'Comodo y Seguro',
   description = [
@@ -67,8 +69,8 @@ export function Hero({
   toursList?: { title: string; slug?: string; basePrice?: number; basePriceDay?: number; basePriceNight?: number }[]
 }) {
   const router = useRouter()
-  // Eliminado FadeOnMount para no ocultar contenido con opacity 0
 
+  // Hooks de estado
   const [bookingData, setBookingData] = useState({
     origen: "cdg",
     destino: "paris",
@@ -78,14 +80,24 @@ export function Hero({
     vehiculo: "coche",
     flightNumber: "",
     idaYVuelta: false,
-  tipoReserva: "traslado" as "" | "traslado" | "tour",
+    ninos: 0, // Selecciona automáticamente 0 niños
+    tipoReserva: "traslado" as "" | "traslado" | "tour",
     tipoTour: "" as "diurno" | "nocturno" | "escala" | "",
     categoriaTour: "" as "" | "ciudad" | "escala",
-    subtipoTour: "" as "" | "diurno" | "nocturno",
+  subtipoTour: "" as "diurno" | "nocturno" | "",
     selectedTourSlug: "",
   })
-
   const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({})
+  const [showReturn, setShowReturn] = useState(false)
+  const [returnData, setReturnData] = useState({ origen: '', destino: '', fecha: '', hora: '', ninos: 0 })
+  // Paso del formulario
+  const [formStep, setFormStep] = useState(1)
+
+  // Fecha mínima: mañana
+  const minDateStr = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() + 1)
+    return d.toISOString().slice(0, 10)
+  }, [])
 
   // Scroll helpers
   const scrollToElement = (id: string) => {
@@ -171,7 +183,8 @@ export function Hero({
     }
   }, [bookingData.vehiculo])
 
-  const validateHard = (): boolean => {
+  // Compute validation errors without side effects (pure)
+  const computeValidationErrors = (): Record<string, string> => {
     const errs: Record<string,string> = {}
     const pax = parsePassengers(bookingData.pasajeros)
     const cap = getVehicleCap(bookingData.vehiculo)
@@ -182,19 +195,37 @@ export function Hero({
       if (!bookingData.origen) errs.origen = 'Requerido'
       if (!bookingData.destino) errs.destino = 'Requerido'
       if (!bookingData.fecha) errs.fecha = 'Requerido'
+      else {
+        const today = new Date(); today.setHours(0,0,0,0)
+        const selected = new Date(bookingData.fecha)
+        if (!(selected.getTime() > today.getTime())) errs.fecha = 'Debe ser posterior a hoy'
+      }
       if (!bookingData.hora) errs.hora = 'Requerido'
+    // Modal: agregar cotización de regreso al carrito
     } else if (bookingData.tipoReserva === 'tour') {
       if (!bookingData.categoriaTour && !bookingData.subtipoTour) errs.categoriaTour = 'Requerido'
       if (!bookingData.fecha) errs.fecha = 'Requerido'
       if (!bookingData.hora) errs.hora = 'Requerido'
     }
-    setFieldErrors(errs)
-    if (Object.keys(errs).length) {
-      const first = Object.keys(errs)[0]
-      try { document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus() } catch {}
-      return false
-    }
-    return true
+    return errs
+  }
+
+  // Pure boolean check without side effects (safe for render)
+  const validateHard = (): boolean => {
+    const errs = computeValidationErrors()
+    return Object.keys(errs).length === 0
+  }
+
+  // Derived boolean for UI and a human-friendly map of field labels
+  const isFormValid = useMemo(() => validateHard(), [bookingData])
+  const fieldLabelMap: Record<string,string> = {
+    tipoReserva: 'Tipo de reserva',
+    origen: 'Origen',
+    destino: 'Destino',
+    fecha: 'Fecha',
+    hora: 'Hora',
+    pasajeros: 'Pasajeros',
+    categoriaTour: 'Categoría de tour',
   }
 
   const isNightTime = (timeStr?: string) => {
@@ -274,7 +305,15 @@ export function Hero({
   // Enviar a página de pago con un depósito de confirmación de 5€ (quick deposit)
   const goToPayment = () => {
     try {
-      if (!validateHard()) return
+      // Run validation and set errors / focus as side-effects here (not during render)
+      const errs = computeValidationErrors()
+      setFieldErrors(errs)
+      if (Object.keys(errs).length) {
+        const first = Object.keys(errs)[0]
+        try { document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus() } catch {}
+        return
+      }
+
       const pax = parsePassengers(bookingData.pasajeros)
       const data: any = { quickDeposit: true }
 
@@ -316,6 +355,44 @@ export function Hero({
     } catch (e) {
       console.error("No se pudo preparar el pago:", e)
     }
+  }
+
+  // Función para manejar el cambio de niños
+  function handleNinosChange(value: string) {
+    const n = Math.max(0, Math.min(parsePassengers(bookingData.pasajeros), Number(value)))
+    setBookingData({ ...bookingData, ninos: n })
+  }
+  // Función para agregar cotización de regreso
+  function handleAddReturn() {
+    if (!returnData.origen || !returnData.destino || !returnData.fecha || !returnData.hora) return;
+    setShowReturn(false);
+    // Aquí se podría guardar en localStorage o en un array de carrito
+  }
+
+  // Función para agregar la cotización actual al carrito
+  function handleAddToCart() {
+    // Construir item actual
+    const item = {
+      ...bookingData,
+      tipo: bookingData.tipoReserva,
+      fecha: bookingData.fecha,
+      hora: bookingData.hora,
+      origen: bookingData.origen,
+      destino: bookingData.destino,
+      ninos: bookingData.ninos,
+      pasajeros: bookingData.pasajeros,
+      vehiculo: bookingData.vehiculo,
+      tour: bookingData.selectedTourSlug || null,
+    };
+    // Guardar en localStorage
+    let carrito = [];
+    try {
+      const raw = localStorage.getItem('carritoCotizaciones')
+      if (raw) carrito = JSON.parse(raw)
+    } catch {}
+    carrito.push(item)
+    localStorage.setItem('carritoCotizaciones', JSON.stringify(carrito))
+    alert('Cotización añadida al carrito. Puedes seguir agregando más o ir a pagar.')
   }
 
   return (
@@ -396,508 +473,481 @@ export function Hero({
           <AnimatedSection animation="fade-up" delay={300}>
             <Card id="hero-booking-form" className="bg-card/98 backdrop-blur-md transform hover:scale-102 transition-all duration-300 shadow-2xl border-white/20 scroll-mt-24">
               <CardContent className="p-6">
-                <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">{bookingForm?.title || 'Reserva tu Servicio'}</h3>
-                <div className="space-y-4">
-                  {/* Tipo de reserva (botones) */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Map className="w-4 h-4 text-accent" />
-                      {bookingForm?.typePicker?.label || 'Tipo de reserva'}
-                    </label>
-                    <div className="flex flex-wrap gap-4 justify-center w-full">
-                      <Button
-                        type="button"
-                        size="lg"
-                        variant={bookingData.tipoReserva === "traslado" ? "default" : "outline"}
-                        className={`cursor-pointer h-12 px-8 text-base md:text-lg min-w-[150px] shadow-md hover:shadow-lg hover:scale-[1.02] transition-all ${
-                          bookingData.tipoReserva === "traslado"
-                            ? "ring-2 ring-accent bg-gradient-to-r from-primary to-primary/80"
-                            : "border-2"
-                        }`}
-                        aria-pressed={bookingData.tipoReserva === "traslado"}
-                        onClick={() =>
-                          setBookingData({
-                            ...bookingData,
-                            tipoReserva: "traslado",
-                            // limpiar campos de tour al cambiar a traslado
-                            tipoTour: "",
-                            categoriaTour: "",
-                            subtipoTour: "",
-                          })
-                        }
-                      >
-                        <Car className="w-5 h-5" />
-                        {bookingForm?.typePicker?.trasladoLabel || 'Traslado'}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="lg"
-                        variant={bookingData.tipoReserva === "tour" ? "default" : "outline"}
-                        className={`cursor-pointer h-12 px-8 text-base md:text-lg min-w-[150px] shadow-md hover:shadow-lg hover:scale-[1.02] transition-all ${
-                          bookingData.tipoReserva === "tour"
-                            ? "ring-2 ring-accent bg-gradient-to-r from-primary to-primary/80"
-                            : "border-2"
-                        }`}
-                        aria-pressed={bookingData.tipoReserva === "tour"}
-                        onClick={() =>
-                          setBookingData({
-                            ...bookingData,
-                            tipoReserva: "tour",
-                            // limpiar campos de traslado al cambiar a tour
-                            origen: "",
-                            destino: "",
-                            fecha: "",
-                            hora: "",
-                            pasajeros: "1",
-                            vehiculo: "coche",
-                            flightNumber: "",
-                          })
-                        }
-                      >
-                        <Map className="w-5 h-5" />
-                        {bookingForm?.typePicker?.tourLabel || 'Tour'}
-                      </Button>
-                    </div>
-                    {/* Selector de tours disponibles */}
-                    {bookingData.tipoReserva === 'tour' && Array.isArray(toursList) && toursList.length > 0 && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Tour</label>
-                        <Select
-                          value={bookingData.selectedTourSlug}
-                          onValueChange={(value) => setBookingData({ ...bookingData, selectedTourSlug: value })}
+                {/* Paso 1: Selección de tipo de reserva */}
+                {formStep === 1 && (
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">{bookingForm?.title || 'Reserva tu Servicio'}</h3>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Map className="w-4 h-4 text-accent" />
+                        {bookingForm?.typePicker?.label || 'Tipo de reserva'}
+                      </label>
+                      <div className="flex flex-wrap gap-4 justify-center w-full">
+                        <Button
+                          type="button"
+                          size="lg"
+                          variant={bookingData.tipoReserva === "traslado" ? "default" : "outline"}
+                          className={`cursor-pointer h-12 px-8 text-base md:text-lg min-w-[150px] shadow-md hover:shadow-lg hover:scale-[1.02] transition-all ${bookingData.tipoReserva === "traslado" ? "ring-2 ring-accent bg-gradient-to-r from-primary to-primary/80" : "border-2"}`}
+                          aria-pressed={bookingData.tipoReserva === "traslado"}
+                          onClick={() => {
+                            setBookingData((prev) => ({
+                              ...prev,
+                              tipoReserva: "traslado",
+                              tipoTour: "",
+                              categoriaTour: "",
+                              subtipoTour: "" as "diurno" | "nocturno" | "",
+                              // Limpiar campos de tour
+                              origen: prev.origen || "cdg",
+                              destino: prev.destino || "paris",
+                              fecha: prev.fecha || "",
+                              hora: prev.hora || "",
+                              pasajeros: prev.pasajeros || "1",
+                              vehiculo: prev.vehiculo || "coche",
+                              flightNumber: prev.flightNumber || "",
+                            }));
+                            setFormStep(2);
+                          }}
                         >
-                          <SelectTrigger data-field="tour" className="cursor-pointer">
-                            <SelectValue placeholder="Selecciona un tour" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            {toursList.map((t, idx) => (
-                              <SelectItem key={idx} value={t.slug || t.title}>{t.title}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <Car className="w-5 h-5" />
+                          {bookingForm?.typePicker?.trasladoLabel || 'Traslado'}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="lg"
+                          variant={bookingData.tipoReserva === "tour" ? "default" : "outline"}
+                          className={`cursor-pointer h-12 px-8 text-base md:text-lg min-w-[150px] shadow-md hover:shadow-lg hover:scale-[1.02] transition-all ${bookingData.tipoReserva === "tour" ? "ring-2 ring-accent bg-gradient-to-r from-primary to-primary/80" : "border-2"}`}
+                          aria-pressed={bookingData.tipoReserva === "tour"}
+                          onClick={() => {
+                            setBookingData((prev) => ({
+                              ...prev,
+                              tipoReserva: "tour",
+                              // Limpiar campos de traslado
+                              origen: "",
+                              destino: "",
+                              fecha: "",
+                              hora: "",
+                              pasajeros: "1",
+                              vehiculo: "coche",
+                              flightNumber: "",
+                              tipoTour: "",
+                              categoriaTour: "",
+                              subtipoTour: "" as "diurno" | "nocturno" | "",
+                            }));
+                            setFormStep(2);
+                          }}
+                        >
+                          <Map className="w-5 h-5" />
+                          {bookingForm?.typePicker?.tourLabel || 'Tour'}
+                        </Button>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Tipo de tour (unificado: Diurno, Nocturno o Escala) */}
-                  {bookingData.tipoReserva === "tour" && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Tipo de tour</label>
-                      <Select
-                        value={
-                          bookingData.categoriaTour === "escala"
-                            ? "escala"
-                            : bookingData.subtipoTour || ""
-                        }
-                        onValueChange={(value) => {
-                          if (value === "escala") {
-                            setBookingData({
-                              ...bookingData,
-                              categoriaTour: "escala",
-                              subtipoTour: "",
-                              tipoTour: "escala",
-                              selectedTourSlug: "",
-                            })
-                          } else {
-                            setBookingData({
-                              ...bookingData,
-                              categoriaTour: "ciudad",
-                              subtipoTour: value as any, // diurno | nocturno
-                              tipoTour: value as any,
-                              selectedTourSlug: "",
-                            })
-                          }
-                        }}
-                      >
-                        <SelectTrigger data-field="categoriaTour" className={"cursor-pointer " + (fieldErrors.categoriaTour ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                          <SelectValue placeholder="Selecciona: Diurno, Nocturno o Escala" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="diurno">Tour diurno</SelectItem>
-                          <SelectItem value="nocturno">Tour nocturno</SelectItem>
-                          <SelectItem value="escala">Tour escala</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
-                  )}
-
-                  {/* Campos de información también para Tour (fecha/hora/pax/vehículo) */}
-                  {bookingData.tipoReserva === "tour" && (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-accent" />
-                            {bookingForm?.dateField?.label || 'Fecha'}
-                          </label>
-                          <Input
-                            data-field="fecha"
-                            type="date"
-                            value={bookingData.fecha}
-                            onChange={(e) => { setBookingData({ ...bookingData, fecha: e.target.value }); if (fieldErrors.fecha) setFieldErrors(f=>{const c={...f}; delete c.fecha; return c}) }}
-                            className={fieldErrors.fecha ? 'border-destructive focus-visible:ring-destructive' : ''}
-                          />
+                  </div>
+                )}
+                {/* Paso 2: Resto del formulario */}
+                {formStep === 2 && (
+                  <>
+                    {/* Título dinámico según tipo de reserva */}
+                    <h4 className="text-xl font-semibold text-center mb-2">
+                      {bookingData.tipoReserva === "traslado"
+                        ? "Cotización Traslado"
+                        : bookingData.tipoReserva === "tour"
+                        ? "Cotización Tour"
+                        : "Cotización"}
+                    </h4>
+                    {/* Botón volver */}
+                    <div className="mb-4 flex justify-start">
+                      <Button variant="outline" size="sm" onClick={() => setFormStep(1)}>
+                        ← Volver
+                      </Button>
+                    </div>
+                    {/* Formulario paso 2 */}
+                    <div className="space-y-4">
+                      {/* Campos para traslado */}
+                      {bookingData.tipoReserva === "traslado" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Origen */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-accent" />
+                              {`Origen${bookingData.origen ? ` ${(labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen)}` : ''}`}
+                            </label>
+                            <Select
+                              value={bookingData.origen}
+                              onValueChange={(value) => setBookingData({ ...bookingData, origen: value, destino: "" })}
+                            >
+                              <SelectTrigger data-field="origen" className={"cursor-pointer " + (fieldErrors.origen ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                <SelectValue placeholder="Seleccionar origen" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.keys(labelMap).map((k) => (
+                                  <SelectItem key={k} value={k}>{labelMap[k as keyof typeof labelMap]}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {/* Destino */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-accent" />
+                              {`Destino${bookingData.destino ? ` ${(labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino)}` : ''}`}
+                            </label>
+                            <Select value={bookingData.destino} onValueChange={(value) => setBookingData({ ...bookingData, destino: value })}>
+                              <SelectTrigger data-field="destino" disabled={!bookingData.origen} className={"cursor-pointer disabled:cursor-not-allowed " + (fieldErrors.destino ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                <SelectValue placeholder={bookingData.origen ? "Seleccionar destino" : "Selecciona el origen primero"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableDestinations.length > 0 ? (
+                                  availableDestinations.map((d) => (
+                                    <SelectItem key={d} value={d}>
+                                      {labelMap[d as keyof typeof labelMap] || d}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="-" disabled>
+                                    {bookingData.origen ? "No hay destinos disponibles" : "Selecciona el origen primero"}
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {/* Fecha */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-accent" />
+                              {bookingForm?.dateField?.label || 'Fecha'}
+                            </label>
+                            <Input
+                              data-field="fecha"
+                              type="date"
+                              min={minDateStr}
+                              value={bookingData.fecha}
+                              onChange={(e) => { setBookingData({ ...bookingData, fecha: e.target.value }); if (fieldErrors.fecha) setFieldErrors(f=>{const c={...f}; delete c.fecha; return c}) }}
+                              className={fieldErrors.fecha ? 'border-destructive focus-visible:ring-destructive' : ''}
+                            />
+                          </div>
+                          {/* Hora */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-accent" />
+                              {bookingForm?.timeField?.label || 'Hora'}
+                            </label>
+                            <Input
+                              data-field="hora"
+                              type="time"
+                              value={bookingData.hora}
+                              onChange={(e) => { setBookingData({ ...bookingData, hora: e.target.value }); if (fieldErrors.hora) setFieldErrors(f=>{const c={...f}; delete c.hora; return c}) }}
+                              className={fieldErrors.hora ? 'border-destructive focus-visible:ring-destructive' : ''}
+                            />
+                          </div>
+                          {/* Pasajeros */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <Users className="w-4 h-4 text-accent" />
+                              Pasajeros
+                            </label>
+                            <Select
+                              value={bookingData.pasajeros}
+                              onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
+                            >
+                              <SelectTrigger data-field="pasajeros" className={"cursor-pointer " + (fieldErrors.pasajeros ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-72">
+                                {Array.from({ length: getVehicleCap(bookingData.vehiculo) }, (_, i) => i + 1).map((n) => (
+                                  <SelectItem key={n} value={String(n)}>
+                                    {n} {n === 1 ? "Pasajero" : "Pasajeros"}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {/* Niños */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                              <Users className="w-4 h-4 text-accent" />
+                              Niños (0-12)
+                            </label>
+                            <Select
+                              value={String(bookingData.ninos ?? 0)}
+                              onValueChange={value => {
+                                const maxNinos = parsePassengers(bookingData.pasajeros);
+                                let n = Number(value);
+                                if (n > maxNinos) n = maxNinos;
+                                setBookingData({ ...bookingData, ninos: n });
+                              }}
+                            >
+                              <SelectTrigger data-field="ninos" className="cursor-pointer">
+                                <SelectValue>
+                                  {bookingData.ninos === 0 || bookingData.ninos
+                                    ? `${bookingData.ninos} ${bookingData.ninos === 1 ? 'niño' : 'niños'}`
+                                    : 'Cantidad de niños'}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="max-h-72">
+                                {Array.from({ length: parsePassengers(bookingData.pasajeros) + 1 }, (_, i) => i).map((n) => (
+                                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {/* Vehículo y Ida y regreso en la misma fila */}
+                          <div className="flex flex-col md:flex-row gap-4 col-span-2">
+                            <div className="flex-1 space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Car className="w-4 h-4 text-accent" />
+                                Tipo de vehículo
+                              </label>
+                              <Select
+                                value={bookingData.vehiculo}
+                                onValueChange={(value) => {
+                                  const cap = getVehicleCap(value)
+                                  const pax = parsePassengers(bookingData.pasajeros)
+                                  const clamped = Math.min(Math.max(pax, 1), cap)
+                                  setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
+                                }}
+                              >
+                                <SelectTrigger data-field="vehiculo" className="cursor-pointer">
+                                  <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="coche">Coche</SelectItem>
+                                  <SelectItem value="minivan">Minivan</SelectItem>
+                                  <SelectItem value="van">Van</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex-1 flex flex-col items-center justify-center space-y-2">
+                              <label className="text-sm font-medium text-center">¿Ida y regreso?</label>
+                              <button
+                                type="button"
+                                className={`px-3 py-1 rounded border ${bookingData.idaYVuelta ? 'bg-accent text-accent-foreground' : 'bg-background'}`}
+                                onClick={() => setBookingData({ ...bookingData, idaYVuelta: !bookingData.idaYVuelta })}
+                                aria-pressed={bookingData.idaYVuelta}
+                              >
+                                {bookingData.idaYVuelta ? 'Sí' : 'No'}
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-accent" />
-                            {bookingForm?.timeField?.label || 'Hora'}
-                          </label>
-                          <Input
-                            data-field="hora"
-                            type="time"
-                            value={bookingData.hora}
-                            onChange={(e) => { setBookingData({ ...bookingData, hora: e.target.value }); if (fieldErrors.hora) setFieldErrors(f=>{const c={...f}; delete c.hora; return c}) }}
-                            className={fieldErrors.hora ? 'border-destructive focus-visible:ring-destructive' : ''}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium flex items-center gap-2">
-                            <Users className="w-4 h-4 text-accent" />
-                            {bookingForm?.passengersField?.label || 'Pasajeros'}
-                          </label>
-                          <Select
-                            value={bookingData.pasajeros}
-                            onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
-                          >
-                            <SelectTrigger data-field="pasajeros" className={"cursor-pointer " + (fieldErrors.pasajeros ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                              <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-72">
-                              {Array.from({ length: getVehicleCap(bookingData.vehiculo) }, (_, i) => i + 1).map((n) => (
-                                <SelectItem key={n} value={String(n)}>
-                                  {n} {n === 1 ? (bookingForm?.passengersField?.singular || 'Pasajero') : (bookingForm?.passengersField?.plural || 'Pasajeros')}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium flex items-center gap-2">
-                            <Car className="w-4 h-4 text-accent" />
-                            {bookingForm?.vehicleField?.label || 'Tipo de vehículo'}
-                          </label>
-                          <Select
-                            value={bookingData.vehiculo}
-                            onValueChange={(value) => {
-                              const cap = getVehicleCap(value)
+                      )}
+                      {/* Campos para tour */}
+                      {bookingData.tipoReserva === "tour" && (
+                        <>
+                          {/* Tour y Tipo de tour en la misma fila */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Selector de tours disponibles */}
+                            {Array.isArray(toursList) && toursList.length > 0 && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium flex items-center gap-2">
+                                  <Map className="w-4 h-4 text-accent" />
+                                  Tour
+                                </label>
+                                <Select
+                                  value={bookingData.selectedTourSlug}
+                                  onValueChange={(value) => setBookingData({ ...bookingData, selectedTourSlug: value })}
+                                >
+                                  <SelectTrigger data-field="tour" className="cursor-pointer">
+                                    <SelectValue placeholder="Selecciona un tour" />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-72">
+                                    {toursList.map((t, idx) => (
+                                      <SelectItem key={idx} value={t.slug || t.title}>{t.title}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            {/* Tipo de tour (Diurno, Nocturno o Escala) */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Plane className="w-4 h-4 text-accent" />
+                                Tipo de tour
+                              </label>
+                              <Select
+                                value={
+                                  bookingData.categoriaTour === "escala"
+                                    ? "escala"
+                                    : bookingData.subtipoTour || ""
+                                }
+                                onValueChange={(value) => {
+                                  if (value === "escala") {
+                                    setBookingData({
+                                      ...bookingData,
+                                      categoriaTour: "escala",
+                                      subtipoTour: "" as "diurno" | "nocturno" | "",
+                                      tipoTour: "escala",
+                                      selectedTourSlug: "",
+                                    })
+                                  } else {
+                                    setBookingData({
+                                      ...bookingData,
+                                      categoriaTour: "ciudad",
+                                      subtipoTour: value as "diurno" | "nocturno" | "",
+                                      tipoTour: value as "diurno" | "nocturno" | "",
+                                      selectedTourSlug: "",
+                                    })
+                                  }
+                                }}
+                              >
+                                <SelectTrigger data-field="categoriaTour" className={"cursor-pointer " + (fieldErrors.categoriaTour ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                  <SelectValue placeholder="Selecciona: Diurno, Nocturno o Escala" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="diurno">Tour diurno</SelectItem>
+                                  <SelectItem value="nocturno">Tour nocturno</SelectItem>
+                                  <SelectItem value="escala">Tour escala</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          {/* Fecha, hora, pasajeros, vehículo */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-accent" />
+                                {bookingForm?.dateField?.label || 'Fecha'}
+                              </label>
+                              <Input
+                                data-field="fecha"
+                                type="date"
+                                min={minDateStr}
+                                value={bookingData.fecha}
+                                onChange={(e) => { setBookingData({ ...bookingData, fecha: e.target.value }); if (fieldErrors.fecha) setFieldErrors(f=>{const c={...f}; delete c.fecha; return c}) }}
+                                className={fieldErrors.fecha ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-accent" />
+                                {bookingForm?.timeField?.label || 'Hora'}
+                              </label>
+                              <Input
+                                data-field="hora"
+                                type="time"
+                                value={bookingData.hora}
+                                onChange={(e) => { setBookingData({ ...bookingData, hora: e.target.value }); if (fieldErrors.hora) setFieldErrors(f=>{const c={...f}; delete c.hora; return c}) }}
+                                className={fieldErrors.hora ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Users className="w-4 h-4 text-accent" />
+                                {bookingForm?.passengersField?.label || 'Pasajeros'}
+                              </label>
+                              <Select
+                                value={bookingData.pasajeros}
+                                onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
+                              >
+                                <SelectTrigger data-field="pasajeros" className={"cursor-pointer " + (fieldErrors.pasajeros ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                  <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-72">
+                                  {Array.from({ length: getVehicleCap(bookingData.vehiculo) }, (_, i) => i + 1).map((n) => (
+                                    <SelectItem key={n} value={String(n)}>
+                                      {n} {n === 1 ? (bookingForm?.passengersField?.singular || 'Pasajero') : (bookingForm?.passengersField?.plural || 'Pasajeros')}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {/* Niños (0-12) para tour */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Users className="w-4 h-4 text-accent" />
+                                Niños (0-12)
+                              </label>
+                              <Select
+                                value={String(bookingData.ninos ?? 0)}
+                                onValueChange={value => {
+                                  const maxNinos = parsePassengers(bookingData.pasajeros);
+                                  let n = Number(value);
+                                  if (n > maxNinos) n = maxNinos;
+                                  setBookingData({ ...bookingData, ninos: n });
+                                }}
+                              >
+                                <SelectTrigger data-field="ninos" className="cursor-pointer">
+                                  <SelectValue>
+                                    {bookingData.ninos === 0 || bookingData.ninos
+                                      ? `${bookingData.ninos} ${bookingData.ninos === 1 ? 'niño' : 'niños'}`
+                                      : 'Cantidad de niños'}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="max-h-72">
+                                  {Array.from({ length: parsePassengers(bookingData.pasajeros) + 1 }, (_, i) => i).map((n) => (
+                                    <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Car className="w-4 h-4 text-accent" />
+                                {bookingForm?.vehicleField?.label || 'Tipo de vehículo'}
+                              </label>
+                              <Select
+                                value={bookingData.vehiculo}
+                                onValueChange={(value) => {
+                                  const cap = getVehicleCap(value)
+                                  const pax = parsePassengers(bookingData.pasajeros)
+                                  const clamped = Math.min(Math.max(pax, 1), cap)
+                                  setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
+                                }}
+                              >
+                                <SelectTrigger data-field="vehiculo" className="cursor-pointer">
+                                  <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="coche">{bookingForm?.vehicleField?.labelCoche || 'Coche (4 personas)'}</SelectItem>
+                                  <SelectItem value="minivan">{bookingForm?.vehicleField?.labelMinivan || 'Minivan (6 pasajeros)'}</SelectItem>
+                                  <SelectItem value="van">{bookingForm?.vehicleField?.labelVan || 'Van (8 pasajeros)'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          {/* Notas de equipaje para Minivan con 5 o 6 pasajeros */}
+                          {bookingData.vehiculo === "minivan" && (
+                            (() => {
                               const pax = parsePassengers(bookingData.pasajeros)
-                              const clamped = Math.min(Math.max(pax, 1), cap)
-                              setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
-                            }}
-                          >
-                            <SelectTrigger data-field="vehiculo" className="cursor-pointer">
-                              <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="coche">{bookingForm?.vehicleField?.labelCoche || 'Coche (4 personas)'}</SelectItem>
-                              <SelectItem value="minivan">{bookingForm?.vehicleField?.labelMinivan || 'Minivan (6 pasajeros)'}</SelectItem>
-                              <SelectItem value="van">{bookingForm?.vehicleField?.labelVan || 'Van (8 pasajeros)'}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                              if (pax === 6) {
+                                return (
+                                  <p className="text-xs text-muted-foreground text-center">
+                                    {bookingForm?.notes?.minivan6 || 'Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.'}
+                                  </p>
+                                )
+                              }
+                              if (pax === 5) {
+                                return (
+                                  <p className="text-xs text-muted-foreground text-center">
+                                    {bookingForm?.notes?.minivan5 || 'Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.'}
+                                  </p>
+                                )
+                              }
+                              return null
+                            })()
+                          )}
+                        </>
+                      )}
+                      {/* Botón Cotizar */}
+                      <div className="pt-4 flex flex-col gap-2">
+                        <Button
+                          className="w-full bg-accent hover:bg-accent/90 shadow-lg"
+                          size="lg"
+                          onClick={goToPayment}
+                          disabled={!isFormValid}
+                        >
+                          Cotizar
+                        </Button>
+                        {!isFormValid && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Campos faltantes: {Object.keys(computeValidationErrors()).map(k => fieldLabelMap[k] || k).join(', ')}
+                          </p>
+                        )}
                       </div>
-                      {/* Notas de equipaje para Minivan con 5 o 6 pasajeros */}
-                      {bookingData.vehiculo === "minivan" && (
-                        (() => {
-                          const pax = parsePassengers(bookingData.pasajeros)
-                          if (pax === 6) {
-                            return (
-                              <p className="text-xs text-muted-foreground text-center">
-                                {bookingForm?.notes?.minivan6 || 'Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.'}
-                              </p>
-                            )
-                          }
-                          if (pax === 5) {
-                            return (
-                              <p className="text-xs text-muted-foreground text-center">
-                                {bookingForm?.notes?.minivan5 || 'Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.'}
-                              </p>
-                            )
-                          }
-                          return null
-                        })()
-                      )}
-                    </>
-                  )}
-                  {bookingData.tipoReserva === "traslado" && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-accent" />
-                        {bookingForm?.originField?.label || 'Origen'}
-                      </label>
-                      <Select
-                        value={bookingData.origen}
-                        onValueChange={(value) =>
-                          setBookingData({ ...bookingData, origen: value, destino: "" })
-                        }
-                      >
-                        <SelectTrigger data-field="origen" className={"cursor-pointer " + (fieldErrors.origen ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                          <SelectValue placeholder="Seleccionar origen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cdg">{labelMap.cdg}</SelectItem>
-                          <SelectItem value="orly">{labelMap.orly}</SelectItem>
-                          <SelectItem value="beauvais">{labelMap.beauvais}</SelectItem>
-                          <SelectItem value="paris">{labelMap.paris}</SelectItem>
-                          <SelectItem value="disneyland">{labelMap.disneyland}</SelectItem>
-                          <SelectItem value="asterix">{labelMap.asterix}</SelectItem>
-                          <SelectItem value="versailles">{labelMap.versailles}</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-accent" />
-                        {bookingForm?.destinationField?.label || 'Destino'}
-                      </label>
-                      <Select value={bookingData.destino} onValueChange={(value) => setBookingData({ ...bookingData, destino: value })}>
-                        <SelectTrigger data-field="destino" disabled={!bookingData.origen} className={"cursor-pointer disabled:cursor-not-allowed " + (fieldErrors.destino ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                          <SelectValue placeholder={bookingData.origen ? "Seleccionar destino" : "Selecciona el origen primero"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableDestinations.length > 0 ? (
-                            availableDestinations.map((d) => (
-                              <SelectItem key={d} value={d}>
-                                {labelMap[d as keyof typeof labelMap] || d}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="-" disabled>
-                              {bookingData.origen ? "No hay destinos disponibles" : "Selecciona el origen primero"}
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  )}
-
-                  
-
-                  {bookingData.tipoReserva === "traslado" && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-accent" />
-                        {bookingForm?.dateField?.label || 'Fecha'}
-                      </label>
-                      <Input
-                        data-field="fecha"
-                        type="date"
-                        value={bookingData.fecha}
-                        onChange={(e) => { setBookingData({ ...bookingData, fecha: e.target.value }); if (fieldErrors.fecha) setFieldErrors(f=>{const c={...f}; delete c.fecha; return c}) }}
-                        className={fieldErrors.fecha ? 'border-destructive focus-visible:ring-destructive' : ''}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-accent" />
-                        {bookingForm?.timeField?.label || 'Hora'}
-                      </label>
-                      <Input
-                        data-field="hora"
-                        type="time"
-                        value={bookingData.hora}
-                        onChange={(e) => { setBookingData({ ...bookingData, hora: e.target.value }); if (fieldErrors.hora) setFieldErrors(f=>{const c={...f}; delete c.hora; return c}) }}
-                        className={fieldErrors.hora ? 'border-destructive focus-visible:ring-destructive' : ''}
-                      />
-                    </div>
-                    {/* Ida y vuelta */}
-                    <div className="col-span-2 flex items-center justify-center gap-2">
-                      <label className="text-sm font-medium">¿Ida y regreso?</label>
-                      <button
-                        type="button"
-                        className={`px-3 py-1 rounded border ${bookingData.idaYVuelta ? 'bg-accent text-accent-foreground' : 'bg-background'}`}
-                        onClick={() => setBookingData({ ...bookingData, idaYVuelta: !bookingData.idaYVuelta })}
-                        aria-pressed={bookingData.idaYVuelta}
-                      >
-                        {bookingData.idaYVuelta ? 'Sí' : 'No'}
-                      </button>
-                    </div>
-                  </div>
-                  )}
-
-                  {bookingData.tipoReserva === "traslado" && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <Users className="w-4 h-4 text-accent" />
-                        Pasajeros
-                      </label>
-                      <Select
-                        value={bookingData.pasajeros}
-                        onValueChange={(value) => setBookingData({ ...bookingData, pasajeros: value })}
-                      >
-                        <SelectTrigger data-field="pasajeros" className={"cursor-pointer " + (fieldErrors.pasajeros ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                          <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-72">
-                          {Array.from({ length: getVehicleCap(bookingData.vehiculo) }, (_, i) => i + 1).map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n} {n === 1 ? "Pasajero" : "Pasajeros"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Tipo de vehículo */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <Car className="w-4 h-4 text-accent" />
-                        Tipo de vehículo
-                      </label>
-                      <Select
-                        value={bookingData.vehiculo}
-                        onValueChange={(value) => {
-                          const cap = getVehicleCap(value)
-                          const pax = parsePassengers(bookingData.pasajeros)
-                          const clamped = Math.min(Math.max(pax, 1), cap)
-                          setBookingData({ ...bookingData, vehiculo: value, pasajeros: String(clamped) })
-                        }}
-                      >
-                        <SelectTrigger data-field="vehiculo" className="cursor-pointer">
-                          <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="coche">Coche</SelectItem>
-                          <SelectItem value="minivan">Minivan</SelectItem>
-                          <SelectItem value="van">Van</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  )}
-
-                  {/* Notas de equipaje para Minivan con 5 o 6 pasajeros (traslado) */}
-                  {bookingData.tipoReserva === "traslado" && bookingData.vehiculo === "minivan" && (() => {
-                    const pax = parsePassengers(bookingData.pasajeros)
-                    if (pax === 6) {
-                      return (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.
-                        </p>
-                      )
-                    }
-                    if (pax === 5) {
-                      return (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.
-                        </p>
-                      )
-                    }
-                    return null
-                  })()}
-
-                  {/* Número de vuelo: última opción, centrada, siempre visible */}
-                  <div className="flex justify-center">
-                    <div className="w-full max-w-sm space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2 justify-center">
-                        <Plane className="w-4 h-4 text-accent" />
-                        {bookingForm?.flightNumberField?.label || 'Número de vuelo'}
-                      </label>
-                      <Input
-                        type="text"
-                        placeholder={bookingForm?.flightNumberField?.placeholder || 'Ej: AF1234'}
-                        className="text-center"
-                        value={bookingData.flightNumber}
-                        onChange={(e) => setBookingData({ ...bookingData, flightNumber: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Resultado de cotización */}
-                  <div className="rounded-lg border border-border p-4 bg-muted/40 text-foreground">
-                    <div>
-                      {bookingData.tipoReserva === "" ? (
-                        <div className="space-y-1 text-center">
-                          <p className="text-sm text-muted-foreground">Selecciona si deseas reservar un Traslado o un Tour.</p>
-                          {globalMinBase != null && (
-                            <p className="text-sm">Desde: <span className="font-semibold">{globalMinBase}€</span></p>
-                          )}
-                        </div>
-                      ) : bookingData.tipoReserva === "tour" ? (
-                        <div className="space-y-2 text-sm text-center">
-                          {!bookingData.categoriaTour && !bookingData.subtipoTour ? (
-                            <p className="text-muted-foreground">Selecciona el tipo de tour: Diurno, Nocturno o Escala.</p>
-                          ) : (
-                            <>
-                              <p>
-                                Reserva seleccionada: <span className="font-semibold">{bookingData.categoriaTour === "escala" ? "Tour escala" : `Tour ${bookingData.subtipoTour}`}</span>
-                              </p>
-                              {tourQuote?.total ? (
-                                <p className="text-base font-semibold text-primary">Total estimado del tour: {tourQuote.total}€</p>
-                              ) : (
-                                <p className="text-xs text-muted-foreground">{tourQuote?.label || "Los precios de tour varían según duración, horario y vehículo. Indícanos tus datos para una cotización exacta."}</p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      ) : !bookingData.origen || !bookingData.destino ? (
-                        <div className="space-y-1 text-center">
-                          <p className="text-sm text-muted-foreground">Selecciona origen y destino para ver el precio.</p>
-                          {bookingData.origen && minBaseFromOrigin != null && (
-                            <p className="text-sm">
-                              Desde: <span className="font-semibold">{minBaseFromOrigin}€</span>
-                            </p>
-                          )}
-                          {!bookingData.origen && globalMinBase != null && (
-                            <p className="text-sm">
-                              Desde: <span className="font-semibold">{globalMinBase}€</span>
-                            </p>
-                          )}
-                        </div>
-                      ) : quote ? (
-                        <div className="space-y-1 text-center">
-                          <p className="text-sm">
-                            Precio base: <span className="font-semibold">{quote.base}€</span> (hasta 4 pasajeros)
-                          </p>
-                          {bookingData.vehiculo && (
-                            <p className="text-xs text-muted-foreground">
-                              Tipo de vehículo: {bookingData.vehiculo === "coche" ? "Coche (4)" : bookingData.vehiculo === "minivan" ? "Minivan (6)" : "Van (8)"}
-                            </p>
-                          )}
-                          {quote.nightCharge > 0 && (
-                            <p className="text-xs text-muted-foreground">+{quote.nightCharge}€ {bookingForm?.notes?.nightChargeNote || 'recargo nocturno'}</p>
-                          )}
-                          {quote.extraPax > 0 && (
-                            <p className="text-xs text-muted-foreground">+{quote.extraPaxCharge}€ por {quote.extraPax} pasajero(s) extra</p>
-                          )}
-                          {bookingData.idaYVuelta && (
-                            <p className="text-xs text-muted-foreground">x2 por ida y regreso</p>
-                          )}
-                          <p className="text-lg font-bold text-primary mt-1">
-                            Total estimado: {quote.total}€
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-1">
-                            {bookingForm?.notes?.surchargeFootnote || '* Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.'}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-destructive text-center">Ruta no disponible. Revisa los traslados disponibles.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sin mensaje global; campos inválidos se marcan en rojo */}
-
-                  <Button
-                    className="w-full bg-accent hover:bg-accent/90 shadow-lg"
-                    size="lg"
-                    disabled={
-                      !bookingData.tipoReserva ||
-                      (bookingData.tipoReserva === "traslado" && (!bookingData.origen || !bookingData.destino)) ||
-                      (bookingData.tipoReserva === "tour" && (!bookingData.categoriaTour || (bookingData.categoriaTour === "ciudad" && !bookingData.subtipoTour)))
-                    }
-                    onClick={goToPayment}
-                  >
-                    {bookingForm?.ctaLabel || 'Reservar con 5€'}
-                  </Button>
-                </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </AnimatedSection>

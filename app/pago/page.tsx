@@ -1,5 +1,16 @@
 "use client"
 
+// Mapa de etiquetas amigables para mostrar en los labels
+const labelMap = {
+  cdg: "Aeropuerto CDG",
+  orly: "Aeropuerto Orly",
+  beauvais: "Aeropuerto Beauvais",
+  paris: "París Centro",
+  disneyland: "Disneyland",
+  asterix: "Parc Astérix",
+  versailles: "Versalles",
+};
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +31,10 @@ export default function PaymentPage() {
   const [bookingData, setBookingData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [payFullNow, setPayFullNow] = useState(false)
+  const [isPaying, setIsPaying] = useState(false)
+  // Direcciones específicas del pago (información adicional, no reemplazan la dirección del servicio)
+  const [paymentPickupAddress, setPaymentPickupAddress] = useState<string>('')
+  const [paymentDropoffAddress, setPaymentDropoffAddress] = useState<string>('')
   // Mapa de errores por campo para resaltar inputs faltantes
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   /*
@@ -146,6 +161,23 @@ export default function PaymentPage() {
     })
   }
 
+  // Validar email en blur y actualizar errores de campo
+  const validateAndSetEmail = (value: string) => {
+    try {
+      updateBookingField('contactEmail', value)
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        if (!emailRegex.test(String(value))) {
+          next.contactEmail = 'Formato inválido'
+        } else {
+          delete next.contactEmail
+        }
+        return next
+      })
+    } catch {}
+  }
+
   
 
   if (isLoading) {
@@ -208,6 +240,42 @@ export default function PaymentPage() {
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)))
   const amountNow = payFullNow ? total : deposit
   const clientHour = (() => { try { return new Date().getHours() } catch { return undefined } })()
+
+  // Validación centralizada: determina si se puede pagar depósito ahora
+  const isDepositReady = () => {
+    if (!bookingData) return false
+
+    // Normalizar nombres (algunas pantallas usan 'fecha'/'hora'/'pasajeros')
+    const passengers = bookingData.passengers ?? bookingData.pasajeros
+    const date = bookingData.date ?? bookingData.fecha
+    const time = bookingData.time ?? bookingData.hora
+
+    // Pasajeros, fecha y hora
+    if (!passengers || Number(passengers) < 1) return false
+    if (!date || !String(date).trim()) return false
+    if (!time || !String(time).trim()) return false
+
+    // Direcciones requeridas para traslados (no eventos ni tours predefinidos)
+    const needsAddresses = !bookingData.isEvent && !bookingData.isTourQuick && !bookingData.tourId
+    if (needsAddresses) {
+      // Ahora requerimos las direcciones ingresadas en la sección de pago (campos adicionales)
+      if (!paymentPickupAddress || !String(paymentPickupAddress).trim()) return false
+      if (!paymentDropoffAddress || !String(paymentDropoffAddress).trim()) return false
+    }
+
+    // Equipaje: requerir que el usuario haya indicado cantidades (aunque sean 0)
+    if (typeof bookingData.luggage23kg === 'undefined' || typeof bookingData.luggage10kg === 'undefined') return false
+
+    // Contacto: siempre requerimos nombre, teléfono y email para poder pagar el depósito
+    if (!bookingData.contactName || !String(bookingData.contactName).trim()) return false
+    if (!bookingData.contactPhone || !String(bookingData.contactPhone).trim()) return false
+    if (!bookingData.contactEmail || !String(bookingData.contactEmail).trim()) return false
+
+    // No hay errores activos
+    if (Object.keys(fieldErrors || {}).length > 0) return false
+
+    return true
+  }
 
   // Etiquetas seguras para servicio/route en quick
   const quickType: "traslado" | "tour" | undefined = bookingData?.quickType
@@ -277,6 +345,20 @@ export default function PaymentPage() {
       console.error("No se pudo abrir WhatsApp:", e)
     }
   }
+
+  // Leer carrito de cotizaciones
+  let carrito: any[] = []
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('carritoCotizaciones')
+      if (raw) carrito = JSON.parse(raw)
+    } catch {}
+  }
+
+  // Sumar total del carrito
+  const totalCarrito = carrito.reduce((acc: number, item: any) => acc + Number(item.totalPrice || 0), 0)
+  const tieneTour = carrito.some((item: any) => item.tipo === 'tour')
+  const tieneTraslado = carrito.some((item: any) => item.tipo === 'traslado')
 
   return (
     <main className="min-h-screen">
@@ -401,25 +483,31 @@ export default function PaymentPage() {
                         </>
                       ) : (
                         <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                          <h4 className="font-medium text-primary">Direcciones</h4>
+                          <h4 className="font-medium text-primary">Direcciones (información adicional)</h4>
                           <div className="space-y-2">
-                            <label className="text-xs font-medium">Dirección de Recogida</label>
+                            <label className="text-xs font-medium">
+                              {`Origen del servicio${bookingData?.origen ? ` [${labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen}]` : ''}`}
+                            </label>
+                            <p className="text-sm text-muted-foreground">{bookingData.pickupAddress || (labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen) || 'No especificado'}</p>
                             <Input
-                              placeholder="Origen (ej: CDG Terminal 2E / Hotel ... )"
-                              data-field="pickupAddress"
+                              placeholder="Ubicación exacta"
+                              data-field="paymentPickupAddress"
                               className={fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
-                              value={bookingData.pickupAddress || ''}
-                              onChange={(e) => updateBookingField('pickupAddress', e.target.value)}
+                              value={paymentPickupAddress}
+                              onChange={(e) => { setPaymentPickupAddress(e.target.value); if (fieldErrors.pickupAddress) setFieldErrors(f=>{const c={...f}; delete c.pickupAddress; return c}) }}
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-xs font-medium">Dirección de Destino</label>
+                            <label className="text-xs font-medium">
+                              {`Destino del servicio${bookingData?.destino ? ` [${labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino}]` : ''}`}
+                            </label>
+                            <p className="text-sm text-muted-foreground">{bookingData.dropoffAddress || (labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino) || 'No especificado'}</p>
                             <Input
-                              placeholder="Destino (ej: Disneyland / París centro ...)"
-                              data-field="dropoffAddress"
+                              placeholder="Ubicación exacta"
+                              data-field="paymentDropoffAddress"
                               className={fieldErrors.dropoffAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
-                              value={bookingData.dropoffAddress || ''}
-                              onChange={(e) => updateBookingField('dropoffAddress', e.target.value)}
+                              value={paymentDropoffAddress}
+                              onChange={(e) => { setPaymentDropoffAddress(e.target.value); if (fieldErrors.dropoffAddress) setFieldErrors(f=>{const c={...f}; delete c.dropoffAddress; return c}) }}
                             />
                           </div>
                           <div className="space-y-2">
@@ -514,6 +602,7 @@ export default function PaymentPage() {
                               className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
                               value={bookingData.contactEmail || ''}
                               onChange={(e) => updateBookingField('contactEmail', e.target.value)}
+                              onBlur={(e) => validateAndSetEmail(e.target.value)}
                             />
                           </div>
                         </div>
@@ -567,6 +656,7 @@ export default function PaymentPage() {
                               className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
                               value={bookingData.contactEmail || ''}
                               onChange={(e) => updateBookingField('contactEmail', e.target.value)}
+                              onBlur={(e) => validateAndSetEmail(e.target.value)}
                             />
                           </div>
                         </div>
@@ -864,7 +954,7 @@ export default function PaymentPage() {
                         <>
                           <div className="flex justify-between">
                             <span>Pago de confirmación</span>
-                            <span>5€</span>
+                            <span>{deposit}€</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
                             Este pago asegura tu reserva. Después de pagarlo, terminarás de rellenar los datos faltantes.
@@ -890,10 +980,8 @@ export default function PaymentPage() {
                               servicio en efectivo, tarjeta o PayPal según prefieras.
                             </p>
                             {isTourBooking ? (
-                              <p>Importe del depósito: 20% del valor del tour ({deposit}€).</p>
-                            ) : (
-                              <p>Importe del depósito: 5€ (fijo).</p>
-                            )}
+                              <p>Importe del depósito: {deposit}€.</p>
+                            ) : null}
                           </div>
                         </>
                       ) : (
@@ -951,40 +1039,64 @@ export default function PaymentPage() {
                         size="lg"
                         onClick={() => {
                           if (!bookingData) return
-                          const errors: Record<string, string> = {}
-                          // Requeridos
-                          if (!bookingData.passengers || Number(bookingData.passengers) < 1) errors.passengers = 'Requerido'
-                          if (!bookingData.date) errors.date = 'Requerido'
-                          if (!bookingData.time) errors.time = 'Requerido'
-                          const requiresContact = !bookingData.quickDeposit && (bookingData.isEvent || !isTour)
-                          if (requiresContact) {
-                            if (!bookingData.contactName) errors.contactName = 'Requerido'
-                            if (!bookingData.contactPhone) errors.contactPhone = 'Requerido'
-                            if (!bookingData.contactEmail) errors.contactEmail = 'Requerido'
-                          }
-                          const needsAddresses = !bookingData.isEvent && !bookingData.isTourQuick && !bookingData.tourId
-                          if (needsAddresses) {
-                            if (!bookingData.pickupAddress) errors.pickupAddress = 'Requerido'
-                            if (!bookingData.dropoffAddress) errors.dropoffAddress = 'Requerido'
-                          }
-                          // Formatos
-                          if (!errors.contactEmail && bookingData.contactEmail) {
-                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-                            if (!emailRegex.test(String(bookingData.contactEmail))) errors.contactEmail = 'Formato inválido'
-                          }
-                          if (!errors.contactPhone && bookingData.contactPhone) {
-                            if (String(bookingData.contactPhone).replace(/\D/g, '').length < 6) errors.contactPhone = 'Teléfono inválido'
-                          }
-                          setFieldErrors(errors)
-                          if (Object.keys(errors).length) {
-                            // Enfocar primer campo con error
+                          // Usar la validación central
+                          const ok = isDepositReady()
+                          if (!ok) {
+                            // Reconstruir errores para mostrar al usuario los campos faltantes
+                            const errors: Record<string, string> = {}
+
+                            // Normalizar nombres de campos
+                            const passengers = bookingData.passengers ?? bookingData.pasajeros
+                            const date = bookingData.date ?? bookingData.fecha
+                            const time = bookingData.time ?? bookingData.hora
+
+                            if (!passengers || Number(passengers) < 1) errors.passengers = 'Requerido'
+                            if (!date) errors.date = 'Requerido'
+                            if (!time) errors.time = 'Requerido'
+
+                            const requiresContact = !bookingData.quickDeposit
+                            if (requiresContact) {
+                              if (!bookingData.contactName || !String(bookingData.contactName).trim()) errors.contactName = 'Requerido'
+                              if (!bookingData.contactPhone || !String(bookingData.contactPhone).trim()) errors.contactPhone = 'Requerido'
+                              if (!bookingData.contactEmail || !String(bookingData.contactEmail).trim()) errors.contactEmail = 'Requerido'
+                            }
+
+                            const needsAddresses = !bookingData.isEvent && !bookingData.isTourQuick && !bookingData.tourId
+                            if (needsAddresses) {
+                              if (!paymentPickupAddress || !String(paymentPickupAddress).trim()) errors.pickupAddress = 'Requerido'
+                              if (!paymentDropoffAddress || !String(paymentDropoffAddress).trim()) errors.dropoffAddress = 'Requerido'
+                            }
+
+                            // Formatos básicos
+                            if (!errors.contactEmail && bookingData.contactEmail) {
+                              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+                              if (!emailRegex.test(String(bookingData.contactEmail))) errors.contactEmail = 'Formato inválido'
+                            }
+                            if (!errors.contactPhone && bookingData.contactPhone) {
+                              if (String(bookingData.contactPhone).replace(/\D/g, '').length < 6) errors.contactPhone = 'Teléfono inválido'
+                            }
+
+                            setFieldErrors(errors)
                             requestAnimationFrame(() => {
                               const first = Object.keys(errors)[0]
-                              const el = document.querySelector(`[data-field="${first}"]`) as HTMLElement | null
+                              // Mapear claves normalizadas a los data-field reales usados en los inputs
+                              const fieldMap: Record<string, string> = {
+                                passengers: 'passengers',
+                                date: 'date',
+                                time: 'time',
+                                contactName: 'contactName',
+                                contactPhone: 'contactPhone',
+                                contactEmail: 'contactEmail',
+                                pickupAddress: 'pickupAddress',
+                                dropoffAddress: 'dropoffAddress'
+                              }
+                              const selector = `[data-field="${fieldMap[first] || first}"]`
+                              const el = document.querySelector(selector) as HTMLElement | null
                               if (el) el.focus()
                             })
                             return
                           }
+
                           // Crear pago en backend (Mollie) y redirigir a checkout
                           const doPay = async () => {
                             try {
@@ -1001,7 +1113,11 @@ export default function PaymentPage() {
                                   amount,
                                   description,
                                   method: paymentMethod,
-                                  booking: bookingData,
+                                  booking: {
+                                    ...bookingData,
+                                    paymentPickupAddress,
+                                    paymentDropoffAddress,
+                                  },
                                   metadata: { source: 'web' },
                                 }),
                               })
@@ -1011,18 +1127,31 @@ export default function PaymentPage() {
                               try { if (json?.id) localStorage.setItem('lastPaymentId', String(json.id)) } catch {}
                               if (typeof url === 'string') {
                                 window.location.href = url
+                                return
                               } else {
                                 throw new Error('checkoutUrl no recibido')
                               }
                             } catch (e) {
                               console.error('No se pudo iniciar el pago:', e)
                               alert('No se pudo iniciar el pago. Intenta nuevamente más tarde.')
+                            } finally {
+                              // Si no hubo redirect el botón debe volver a su estado normal
+                              try { setIsPaying(false) } catch {}
                             }
                           }
+                          // Marcar que se está procesando el pago para deshabilitar el botón y mostrar feedback
+                          setIsPaying(true)
                           doPay()
                         }}
+                        disabled={!isDepositReady() || isPaying}
+                        aria-disabled={!isDepositReady() || isPaying}
                       >
-            {payFullNow ? `Pagar todo (${total}€)` : `Pagar depósito ${deposit}€`}
+            {isPaying ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                Procesando...
+              </span>
+            ) : (payFullNow ? `Pagar todo (${total}€)` : `Pagar depósito ${deposit}€`)}
                       </Button>
                       {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
 

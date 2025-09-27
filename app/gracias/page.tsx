@@ -171,6 +171,11 @@ export default function GraciasPage() {
               <Link href="/" className="inline-flex px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90">Volver al inicio</Link>
               <Link href="/#contacto" className="inline-flex px-4 py-2 rounded-md bg-accent text-accent-foreground hover:bg-accent/90">Contactar</Link>
             </div>
+            {status === 'paid' && (
+              <div className="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-400 text-yellow-800 rounded">
+                <b>¿No ves el correo de confirmación?</b> Revisa tu carpeta de SPAM o correo no deseado.
+              </div>
+            )}
           </div>
         </div>
       </div>

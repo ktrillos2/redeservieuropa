@@ -25,6 +25,7 @@ export default function GraciasPage() {
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [order, setOrder] = useState<Order | null>(null)
+  const [orders, setOrders] = useState<Order[] | null>(null)
   const [booking, setBooking] = useState<any>(null)
 
   useEffect(() => {
@@ -51,9 +52,14 @@ export default function GraciasPage() {
             const resp = await fetch(`/api/orders/by-payment?id=${encodeURIComponent(pid)}`)
             if (resp.ok) {
               const j = await resp.json()
-              setOrder(j.order || null)
-              // Si el pedido viene con status, úsalo como verdad
-              if (j?.order?.payment?.status) setStatus(j.order.payment.status)
+              if (j.orders && Array.isArray(j.orders)) {
+                setOrders(j.orders)
+                setOrder(j.orders[0] || null)
+                if (j.orders[0]?.payment?.status) setStatus(j.orders[0].payment.status)
+              } else if (j.order) {
+                setOrder(j.order)
+                if (j.order?.payment?.status) setStatus(j.order.payment.status)
+              }
             }
           } catch {}
           setLoading(false)
@@ -138,8 +144,30 @@ export default function GraciasPage() {
                   </div>
                 )}
 
-                {/* Detalles del servicio */}
-                {service && (
+                {/* Detalles de los servicios pagados */}
+                {orders && orders.length > 0 ? (
+                  <div className="space-y-4">
+                    {orders.map((ord) => (
+                      <div key={ord._id} className="rounded-lg border bg-white p-4 shadow-sm">
+                        <h2 className="text-xl font-semibold text-primary mb-2">{ord.service?.title || 'Servicio'}</h2>
+                        <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-muted-foreground">Tipo:</span> {ord.service?.type || '—'}</div>
+                          <div><span className="text-muted-foreground">Fecha:</span> {ord.service?.date || '—'}</div>
+                          <div><span className="text-muted-foreground">Hora:</span> {ord.service?.time || '—'}</div>
+                          <div><span className="text-muted-foreground">Pasajeros:</span> {typeof ord.service?.passengers === 'number' ? ord.service!.passengers : '—'}</div>
+                          {ord.service?.pickupAddress && <div className="sm:col-span-2"><span className="text-muted-foreground">Recogida:</span> {ord.service.pickupAddress}</div>}
+                          {ord.service?.dropoffAddress && <div className="sm:col-span-2"><span className="text-muted-foreground">Destino:</span> {ord.service.dropoffAddress}</div>}
+                          {ord.service?.flightNumber && <div className="sm:col-span-2"><span className="text-muted-foreground">Vuelo:</span> {ord.service.flightNumber}</div>}
+                          <div><span className="text-muted-foreground">Equipaje 23kg:</span> {typeof ord.service?.luggage23kg === 'number' ? ord.service.luggage23kg : 0}</div>
+                          <div><span className="text-muted-foreground">Equipaje 10kg:</span> {typeof ord.service?.luggage10kg === 'number' ? ord.service.luggage10kg : 0}</div>
+                          <div><span className="text-muted-foreground">Recargo nocturno:</span> {ord.service?.isNightTime ? 'Sí' : 'No'}</div>
+                          <div><span className="text-muted-foreground">Equipaje extra:</span> {ord.service?.extraLuggage ? 'Sí' : 'No'}</div>
+                          <div className="sm:col-span-2"><span className="text-muted-foreground">Total estimado del servicio:</span> {typeof ord.service?.totalPrice === 'number' ? `${ord.service!.totalPrice} €` : '—'}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : service ? (
                   <div className="rounded-lg border bg-white p-4 shadow-sm">
                     <h2 className="text-xl font-semibold text-primary mb-2">Detalles del servicio</h2>
                     <div className="grid sm:grid-cols-2 gap-2 text-sm">
@@ -164,7 +192,7 @@ export default function GraciasPage() {
                       )}
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
             <div className="flex flex-wrap gap-3 justify-center">

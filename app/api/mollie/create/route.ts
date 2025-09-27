@@ -56,55 +56,80 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No se obtuvo checkoutUrl' }, { status: 500 })
     }
 
-    // Crear/guardar pedido en Sanity con estado inicial
+    // Crear/guardar pedido(s) en Sanity con estado inicial
     try {
-      // Usar el booking completo recibido en body para guardar en Sanity
-      const orderDoc: any = {
-        _type: 'order',
-        orderNumber: undefined,
-        status: 'pending',
-        payment: {
-          provider: 'mollie',
-          paymentId: payment.id,
-          status: 'open',
-          amount: amountNumber,
-          currency: 'EUR',
-          // Guardar preferencia elegida en la web (no forzada en Mollie)
-          requestedMethod: methodFromBody || undefined,
-          // No establecer método real aquí; se actualizará por webhook/sync
-          createdAt: new Date().toISOString(),
-          raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links })
-  },
-  contact: booking ? {
-          name: booking.contactName,
-          email: booking.contactEmail,
-          phone: booking.contactPhone,
-        } : undefined,
-        service: booking ? {
-          type: booking.isEvent ? 'evento' : (booking.tourId ? 'tour' : 'traslado'),
-          title: booking.isEvent ? (booking.eventTitle || 'Evento') : (booking.tourId || `${booking.pickupAddress || ''} -> ${booking.dropoffAddress || ''}`),
-          date: booking.date || undefined,
-          time: booking.time || undefined,
-          passengers: Number(booking.passengers || 0) || undefined,
-          pickupAddress: booking.pickupAddress || undefined,
-          dropoffAddress: booking.dropoffAddress || undefined,
-          flightNumber: booking.flightNumber || undefined,
-          luggage23kg: Object.prototype.hasOwnProperty.call(booking, 'luggage23kg') ? Number(booking.luggage23kg) : undefined,
-          luggage10kg: Object.prototype.hasOwnProperty.call(booking, 'luggage10kg') ? Number(booking.luggage10kg) : undefined,
-          isNightTime: Boolean(booking.isNightTime),
-          extraLuggage: Boolean(booking.extraLuggage),
-          totalPrice: Number(booking.totalPrice || amountNumber) || amountNumber,
-          selectedPricingOption: booking.selectedPricingOption || undefined,
-          notes: booking.specialRequests || undefined,
-        } : undefined,
-        metadata: {
-          source: 'web',
-          createdAt: new Date().toISOString(),
+      // Si se envió un carrito con varios items, crear una orden por cada item y también la reserva actual si existe
+      const items: any[] = Array.isArray(body?.carrito) ? body.carrito : []
+      const docsToCreate: any[] = []
+
+      // Helper para construir doc desde un elemento (item o booking)
+      const buildDocFrom = (src: any) => {
+        return {
+          _type: 'order',
+          orderNumber: undefined,
+          status: 'pending',
+          payment: {
+            provider: 'mollie',
+            paymentId: payment.id,
+            status: 'open',
+            amount: Number(src.totalPrice || amountNumber) || amountNumber,
+            currency: 'EUR',
+            requestedMethod: methodFromBody || undefined,
+            createdAt: new Date().toISOString(),
+            raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links })
+          },
+          contact: src ? {
+            name: src.contactName || src.name || booking?.contactName,
+            email: src.contactEmail || src.email || booking?.contactEmail,
+            phone: src.contactPhone || src.phone || booking?.contactPhone,
+          } : undefined,
+          service: src ? {
+            type: src.isEvent ? 'evento' : (src.tourId || src.tipo === 'tour' ? 'tour' : 'traslado'),
+            title: src.isEvent ? (src.eventTitle || 'Evento') : (src.tourId || src.serviceLabel || `${src.pickupAddress || ''} -> ${src.dropoffAddress || ''}`),
+            date: src.date || src.fecha || undefined,
+            time: src.time || src.hora || undefined,
+            passengers: src.passengers ? Number(src.passengers) : (src.pasajeros ? Number(src.pasajeros) : undefined),
+            pickupAddress: src.pickupAddress || src.pickup || undefined,
+            dropoffAddress: src.dropoffAddress || src.dropoff || undefined,
+            flightNumber: src.flightNumber || undefined,
+            luggage23kg: Object.prototype.hasOwnProperty.call(src, 'luggage23kg') ? Number(src.luggage23kg) : undefined,
+            luggage10kg: Object.prototype.hasOwnProperty.call(src, 'luggage10kg') ? Number(src.luggage10kg) : undefined,
+            isNightTime: Boolean(src.isNightTime),
+            extraLuggage: Boolean(src.extraLuggage),
+            totalPrice: Number(src.totalPrice || amountNumber) || amountNumber,
+            selectedPricingOption: src.selectedPricingOption || undefined,
+            notes: src.specialRequests || undefined,
+          } : undefined,
+          metadata: { source: 'web', createdAt: new Date().toISOString() }
         }
       }
-      await serverClient.create(orderDoc)
+
+      // Crear docs desde carrito
+      if (items.length > 0) {
+        for (const it of items) {
+          docsToCreate.push(buildDocFrom(it))
+        }
+      }
+
+      // Agregar la reserva/booking actual como orden aparte si viene en el body
+      if (booking) {
+        docsToCreate.push(buildDocFrom(booking))
+      }
+
+      // Si no hay nada específico, crear al menos una orden vacía a partir del booking/amount
+      if (docsToCreate.length === 0) {
+        docsToCreate.push(buildDocFrom(booking || { totalPrice: amountNumber }))
+      }
+
+      for (const d of docsToCreate) {
+        try {
+          await serverClient.create(d)
+        } catch (e) {
+          console.error('[Sanity][orders] No se pudo crear una de las órdenes:', e)
+        }
+      }
     } catch (err) {
-      console.error('[Sanity][orders] No se pudo crear el pedido:', err)
+      console.error('[Sanity][orders] Error creando pedidos:', err)
     }
 
     return NextResponse.json({ id: payment.id, checkoutUrl })

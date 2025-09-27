@@ -1,11 +1,56 @@
 import { NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
 import { getMollieClient } from '@/app/api/mollie/client'
 import { serverClient } from '@/sanity/lib/server-client'
 import { sendMail } from '@/lib/mailer'
-import { renderClientThanksEmail, renderAdminNewServiceEmail } from '@/lib/email-templates'
+import { renderClientThanksEmailMulti, renderAdminNewServicesEmailMulti } from '@/lib/email-templates'
 import { buildOrderEventPayload, createCalendarEvent, getCalendarEventById } from '@/lib/google-calendar'
+
+/** ------- Helpers de idempotencia por pago (lock en Sanity) ------- */
+async function getMailLock(paymentId: string): Promise<{ _id: string; sentAt?: string | null } | null> {
+  const id = `mailLock.payment_${paymentId}`
+  try {
+    const doc = await serverClient.getDocument(id)
+    return doc as any
+  } catch {
+    return null
+  }
+}
+
+async function acquireMailLock(paymentId: string): Promise<boolean> {
+  const _id = `mailLock.payment_${paymentId}`
+  try {
+    // Crea si no existe
+    await serverClient.createIfNotExists({
+      _id,
+      _type: 'mailLock',
+      paymentId,
+      createdAt: new Date().toISOString(),
+      sentAt: null,
+    } as any)
+    // Si ya tenía sentAt, no enviar
+    const existing = await serverClient.getDocument(_id)
+    if ((existing as any)?.sentAt) return false
+    // Marca lock "en curso" (opcional)
+    await serverClient.patch(_id).set({ lockAt: new Date().toISOString() }).commit()
+    return true
+  } catch (e) {
+    console.error('[webhook][mail-lock] acquire error', e)
+    return false
+  }
+}
+
+async function markMailSent(paymentId: string) {
+  const _id = `mailLock.payment_${paymentId}`
+  try {
+    await serverClient.patch(_id).set({ sentAt: new Date().toISOString() }).commit()
+  } catch (e) {
+    console.error('[webhook][mail-lock] mark sent error', e)
+  }
+}
+/** ----------------------------------------------------------------- */
 
 export async function POST(req: Request) {
   try {
@@ -18,129 +63,143 @@ export async function POST(req: Request) {
 
     const mollie = getMollieClient()
     const form = await req.formData()
-    const id = String(form.get('id') || '')
-    if (!id) return NextResponse.json({ ok: false, error: 'Missing id' }, { status: 400 })
+    const paymentId = String(form.get('id') || '')
+    if (!paymentId) return NextResponse.json({ ok: true })
 
-    const payment = await mollie.payments.get(id)
-  const status = payment.status
-  const chosenMethod = (payment as any)?.method
-  console.log('[Mollie][webhook] payment', { id, status, method: chosenMethod })
+    // 1) Verificar pago en Mollie
+    const payment = await mollie.payments.get(paymentId)
+    const isPaid = payment?.status === 'paid'
 
-    // Actualizar el pedido en Sanity por payment.paymentId
-    try {
-  const query = `*[_type == \"order\" && payment.paymentId == $pid][0]{ _id, _rev, notifications, payment{paidAt, amount, method, requestedMethod, currency}, contact{name,email,phone}, service{type,title,date,time,totalPrice,pickupAddress,dropoffAddress,flightNumber,selectedPricingOption{hours}}, calendar{eventId,htmlLink} }`
-  const found = await serverClient.fetch<{_id: string | null; _rev?: string; notifications?: any; payment?: { paidAt?: string | null, amount?: number; method?: string | null; requestedMethod?: string | null; currency?: string }; contact?: { name?: string; email?: string; phone?: string }; service?: { type?: string; title?: string; date?: string; time?: string; totalPrice?: number; pickupAddress?: string; dropoffAddress?: string; flightNumber?: string; selectedPricingOption?: { hours?: number } }; calendar?: { eventId?: string | null; htmlLink?: string | null } }>(query, { pid: id })
-      if (found && found._id) {
-        const patch: any = {
-          'payment.provider': 'mollie',
-          'payment.paymentId': id,
-          'payment.status': status,
-          'payment.paidAt': status === 'paid' ? new Date().toISOString() : undefined,
-          // Si falta amount en el documento, rellenarlo con el de Mollie
-          ...(payment.amount && (payment.amount as any).value ? { 'payment.amount': Number((payment.amount as any).value) } : {}),
-          ...(chosenMethod ? { 'payment.method': String(chosenMethod) } : {}),
-          status: status === 'paid' ? 'paid' : (status === 'failed' || status === 'canceled' || status === 'expired' ? 'failed' : 'pending'),
-          'metadata.updatedAt': new Date().toISOString(),
-        }
-  await serverClient.patch(found._id).set(patch).commit()
-  console.log('[webhook] order patched', { orderId: found._id, status: patch.status, paidAt: patch['payment.paidAt'] })
-
-        // Enviar correos SOLO cuando esté pagado: cliente (gracias) y admin (nuevo servicio)
-        try {
-          if (status === 'paid') {
-            const sentAt = (found as any)?.notifications?.paidEmailsSentAt as string | undefined
-            const lockObj = (found as any)?.notifications?.paidEmailsLock as { at?: string, by?: string } | undefined
-            const ttlMs = Number(process.env.MAIL_LOCK_TTL_MS || 600000) // 10 min por defecto
-            const lockAtMs = lockObj?.at ? Date.parse(lockObj.at) : 0
-            const lockStale = !!lockAtMs && (Date.now() - lockAtMs > ttlMs)
-            console.log('[webhook][mail] state', { sentAt, lockObj, ttlMs, lockStale })
-            // Si ya fue enviado, no duplicar. Si hay lock vigente (no obsoleto), no enviar.
-            if (!sentAt && (!lockObj || lockStale)) {
-              // Intentar adquirir/renovar lock atómico con ifRevisionId
-              try {
-                const rev = found._rev as string | undefined
-                if (rev) {
-                  await serverClient
-                    .patch(found._id!)
-                    .setIfMissing({ notifications: {} as any })
-                    .set({ 'notifications.paidEmailsLock': { at: new Date().toISOString(), by: 'webhook', paymentId: id } })
-                    .ifRevisionId(rev as any)
-                    .commit()
-                  console.log('[webhook][mail] lock acquired/renewed')
-                }
-              } catch (e) {
-                // Otro proceso tomó el lock; no enviar
-                console.log('[webhook][mail] lock not acquired, skipping')
-                return
-              }
-              const adminRecipients = ['redeservieuropa@gmail.com']
-              // Admins: nuevo servicio confirmado
-              const newServiceSubject = `Nuevo ${found.service?.type || 'servicio'} – ${found.service?.title || 'Reserva'}`
-              const newServiceHtml = renderAdminNewServiceEmail({
-                mollieId: id,
-                amount: (payment.amount as any)?.value || found.payment?.amount,
-                currency: found.payment?.currency || 'EUR',
-                method: (payment as any)?.method || found.payment?.method || null,
-                requestedMethod: found.payment?.requestedMethod || null,
-                contact: found.contact || {},
-                service: found.service || {},
-              })
-              await sendMail({ to: adminRecipients, bcc: 'info@redeservieuropa.com', subject: newServiceSubject, html: newServiceHtml, replyTo: found.contact?.email || undefined, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
-              console.log('[webhook][mail] admin sent')
-              // Cliente: gracias por tu pago
-              if (found.contact?.email) {
-                const clientHtml = renderClientThanksEmail({
-                  mollieId: id,
-                  amount: (payment.amount as any)?.value || found.payment?.amount,
-                  currency: found.payment?.currency || 'EUR',
-                  contact: found.contact || {},
-                  service: found.service || {},
-                })
-                await sendMail({ to: found.contact.email, subject: '¡Gracias por tu pago!', html: clientHtml, from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>' })
-                console.log('[webhook][mail] client sent')
-              }
-              // Marcar enviados
-              try {
-                await serverClient.patch(found._id!).set({ 'notifications.paidEmailsSentAt': new Date().toISOString(), 'notifications.paidEmailsBy': 'webhook' }).commit()
-                console.log('[webhook][mail] marked sent')
-              } catch (e) {
-                console.error('[webhook][mail] No se pudo marcar notificación enviada', e)
-              }
-            } // else: ya enviado o lock vigente; no enviar
-          }
-        } catch (err) {
-          console.error('[webhook][mail] No se pudo enviar notificación de estado de pago', err)
-        }
+    // 2) Trae TODOS los orders asociados al pago
+    const orders = await serverClient.fetch<Array<{
+      _id: string
+      status?: string
+      payment?: { currency?: string }
+      contact?: { name?: string; email?: string }
+      service?: {
+        type?: string; title?: string; date?: string; time?: string; totalPrice?: number
+        pickupAddress?: string; dropoffAddress?: string; flightNumber?: string; passengers?: number
       }
-    } catch (e) {
-      console.error('[Sanity][orders] No se pudo actualizar el pedido por webhook', e)
+      calendar?: { eventId?: string | null; htmlLink?: string | null }
+    }>>(
+      `*[_type == "order" && payment.paymentId == $pid]{
+        _id, status, payment{currency}, contact{name,email},
+        service{type,title,date,time,totalPrice,pickupAddress,dropoffAddress,flightNumber,passengers},
+        calendar{eventId,htmlLink}
+      }`,
+      { pid: paymentId }
+    )
+
+    // Si no hay orders no hacemos nada
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return NextResponse.json({ ok: true, note: 'no-orders' })
     }
 
-    // Crear evento en Google Calendar si el pago está pagado y no existe aún
-    try {
-      const order = await serverClient.fetch<{ _id: string | null; status?: string; calendar?: { eventId?: string | null; htmlLink?: string | null }; contact?: any; service?: any }>(`*[_type == "order" && payment.paymentId == $pid][0]{ _id, status, calendar{eventId,htmlLink}, contact, service }`, { pid: id })
-      if (order && order._id && order.status === 'paid') {
-        let exists = false
-        if (order.calendar?.eventId) {
-          const evt = await getCalendarEventById(order.calendar.eventId)
-          exists = Boolean(evt?.id)
-        }
-        if (!exists) {
-          const payload = buildOrderEventPayload(order)
-          const evt = await createCalendarEvent(payload, id)
+    // 3) Crear eventos en Calendar por cada servicio SI Mollie dice paid (no dependas del status del order)
+    if (isPaid) {
+      try {
+        for (const ord of orders) {
+          if (!ord?._id) continue
+          let exists = false
+          if (ord.calendar?.eventId) {
+            const evt = await getCalendarEventById(ord.calendar.eventId!)
+            exists = Boolean(evt?.id)
+          }
+          if (exists) continue
+
+          const payload = buildOrderEventPayload(ord)
+          const dedupeKey = `${paymentId}:${ord._id}`
+          const evt = await createCalendarEvent(payload, dedupeKey)
           if (evt?.id) {
-            await serverClient.patch(order._id).set({
+            await serverClient.patch(ord._id).set({
               calendar: {
                 eventId: evt.id,
                 htmlLink: evt.htmlLink,
                 createdAt: new Date().toISOString(),
               },
             }).commit()
+            // eslint-disable-next-line no-console
+            console.log('[webhook] calendar event created', { orderId: ord._id, eventId: evt.id })
           }
         }
+      } catch (e) {
+        console.error('[webhook][calendar] error creando eventos múltiples', e)
       }
-    } catch (err) {
-      console.error('[webhook][calendar] No se pudo crear el evento', err)
+    }
+
+    // 4) Un SOLO correo consolidado por pago (idempotente por lock)
+    if (isPaid) {
+      try {
+        // Si ya se envió para este pago, no duplicar
+        const already = await getMailLock(paymentId)
+        if (already?.sentAt) {
+          return NextResponse.json({ ok: true, note: 'mail-already-sent' })
+        }
+        // Intentar adquirir lock
+        const lock = await acquireMailLock(paymentId)
+        if (!lock) {
+          return NextResponse.json({ ok: true, note: 'mail-lock-not-acquired' })
+        }
+
+        // Construir listado de servicios
+        const services = orders.map(o => ({
+          type: o.service?.type,
+          title: o.service?.title,
+          date: o.service?.date,
+          time: o.service?.time,
+          totalPrice: o.service?.totalPrice,
+          pickupAddress: o.service?.pickupAddress,
+          dropoffAddress: o.service?.dropoffAddress,
+          flightNumber: o.service?.flightNumber,
+          passengers: o.service?.passengers,
+        }))
+
+        // Total: mejor tomar el total del pago Mollie
+        const totalAmount = payment?.amount?.value ? Number(payment.amount.value) :
+          services.reduce((acc, s) => acc + (s.totalPrice || 0), 0)
+
+        // Plantillas multi
+        const adminHtml = renderAdminNewServicesEmailMulti({
+          mollieId: paymentId,
+          amount: totalAmount,
+          currency: orders[0]?.payment?.currency || 'EUR',
+          method: (payment as any)?.method || null,
+          services
+        })
+
+        const client = orders.find(o => o.contact?.email)?.contact
+        const clientHtml = client ? renderClientThanksEmailMulti({
+          mollieId: paymentId,
+          amount: totalAmount,
+          currency: orders[0]?.payment?.currency || 'EUR',
+          contact: client,
+          services
+        }) : null
+
+        // Envío ADMIN
+        await sendMail({
+          to: ['redeservieuropa@gmail.com'],
+          bcc: 'info@redeservieuropa.com',
+          subject: `Nuevos servicios confirmados – pago ${paymentId}`,
+          html: adminHtml,
+          from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
+        })
+
+        // Envío CLIENTE (si hay email)
+        if (client?.email && clientHtml) {
+          await sendMail({
+            to: client.email,
+            subject: '¡Gracias por tu pago!',
+            html: clientHtml,
+            from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
+          })
+        }
+
+        // Marca como enviado para NO duplicar
+        await markMailSent(paymentId)
+      } catch (e) {
+        console.error('[webhook][mail] error enviando consolidado', e)
+      }
     }
 
     return NextResponse.json({ ok: true })

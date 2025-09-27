@@ -156,6 +156,80 @@ export function renderClientThanksEmail(params: {
   })
 }
 
+export function renderClientThanksEmailMulti(params: {
+  mollieId: string
+  amount?: number | string
+  currency?: string
+  contact?: { name?: string; email?: string; phone?: string }
+  services?: Array<{ type?: string; title?: string; date?: string; time?: string; totalPrice?: number; pickupAddress?: string; dropoffAddress?: string; passengers?: number }>
+}) {
+  const services = params.services || []
+  const itemsHtml = services.map(s => `
+    <li>
+      <b>Servicio:</b> ${escapeHtml(s.title || 'Reserva')}<br/>
+      <b>Tipo:</b> ${escapeHtml(s.type || '\u2014')} 
+      <b>Fecha:</b> ${escapeHtml(s.date || '\u2014')} ${escapeHtml(s.time || '')}<br/>
+      <b>Recogida:</b> ${escapeHtml(s.pickupAddress || '\u2014')} 
+      <b>Destino:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
+      <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}<br/>
+      <b>Importe:</b> ${typeof s.totalPrice === 'number' ? s.totalPrice + ' \u20ac' : '\u2014'}
+    </li>
+  `).join('')
+
+  const contentHtml = `
+    <p>\u00a1Gracias por tu pago y tu confianza!</p>
+    <p>Hemos recibido tu pago y tus reservas han quedado confirmadas.</p>
+    <h3>Detalles de tus servicios</h3>
+    <ul class="list">
+      ${itemsHtml}
+    </ul>
+    <p><b>Importe total pagado:</b> ${typeof params.amount === 'number' ? params.amount.toFixed(2) : (params.amount || '\u2014')} ${params.currency || 'EUR'}</p>
+    <p>Muy pronto nos pondremos en contacto si necesitamos informaci\u00f3n adicional. Si tienes alguna duda, puedes responder directamente a este correo.</p>
+  `
+  return renderBrandEmail({
+    title: '\u00a1Gracias por tu pago!',
+    intro: `Hola${params.contact?.name ? ' ' + escapeHtml(params.contact.name) : ''}, gracias por confiar en nosotros.`,
+    contentHtml,
+    footerNote: 'Equipo de Redeservi Europa'
+  })
+}
+
+export function renderAdminNewServicesEmailMulti(params: {
+  mollieId: string
+  amount?: number | string
+  currency?: string
+  method?: string | null
+  requestedMethod?: string | null
+  contact?: { name?: string; email?: string; phone?: string }
+  services?: Array<{ type?: string; title?: string; date?: string; time?: string; totalPrice?: number; pickupAddress?: string; dropoffAddress?: string; flightNumber?: string; passengers?: number }>
+}) {
+  const services = params.services || []
+  const itemsHtml = services.map(s => `
+    <li>
+      <b>Servicio:</b> ${escapeHtml(s.title || 'Reserva')}<br/>
+      <b>Tipo:</b> ${escapeHtml(s.type || '\u2014')} • <b>Fecha:</b> ${escapeHtml(s.date || '\u2014')} ${escapeHtml(s.time || '')}<br/>
+      <b>Recogida:</b> ${escapeHtml(s.pickupAddress || '\u2014')} • <b>Destino:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
+      <b>Vuelo:</b> ${escapeHtml(s.flightNumber || '\u2014')} • <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}<br/>
+      <b>Importe estimado:</b> ${typeof s.totalPrice === 'number' ? s.totalPrice + ' \u20ac' : '\u2014'}
+    </li>
+  `).join('')
+
+  const contentHtml = `
+    <p><b>Nuevos servicios confirmados</b></p>
+    <p>Se ha recibido el pago <b>${escapeHtml(params.mollieId)}</b> y se han confirmado los siguientes servicios:</p>
+    <ul class="list">
+      ${itemsHtml}
+    </ul>
+    <p><b>Importe total:</b> ${typeof params.amount === 'number' ? params.amount.toFixed(2) : (params.amount || '\u2014')} ${params.currency || 'EUR'}</p>
+  `
+  return renderBrandEmail({
+    title: `Nuevos servicios confirmados – ${escapeHtml(params.mollieId)}`,
+    intro: 'Se ha confirmado un pago y los servicios asociados han quedado registrados.',
+    contentHtml,
+    footerNote: 'Generado automáticamente'
+  })
+}
+
 export function renderAdminNewServiceEmail(params: {
   mollieId: string
   amount?: number | string

@@ -127,7 +127,7 @@ export default function PaymentPage() {
   }, [modalForm?.origen])
 
   const openNewQuoteModal = () => {
-    // iniciar formulario con valores públicos del booking si existen
+    // Rellenar el modal con los datos actuales de la página de pago
     setModalForm({
       tipo: bookingData?.isEvent ? 'tour' : (bookingData?.tipoReserva || 'traslado'),
       origen: bookingData?.origen || '',
@@ -136,10 +136,9 @@ export default function PaymentPage() {
       dropoffAddress: paymentDropoffAddress || bookingData?.dropoffAddress || '',
       date: bookingData?.date || bookingData?.fecha || '',
       time: bookingData?.time || bookingData?.hora || '',
-  passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
+      passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
       ninos: bookingData?.ninos || 0,
       vehicle: bookingData?.vehicle || bookingData?.vehiculo || 'coche',
-         // idaYVuelta removed
       selectedTourSlug: bookingData?.selectedTourSlug || '',
       categoriaTour: bookingData?.categoriaTour || '',
       subtipoTour: bookingData?.subtipoTour || '',
@@ -148,6 +147,37 @@ export default function PaymentPage() {
       contactName: bookingData?.contactName || '',
       contactPhone: bookingData?.contactPhone || '',
       contactEmail: bookingData?.contactEmail || '',
+    })
+    setModalEditingId(null)
+    setModalStep(1)
+    setQuoteModalOpen(true)
+  }
+
+  // Nueva función: abrir modal con origen y destino intercambiados (ida y vuelta)
+  const openReturnQuoteModal = () => {
+    // Intercambiar origen y destino y setear todos los campos actuales de bookingData
+    setModalForm({
+      tipo: bookingData?.isEvent ? 'tour' : (bookingData?.tipoReserva || 'traslado'),
+      origen: bookingData?.destino || '',
+      destino: bookingData?.origen || '',
+      pickupAddress: bookingData?.dropoffAddress || paymentDropoffAddress || '',
+      dropoffAddress: bookingData?.pickupAddress || paymentPickupAddress || '',
+      date: bookingData?.date || bookingData?.fecha || '',
+      time: bookingData?.time || bookingData?.hora || '',
+      passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
+      ninos: bookingData?.ninos || 0,
+      vehicle: bookingData?.vehicle || bookingData?.vehiculo || 'coche',
+      selectedTourSlug: bookingData?.selectedTourSlug || '',
+      categoriaTour: bookingData?.categoriaTour || '',
+      subtipoTour: bookingData?.subtipoTour || '',
+      flightNumber: bookingData?.flightNumber || '',
+      totalPrice: Number(bookingData?.totalPrice || total || 0),
+      contactName: bookingData?.contactName || '',
+      contactPhone: bookingData?.contactPhone || '',
+      contactEmail: bookingData?.contactEmail || '',
+      luggage23kg: bookingData?.luggage23kg ?? 0,
+      luggage10kg: bookingData?.luggage10kg ?? 0,
+      specialRequests: bookingData?.specialRequests || '',
     })
     setModalEditingId(null)
     setModalStep(1)
@@ -1526,7 +1556,7 @@ export default function PaymentPage() {
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground">
                           Si deseas un <strong>ida y vuelta</strong>, pulsa
-                          <Button size="sm" variant="outline" className="mx-2 align-middle" onClick={openNewQuoteModal}>
+                          <Button size="sm" variant="outline" className="mx-2 align-middle" onClick={openReturnQuoteModal}>
                             aquí
                           </Button>
                           y podrás cotizar otro traslado o tour.

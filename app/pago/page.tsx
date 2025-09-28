@@ -32,6 +32,7 @@ import { formatPhonePretty, ensureLeadingPlus } from "@/lib/utils"
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { PhoneInputIntl } from '@/components/ui/phone-input';
+import { EmailAutocomplete } from '@/components/ui/email-autocomplete';
 
 export default function PaymentPage() {
   const [bookingData, setBookingData] = useState<any>(null)
@@ -78,13 +79,13 @@ export default function PaymentPage() {
   const [toursList, setToursList] = useState<Array<{title:string;slug?:string}>>([])
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
     fetch('/api/tours')
       .then(res => res.json())
-      .then(data => { if (mounted) setToursList(data?.tours || []) })
-      .catch(() => {})
-    return () => { mounted = false }
-  }, [])
+      .then((data) => { if (mounted) setToursList(data?.tours || []) })
+      .catch(() => {});
+    return () => { mounted = false };
+  }, []);
 
   // Exponer en el body un atributo cuando el modal de cotización esté abierto
   useEffect(() => {
@@ -1036,22 +1037,20 @@ export default function PaymentPage() {
   onChange={value => updateBookingField('contactPhone', value)}
   inputProps={{
     name: 'contactPhone',
-    'data-field': 'contactPhone',
     className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
   }}
 />
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">Email</label>
-                            <Input
-                              type="email"
-                              placeholder="tu@email.com"
-                              data-field="contactEmail"
-                              className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
-                              value={bookingData.contactEmail || ''}
-                              onChange={(e) => updateBookingField('contactEmail', e.target.value)}
-                              onBlur={(e) => validateAndSetEmail(e.target.value)}
-                            />
+                            <EmailAutocomplete
+  value={bookingData.contactEmail || ''}
+  onChange={value => updateBookingField('contactEmail', value)}
+  className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
+  name="contactEmail"
+  data-field="contactEmail"
+  onBlur={e => validateAndSetEmail(e.target.value)}
+/>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -1091,22 +1090,20 @@ export default function PaymentPage() {
   onChange={value => updateBookingField('contactPhone', value)}
   inputProps={{
     name: 'contactPhone',
-    'data-field': 'contactPhone',
     className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
   }}
 />
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">Email</label>
-                            <Input
-                              type="email"
-                              placeholder="tu@email.com"
-                              data-field="contactEmail"
-                              className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
-                              value={bookingData.contactEmail || ''}
-                              onChange={(e) => updateBookingField('contactEmail', e.target.value)}
-                              onBlur={(e) => validateAndSetEmail(e.target.value)}
-                            />
+                            <EmailAutocomplete
+  value={bookingData.contactEmail || ''}
+  onChange={value => updateBookingField('contactEmail', value)}
+  className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
+  name="contactEmail"
+  data-field="contactEmail"
+  onBlur={e => validateAndSetEmail(e.target.value)}
+/>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -1886,7 +1883,7 @@ export default function PaymentPage() {
                           onValueChange={value => {
                             const maxNinos = parsePassengers(modalForm.passengers as any)
                             let n = Number(value)
-                            if (n > maxNinos) n = maxNanos
+                            if (n > maxNinos) n = maxNinos
                             setModalForm({ ...modalForm, ninos: n })
                           }}
                         >
@@ -2055,7 +2052,7 @@ export default function PaymentPage() {
                             onValueChange={value => {
                               const maxNinos = parsePassengers(modalForm.passengers as any)
                               let n = Number(value)
-                              if (n > maxNinos) n = maxNanos
+                              if (n > maxNinos) n = maxNinos
                               setModalForm({ ...modalForm, ninos: n })
                             }}
                           >
@@ -2141,7 +2138,6 @@ export default function PaymentPage() {
   onChange={value => updateBookingField('contactPhone', value)}
   inputProps={{
     name: 'contactPhone',
-    'data-field': 'contactPhone',
     className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
   }}
 />
@@ -2149,11 +2145,18 @@ export default function PaymentPage() {
                     </div>
                     <div>
                       <label className="text-xs">Email</label>
-                      <Input data-modal-field="contactEmail" type="email" value={modalForm.contactEmail || ''} onChange={(e)=>setModalForm((s:any)=>({...s, contactEmail: e.target.value}))} onBlur={(e)=>{
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-                        if (!emailRegex.test(String(e.target.value))) setModalFieldErrors(fe => ({...fe, contactEmail: 'Formato inválido'}))
-                        else setModalFieldErrors(fe => { const c = {...fe}; delete c.contactEmail; return c })
-                      }} className={modalFieldErrors.contactEmail ? 'border-destructive' : ''} />
+                      <EmailAutocomplete
+  value={modalForm.contactEmail || ''}
+  onChange={value => setModalForm((s:any)=>({...s, contactEmail: value}))}
+  className={modalFieldErrors.contactEmail ? 'border-destructive' : ''}
+  name="contactEmail"
+  data-modal-field="contactEmail"
+  onBlur={e => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(String(e.target.value))) setModalFieldErrors(fe => ({...fe, contactEmail: 'Formato inválido'}))
+    else setModalFieldErrors(fe => { const c = {...fe}; delete c.contactEmail; return c })
+  }}
+/>
                       {modalFieldErrors.contactEmail && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactEmail}</p>}
                     </div>
                   </div>

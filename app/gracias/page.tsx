@@ -109,7 +109,7 @@ export default function GraciasPage() {
       <Header />
       <div className="pt-24 pb-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-3xl mx-auto space-y-6 mt-9">
             <h1 className="text-4xl font-bold text-primary">{title}</h1>
             {loading ? (
               <p className="text-muted-foreground">Verificando el estado de tu pago…</p>

@@ -12,6 +12,7 @@ import { AnimatedSection } from "@/components/animated-section"
 import { PortableText } from "@portabletext/react"
 import EventsSlider, { type EventItem as SliderEventItem } from "@/components/events-slider"
 import { calcBaseTransferPrice, getAvailableDestinations as pricingGetAvailableDestinations, getGlobalMinBase as pricingGetGlobalMinBase, getMinBaseFromOrigin as pricingGetMinBaseFromOrigin } from "@/lib/pricing"
+import { PhoneInputIntl } from '@/components/ui/phone-input';
 
 export function Hero({
   // Props de la sección Hero
@@ -87,7 +88,7 @@ export function Hero({
     contactPhone: "",
     contactEmail: "",
   // idaYVuelta removed: round-trip option deprecated
-    ninos: 0, // Selecciona automáticamente 0 niños
+  ninos: 0, // Selecciona automáticamente 0 niños
     tipoReserva: "traslado" as "" | "traslado" | "tour",
     tipoTour: "" as "diurno" | "nocturno" | "escala" | "",
     categoriaTour: "" as "" | "ciudad" | "escala",

@@ -31,6 +31,7 @@ import { calcBaseTransferPrice, isNightTime as pricingIsNightTime, getAvailableD
 import { formatPhonePretty, ensureLeadingPlus } from "@/lib/utils"
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { PhoneInputIntl } from '@/components/ui/phone-input';
 
 export default function PaymentPage() {
   const [bookingData, setBookingData] = useState<any>(null)
@@ -1030,14 +1031,15 @@ export default function PaymentPage() {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <label className="text-xs font-medium">Teléfono</label>
-                            <Input
-                              placeholder="+33 1 23 45 67 89"
-                              data-field="contactPhone"
-                              className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
-                              value={bookingData.contactPhone || ''}
-                              onChange={(e) => updateBookingField('contactPhone', ensureLeadingPlus(e.target.value))}
-                              onBlur={(e) => updateBookingField('contactPhone', formatPhonePretty(ensureLeadingPlus(e.target.value)))}
-                            />
+                            <PhoneInputIntl
+  value={bookingData.contactPhone || ''}
+  onChange={value => updateBookingField('contactPhone', value)}
+  inputProps={{
+    name: 'contactPhone',
+    'data-field': 'contactPhone',
+    className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
+  }}
+/>
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">Email</label>
@@ -1084,14 +1086,15 @@ export default function PaymentPage() {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <label className="text-xs font-medium">Teléfono</label>
-                            <Input
-                              placeholder="+33 1 23 45 67 89"
-                              data-field="contactPhone"
-                              className={fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''}
-                              value={bookingData.contactPhone || ''}
-                              onChange={(e) => updateBookingField('contactPhone', ensureLeadingPlus(e.target.value))}
-                              onBlur={(e) => updateBookingField('contactPhone', formatPhonePretty(ensureLeadingPlus(e.target.value)))}
-                            />
+                            <PhoneInputIntl
+  value={bookingData.contactPhone || ''}
+  onChange={value => updateBookingField('contactPhone', value)}
+  inputProps={{
+    name: 'contactPhone',
+    'data-field': 'contactPhone',
+    className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
+  }}
+/>
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">Email</label>
@@ -1883,7 +1886,7 @@ export default function PaymentPage() {
                           onValueChange={value => {
                             const maxNinos = parsePassengers(modalForm.passengers as any)
                             let n = Number(value)
-                            if (n > maxNinos) n = maxNinos
+                            if (n > maxNinos) n = maxNanos
                             setModalForm({ ...modalForm, ninos: n })
                           }}
                         >
@@ -2052,7 +2055,7 @@ export default function PaymentPage() {
                             onValueChange={value => {
                               const maxNinos = parsePassengers(modalForm.passengers as any)
                               let n = Number(value)
-                              if (n > maxNinos) n = maxNinos
+                              if (n > maxNinos) n = maxNanos
                               setModalForm({ ...modalForm, ninos: n })
                             }}
                           >
@@ -2133,7 +2136,15 @@ export default function PaymentPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs">Teléfono</label>
-                      <Input data-modal-field="contactPhone" value={modalForm.contactPhone || ''} onChange={(e)=>setModalForm((s:any)=>({...s, contactPhone: ensureLeadingPlus(e.target.value)}))} onBlur={(e)=>setModalForm((s:any)=>({...s, contactPhone: formatPhonePretty(ensureLeadingPlus(e.target.value))}))} className={modalFieldErrors.contactPhone ? 'border-destructive' : ''} />
+                      <PhoneInputIntl
+  value={bookingData.contactPhone || ''}
+  onChange={value => updateBookingField('contactPhone', value)}
+  inputProps={{
+    name: 'contactPhone',
+    'data-field': 'contactPhone',
+    className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
+  }}
+/>
                       {modalFieldErrors.contactPhone && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactPhone}</p>}
                     </div>
                     <div>

@@ -555,6 +555,19 @@ export default function PaymentPage() {
     } catch {}
   }, [bookingData])
 
+  // Asegurar que el número de niños no supere el número de pasajeros ni 10
+  useEffect(() => {
+    try {
+      if (!bookingData) return
+      const pax = Number(bookingData.passengers || bookingData.pasajeros || 1)
+      const ninos = Number(bookingData.ninos ?? 0)
+      const maxAllowed = Math.min(10, Math.max(0, pax))
+      if (ninos > maxAllowed) {
+        updateBookingField('ninos', Math.min(ninos, maxAllowed))
+      }
+    } catch {}
+  }, [bookingData?.passengers, bookingData?.pasajeros, bookingData?.ninos])
+
   const updateBookingField = (key: string, value: any) => {
     setBookingData((prev: any) => {
       const next: any = { ...prev, [key]: value }
@@ -943,15 +956,37 @@ export default function PaymentPage() {
                         <Users className="w-4 h-4 text-accent" />
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{bookingData.isEvent ? "Cupos" : "Pasajeros"}</span>
-                          <Input
-                            type="number"
-                            data-field="passengers"
-                            className={`w-24 ${fieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                            min={1}
-                            max={9}
-                            value={bookingData.passengers || 1}
-                            onChange={(e) => updateBookingField("passengers", Number(e.target.value))}
-                          />
+                          <Select
+                            value={String(bookingData.passengers || 1)}
+                            onValueChange={(value) => updateBookingField('passengers', Number(value))}
+                          >
+                            <SelectTrigger data-field="passengers" className={`w-24 cursor-pointer ${fieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : ''}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {Array.from({ length: 56 }, (_, i) => i + 1).map((n) => (
+                                <SelectItem key={n} value={String(n)}>{n} {n === 1 ? 'Pasajero' : 'Pasajeros'}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Selector para niños (hasta 10) */}
+                        <div className="flex items-center gap-2 ml-4">
+                          <span className="text-sm">Niños</span>
+                          <Select
+                            value={String(bookingData.ninos ?? 0)}
+                            onValueChange={(value) => updateBookingField('ninos', Number(value))}
+                          >
+                            <SelectTrigger data-field="ninos" className={"w-20 cursor-pointer " + (fieldErrors.ninos ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {Array.from({ length: Math.min(10, Math.max(1, parsePassengers(bookingData.passengers || 1))) + 1 }, (_, i) => i).map((n) => (
+                                <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       {fieldErrors.passengers && (
@@ -1968,10 +2003,10 @@ export default function PaymentPage() {
                           onValueChange={(value) => setModalForm({ ...modalForm, passengers: String(value) })}
                         >
                           <SelectTrigger data-modal-field="passengers" className={"cursor-pointer " + (modalFieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                            <SelectValue placeholder={`Número de pasajeros (máx. ${getVehicleCap(modalForm.vehicle)})`} />
+                            <SelectValue placeholder={`Número de pasajeros (máx. 56)`} />
                           </SelectTrigger>
                           <SelectContent className="max-h-72">
-                            {Array.from({ length: getVehicleCap(modalForm.vehicle) }, (_, i) => i + 1).map((n) => (
+                            {Array.from({ length: 56 }, (_, i) => i + 1).map((n) => (
                               <SelectItem key={n} value={String(n)}>
                                 {n} {n === 1 ? "Pasajero" : "Pasajeros"}
                               </SelectItem>
@@ -1987,7 +2022,8 @@ export default function PaymentPage() {
                         <Select
                           value={String(modalForm.ninos ?? 0)}
                           onValueChange={value => {
-                            const maxNinos = parsePassengers(modalForm.passengers as any)
+                            const maxByPassengers = parsePassengers(modalForm.passengers as any)
+                            const maxNinos = Math.min(10, maxByPassengers)
                             let n = Number(value)
                             if (n > maxNinos) n = maxNinos
                             setModalForm({ ...modalForm, ninos: n })
@@ -1999,7 +2035,7 @@ export default function PaymentPage() {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="max-h-72">
-                            {Array.from({ length: parsePassengers(modalForm.passengers as any) + 1 }, (_, i) => i).map((n) => (
+                            {Array.from({ length: Math.min(10, parsePassengers(modalForm.passengers as any)) + 1 }, (_, i) => i).map((n) => (
                               <SelectItem key={n} value={String(n)}>{n}</SelectItem>
                             ))}
                           </SelectContent>

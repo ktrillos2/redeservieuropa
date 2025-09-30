@@ -1607,6 +1607,20 @@ export default function PaymentPage() {
     y podrás cotizar otro traslado o tour.
   </p>
 </div>
+                      {/* Mostrar número de cotizaciones realizadas (items en carrito) */}
+                      <div className="text-center mb-3">
+                        <span className="text-sm text-muted-foreground">Cotizaciones extras realizadas: <strong>{carritoState?.length || 0}</strong></span>
+                      </div>
+
+                      {/* Nota: indicar porcentaje de depósito e importe a pagar ahora (ej. 10%) */}
+                      {!payFullNow && (
+                        <div className="text-center mb-3 p-3 bg-muted/10 rounded">
+                          <p className="text-sm text-muted-foreground">
+                            <strong>Nota:</strong> Ahora se cobrará únicamente el {depositPercentInt}% del valor total de la cotización como depósito, es decir <strong>{deposit}€</strong>.
+                          </p>
+                        </div>
+                      )}
+
                       <Button
                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300"
                         size="lg"
@@ -2230,7 +2244,7 @@ export default function PaymentPage() {
   onChange={value => updateBookingField('contactPhone', value)}
   inputProps={{
     name: 'contactPhone',
-    className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
+    className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive ' : ''
   }}
 />
                       {modalFieldErrors.contactPhone && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactPhone}</p>}

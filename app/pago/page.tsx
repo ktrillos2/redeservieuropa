@@ -101,11 +101,7 @@ export default function PaymentPage() {
       const d = bookingData.destino ?? bookingData.destination ?? bookingData.dropoffAddress ?? bookingData.to ?? ''
       setSavedOriginOnLoad(o || null)
       setSavedDestinationOnLoad(d || null)
-      console.log('Saved origin/destination on load:', { o, d })
-      // debug: mostrar keys disponibles en bookingData para diagnostico
-      try {
-        console.log('bookingData keys:', Object.keys(bookingData))
-      } catch (err) {}
+     
   }, [bookingData])
 
   // Exponer en el body un atributo cuando el modal de cotización esté abierto
@@ -225,10 +221,6 @@ export default function PaymentPage() {
     specialRequests: bookingData?.specialRequests || '',
   };
 
-  // --- DEBUG ---
-  console.log('--- DEBUG: Botón "aquí" (Ida y Vuelta) ---');
-  console.log('Datos Originales:', { origen: modalForm?.origen, destino: modalForm?.destino });
-  console.log('Datos Invertidos para el Modal:', { origen: invertedData.origen, destino: invertedData.destino });
   
   setModalForm(invertedData);
   setModalEditingId(null);
@@ -1606,15 +1598,15 @@ export default function PaymentPage() {
                         </div>
                       )}
                       {/* Texto informativo para cotizar ida y vuelta */}
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground">
-                          Si deseas un <strong>ida y vuelta</strong>, pulsa
-                          <Button size="sm" variant="outline" className="mx-2 align-middle" onClick={openReturnQuoteModal}>
-                            aquí
-                          </Button>
-                          y podrás cotizar otro traslado o tour.
-                        </p>
-                      </div>
+<div className="text-center p-4 mt-4 bg-muted border border-dashed rounded-lg">
+  <p className="text-sm text-primary/90">
+    Si deseas un <strong>ida y vuelta</strong>, pulsa
+    <Button size="sm" variant="default" className="mx-2 align-middle" onClick={openReturnQuoteModal}>
+      aquí
+    </Button>
+    y podrás cotizar otro traslado o tour.
+  </p>
+</div>
                       <Button
                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300"
                         size="lg"

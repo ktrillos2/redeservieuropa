@@ -35,7 +35,13 @@ import { PhoneInputIntl } from '@/components/ui/phone-input';
 import { EmailAutocomplete } from '@/components/ui/email-autocomplete';
 
 export default function PaymentPage() {
+  const [destino, setDestino] = useState<any>(null)
   const [bookingData, setBookingData] = useState<any>(null)
+  // Guardar origen/destino al cargar la página (por ejemplo después de redirigir desde la cotización)
+  const [savedOriginOnLoad, setSavedOriginOnLoad] = useState<string | null>(null)
+  const [savedDestinationOnLoad, setSavedDestinationOnLoad] = useState<string | null>(null)
+  // Ref para indicar que el flujo de "ida y vuelta" fue iniciado desde el botón "Aquí"
+  const returnInitiatedRef = useRef(false)
   const [isLoading, setIsLoading] = useState(true)
   const [payFullNow, setPayFullNow] = useState(false)
   const [isPaying, setIsPaying] = useState(false)
@@ -87,6 +93,21 @@ export default function PaymentPage() {
     return () => { mounted = false };
   }, []);
 
+  // Cuando bookingData se carga, guardar origen/destino en variables separadas
+  useEffect(() => {
+    if (!bookingData) return;
+      // detectar distintos nombres de campo que pueden contener origen/destino
+      const o = bookingData.origen ?? bookingData.origin ?? bookingData.pickupAddress ?? bookingData.from ?? ''
+      const d = bookingData.destino ?? bookingData.destination ?? bookingData.dropoffAddress ?? bookingData.to ?? ''
+      setSavedOriginOnLoad(o || null)
+      setSavedDestinationOnLoad(d || null)
+      console.log('Saved origin/destination on load:', { o, d })
+      // debug: mostrar keys disponibles en bookingData para diagnostico
+      try {
+        console.log('bookingData keys:', Object.keys(bookingData))
+      } catch (err) {}
+  }, [bookingData])
+
   // Exponer en el body un atributo cuando el modal de cotización esté abierto
   useEffect(() => {
     if (typeof document === 'undefined') return
@@ -114,6 +135,21 @@ export default function PaymentPage() {
   const getVehicleCap = (_v?: string) => {
     const caps: Record<string, number> = { coche: 4, minivan: 6, van: 8 }
     return caps[_v || 'coche'] || 56
+  }
+
+  // Helper: intentar convertir un valor (etiqueta completa o dirección) a la clave usada en labelMap
+  const getLocationKeyFromValue = (v?: string) => {
+    if (!v) return ''
+    const val = String(v).trim()
+    const low = val.toLowerCase()
+    // si ya es una clave
+    if (Object.keys(labelMap).includes(val)) return val
+    // buscar coincidencia exacta en labels
+    const exact = Object.keys(labelMap).find(k => (labelMap[k as keyof typeof labelMap] || '').toLowerCase() === low)
+    if (exact) return exact
+    // buscar por inclusión (p.ej. 'cdg' en 'Aeropuerto CDG' o 'paris' en 'París')
+    const incl = Object.keys(labelMap).find(k => low.includes(k) || (labelMap[k as keyof typeof labelMap] || '').toLowerCase().includes(low) || (labelMap[k as keyof typeof labelMap] || '').toLowerCase().includes(k))
+    return incl || ''
   }
 
   const availableDestinations = useMemo(() => {
@@ -155,34 +191,50 @@ export default function PaymentPage() {
 
   // Nueva función: abrir modal con origen y destino intercambiados (ida y vuelta)
   const openReturnQuoteModal = () => {
-    // Intercambiar origen y destino y setear todos los campos actuales de bookingData
-    setModalForm({
-      tipo: bookingData?.isEvent ? 'tour' : (bookingData?.tipoReserva || 'traslado'),
-      origen: bookingData?.destino || '',
-      destino: bookingData?.origen || '',
-      pickupAddress: bookingData?.dropoffAddress || paymentDropoffAddress || '',
-      dropoffAddress: bookingData?.pickupAddress || paymentPickupAddress || '',
-      date: bookingData?.date || bookingData?.fecha || '',
-      time: bookingData?.time || bookingData?.hora || '',
-      passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
-      ninos: bookingData?.ninos || 0,
-      vehicle: bookingData?.vehicle || bookingData?.vehiculo || 'coche',
-      selectedTourSlug: bookingData?.selectedTourSlug || '',
-      categoriaTour: bookingData?.categoriaTour || '',
-      subtipoTour: bookingData?.subtipoTour || '',
-      flightNumber: bookingData?.flightNumber || '',
-      totalPrice: Number(bookingData?.totalPrice || total || 0),
-      contactName: bookingData?.contactName || '',
-      contactPhone: bookingData?.contactPhone || '',
-      contactEmail: bookingData?.contactEmail || '',
-      luggage23kg: bookingData?.luggage23kg ?? 0,
-      luggage10kg: bookingData?.luggage10kg ?? 0,
-      specialRequests: bookingData?.specialRequests || '',
-    })
-    setModalEditingId(null)
-    setModalStep(1)
-    setQuoteModalOpen(true)
-  }
+  // marcar que iniciamos el flujo de ida y vuelta
+  returnInitiatedRef.current = true
+  console.log('[openReturnQuoteModal] returnInitiatedRef set to true')
+  // Construir valores usando saved variables si existen, o fallback a pickup/dropoff
+  const currentOrigin = savedOriginOnLoad ?? bookingData?.origen ?? bookingData?.origin ?? bookingData?.pickupAddress ?? ''
+  const currentDestination = savedDestinationOnLoad ?? bookingData?.destino ?? bookingData?.destination ?? bookingData?.dropoffAddress ?? ''
+  const invertedData = {
+    tipo: bookingData?.isEvent ? 'tour' : (bookingData?.tipoReserva || 'traslado'),
+  // --- LÓGICA DE INVERSIÓN ---
+  // Convertir a claves que usa el Select (p.ej. 'cdg', 'paris') si es posible
+  origen: getLocationKeyFromValue(currentDestination) || currentDestination || '',
+  destino: getLocationKeyFromValue(currentOrigin) || currentOrigin || '',
+  // También rellenar las direcciones exactas intercambiadas
+  pickupAddress: bookingData?.dropoffAddress || paymentDropoffAddress || '',
+  dropoffAddress: bookingData?.pickupAddress || paymentPickupAddress || '',
+    // --- FIN DE LÓGICA ---
+    date: bookingData?.date || bookingData?.fecha || '',
+    time: bookingData?.time || bookingData?.hora || '',
+    passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
+    ninos: bookingData?.ninos || 0,
+    vehicle: bookingData?.vehicle || bookingData?.vehiculo || bookingData?.vehicleType || 'coche',
+    selectedTourSlug: bookingData?.selectedTourSlug || '',
+    categoriaTour: bookingData?.categoriaTour || '',
+    subtipoTour: bookingData?.subtipoTour || '',
+    flightNumber: bookingData?.flightNumber || '',
+    totalPrice: Number(bookingData?.totalPrice || total || 0),
+    contactName: bookingData?.contactName || '',
+    contactPhone: bookingData?.contactPhone || '',
+    contactEmail: bookingData?.contactEmail || '',
+    luggage23kg: bookingData?.luggage23kg ?? 0,
+    luggage10kg: bookingData?.luggage10kg ?? 0,
+    specialRequests: bookingData?.specialRequests || '',
+  };
+
+  // --- DEBUG ---
+  console.log('--- DEBUG: Botón "aquí" (Ida y Vuelta) ---');
+  console.log('Datos Originales:', { origen: modalForm?.origen, destino: modalForm?.destino });
+  console.log('Datos Invertidos para el Modal:', { origen: invertedData.origen, destino: invertedData.destino });
+  
+  setModalForm(invertedData);
+  setModalEditingId(null);
+  setModalStep(1);
+  setQuoteModalOpen(true);
+}
 
   const openEditModal = (item: any) => {
     setModalForm({
@@ -381,6 +433,7 @@ export default function PaymentPage() {
     } else {
       const originLabel = modalForm.origen ? (labelMap[modalForm.origen as keyof typeof labelMap] || modalForm.origen) : (modalForm.pickupAddress || '')
       const destLabel = modalForm.destino ? (labelMap[modalForm.destino as keyof typeof labelMap] || modalForm.destino) : (modalForm.dropoffAddress || '')
+      
       if (originLabel || destLabel) serviceLabel = `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
     }
 
@@ -1760,12 +1813,29 @@ export default function PaymentPage() {
                       className={`cursor-pointer h-12 px-8 text-base md:text-lg min-w-[150px] shadow-md hover:shadow-lg hover:scale-[1.02] transition-all ${modalForm.tipo === "traslado" ? "ring-2 ring-accent bg-gradient-to-r from-primary to-primary/80" : "border-2"}`}
                       aria-pressed={modalForm.tipo === "traslado"}
                       onClick={() => {
-                        setModalForm((prev:any) => ({
-                          ...prev,
-                          tipo: "traslado",
-                          origen: prev.origen || '',
-                          destino: prev.destino || '',
-                        }))
+                        // Si el flujo de ida y vuelta fue iniciado, usar los valores guardados intercambiados
+                        if (returnInitiatedRef.current) {
+                          console.log('[Modal] Traslado clicked after return initiated - applying saved swapped origin/destination')
+                          const newOrigen = getLocationKeyFromValue(savedDestinationOnLoad || bookingData?.dropoffAddress || '') || (savedDestinationOnLoad || '')
+                          const newDestino = getLocationKeyFromValue(savedOriginOnLoad || bookingData?.pickupAddress || '') || (savedOriginOnLoad || '')
+                          setModalForm((prev:any) => ({
+                            ...prev,
+                            tipo: "traslado",
+                            origen: newOrigen,
+                            destino: newDestino,
+                            pickupAddress: bookingData?.dropoffAddress || prev.pickupAddress || '',
+                            dropoffAddress: bookingData?.pickupAddress || prev.dropoffAddress || '',
+                          }))
+                          // reset flag
+                          returnInitiatedRef.current = false
+                        } else {
+                          setModalForm((prev:any) => ({
+                            ...prev,
+                            tipo: "traslado",
+                            origen: prev.origen || '',
+                            destino: prev.destino || '',
+                          }))
+                        }
                         setModalStep(2)
                       }}
                     >

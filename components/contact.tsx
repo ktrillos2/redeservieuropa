@@ -214,9 +214,9 @@ export function Contact() {
                     </Button>
                   </a>
                 ) : null}
-                {section?.formNote ? (
-                  <p className="text-xs text-muted-foreground mt-3 text-center">{section.formNote}</p>
-                ) : null}
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  {section?.formNote || 'Por favor, asegúrate de completar todos tus datos para que podamos contactarte.'}
+                </p>
               </form>
             </CardContent>
           </Card>

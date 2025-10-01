@@ -149,7 +149,7 @@ export function Header({
                 priority
               />
             </div>
-            <div className="hidden md:block">
+            <div className="hidden md:block text-center">
               <h1
                 className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${compactHeader ? "text-lg" : "text-4xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
               >

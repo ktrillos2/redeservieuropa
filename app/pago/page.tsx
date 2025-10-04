@@ -34,6 +34,19 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { PhoneInputIntl } from '@/components/ui/phone-input';
 import { EmailAutocomplete } from '@/components/ui/email-autocomplete';
 
+// Helper: formato con máximo 2 decimales (sin forzar ceros)
+const fmtMoney = (n: number | string | undefined | null) => {
+  const num = Number(n || 0)
+  try {
+    return new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(isFinite(num) ? num : 0)
+  } catch {
+    return String(Math.round((isFinite(num) ? num : 0) * 100) / 100)
+  }
+}
+
 export default function PaymentPage() {
   const [destino, setDestino] = useState<any>(null)
   const [bookingData, setBookingData] = useState<any>(null)
@@ -73,6 +86,7 @@ export default function PaymentPage() {
     categoriaTour: '',
     subtipoTour: '',
     flightNumber: '',
+    flightArrivalTime: '',
     totalPrice: 0,
     contactName: '',
     contactPhone: '',
@@ -160,12 +174,13 @@ export default function PaymentPage() {
 
   const openNewQuoteModal = () => {
     // Rellenar el modal con los datos actuales de la página de pago
+    const hasMultiple = carritoState && carritoState.length > 0
     setModalForm({
       tipo: bookingData?.isEvent ? 'tour' : (bookingData?.tipoReserva || 'traslado'),
-      origen: bookingData?.origen || '',
-      destino: bookingData?.destino || '',
-      pickupAddress: paymentPickupAddress || bookingData?.pickupAddress || '',
-      dropoffAddress: paymentDropoffAddress || bookingData?.dropoffAddress || '',
+      origen: hasMultiple ? '' : (bookingData?.origen || ''),
+      destino: hasMultiple ? '' : (bookingData?.destino || ''),
+      pickupAddress: hasMultiple ? '' : (paymentPickupAddress || bookingData?.pickupAddress || ''),
+      dropoffAddress: hasMultiple ? '' : (paymentDropoffAddress || bookingData?.dropoffAddress || ''),
       date: bookingData?.date || bookingData?.fecha || '',
       time: bookingData?.time || bookingData?.hora || '',
       passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
@@ -174,7 +189,8 @@ export default function PaymentPage() {
       selectedTourSlug: bookingData?.selectedTourSlug || '',
       categoriaTour: bookingData?.categoriaTour || '',
       subtipoTour: bookingData?.subtipoTour || '',
-      flightNumber: bookingData?.flightNumber || '',
+      flightNumber: hasMultiple ? '' : (bookingData?.flightNumber || ''),
+      flightArrivalTime: '',
       totalPrice: Number(bookingData?.totalPrice || total || 0),
       contactName: bookingData?.contactName || '',
       contactPhone: bookingData?.contactPhone || '',
@@ -920,7 +936,8 @@ export default function PaymentPage() {
             </AnimatedSection>
 
             <div className="grid lg:grid-cols-2 gap-8">
-              {/* Booking Summary */}
+              {/* Booking Summary: ocultar si hay múltiples cotizaciones (actual + extras) */}
+              {!(carritoState && carritoState.length > 0) && (
               <AnimatedSection animation="slide-left" delay={200}>
                 <Card className="transform hover:scale-105 transition-all duration-300">
                   <CardHeader>
@@ -988,6 +1005,23 @@ export default function PaymentPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {/* Edades de niños (< 9 años) visible si hay niños */}
+                        {Number(bookingData.ninos || 0) > 0 && (
+                          <div className="flex flex-col gap-2 ml-4">
+                            <label className="text-xs text-muted-foreground">Niños menores de 9 años</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                              {Array.from({ length: Math.max(0, Number(bookingData.ninos || 0)) }, (_, i) => (
+                                <Input key={i} placeholder={`Edad niño ${i+1}`} inputMode="numeric" pattern="[0-9]*" onChange={(e)=>{
+                                  const val = e.target.value.replace(/[^0-9]/g,'')
+                                  const arr = Array.isArray((bookingData as any).childrenAges) ? [...(bookingData as any).childrenAges] : []
+                                  arr[i] = val
+                                  updateBookingField('childrenAges', arr)
+                                }} />
+                              ))}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">Indique edad en años (solo menores de 9).</p>
+                          </div>
+                        )}
                       </div>
                       {fieldErrors.passengers && (
                         <p className="text-xs text-destructive mt-1">{fieldErrors.passengers}</p>
@@ -1046,7 +1080,7 @@ export default function PaymentPage() {
                             <label className="text-xs font-medium">
                               {`Origen del servicio${bookingData?.origen ? ` [${labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen}]` : ''}`}
                             </label>
-                            <p className="text-sm text-muted-foreground">{bookingData.pickupAddress || (labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen) || 'No especificado'}</p>
+                            <p className="text-sm text-muted-foreground">{(carritoState && carritoState.length > 0) ? '' : (bookingData.pickupAddress || (labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen) || 'No especificado')}</p>
                             <Input
                               placeholder="Ubicación exacta"
                               data-field="paymentPickupAddress"
@@ -1059,7 +1093,7 @@ export default function PaymentPage() {
                             <label className="text-xs font-medium">
                               {`Destino del servicio${bookingData?.destino ? ` [${labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino}]` : ''}`}
                             </label>
-                            <p className="text-sm text-muted-foreground">{bookingData.dropoffAddress || (labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino) || 'No especificado'}</p>
+                            <p className="text-sm text-muted-foreground">{(carritoState && carritoState.length > 0) ? '' : (bookingData.dropoffAddress || (labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino) || 'No especificado')}</p>
                             <Input
                               placeholder="Ubicación exacta"
                               data-field="paymentDropoffAddress"
@@ -1068,13 +1102,24 @@ export default function PaymentPage() {
                               onChange={(e) => { setPaymentDropoffAddress(e.target.value); if (fieldErrors.dropoffAddress) setFieldErrors(f=>{const c={...f}; delete c.dropoffAddress; return c}) }}
                             />
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium">Número de Vuelo (opcional)</label>
-                            <Input
-                              placeholder="AF1234, BA456, etc."
-                              value={bookingData.flightNumber || ''}
-                              onChange={(e) => updateBookingField('flightNumber', e.target.value)}
-                            />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium">Número de Vuelo (opcional)</label>
+                              <Input
+                                placeholder="AF1234, BA456, etc."
+                                value={(carritoState && carritoState.length > 0) ? '' : (bookingData.flightNumber || '')}
+                                onChange={(e) => updateBookingField('flightNumber', e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium">Hora de llegada (opcional)</label>
+                              <Input
+                                type="time"
+                                placeholder="HH:MM"
+                                value={bookingData.flightArrivalTime || ''}
+                                onChange={(e) => updateBookingField('flightArrivalTime', e.target.value)}
+                              />
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1164,6 +1209,21 @@ export default function PaymentPage() {
                           </div>
                         </div>
                         <div className="space-y-2">
+                          <label className="text-xs font-medium">¿Dónde nos conociste?</label>
+                          <Select value={bookingData.referralSource || ''} onValueChange={(v)=>updateBookingField('referralSource', v)}>
+                            <SelectTrigger className="cursor-pointer">
+                              <SelectValue placeholder="Selecciona una opción" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="google">Google</SelectItem>
+                              <SelectItem value="facebook">Facebook</SelectItem>
+                              <SelectItem value="instagram">Instagram</SelectItem>
+                              <SelectItem value="referido">Recomendación</SelectItem>
+                              <SelectItem value="otro">Otro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
                           <label className="text-xs font-medium">Solicitudes Especiales (opcional)</label>
                           <Input
                             placeholder="Asiento bebé, parada extra, etc."
@@ -1217,6 +1277,21 @@ export default function PaymentPage() {
                           </div>
                         </div>
                         <div className="space-y-2">
+                          <label className="text-xs font-medium">¿Dónde nos conociste?</label>
+                          <Select value={bookingData.referralSource || ''} onValueChange={(v)=>updateBookingField('referralSource', v)}>
+                            <SelectTrigger className="cursor-pointer">
+                              <SelectValue placeholder="Selecciona una opción" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="google">Google</SelectItem>
+                              <SelectItem value="facebook">Facebook</SelectItem>
+                              <SelectItem value="instagram">Instagram</SelectItem>
+                              <SelectItem value="referido">Recomendación</SelectItem>
+                              <SelectItem value="otro">Otro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
                           <label className="text-xs font-medium">Solicitudes Especiales (opcional)</label>
                           <Input
                             placeholder="Asiento bebé, parada extra, etc."
@@ -1235,15 +1310,15 @@ export default function PaymentPage() {
                         <>
                           <div className="flex justify-between text-sm">
                             <span>Depósito para confirmar</span>
-                            <span>{deposit}€</span>
+                            <span>{fmtMoney(deposit)}€</span>
                           </div>
                           {total > 0 && (
                             <div className="flex justify-between text-xs text-muted-foreground">
                               <span>Importe total estimado del servicio</span>
-                              <span>{total}€</span>
+                              <span>{fmtMoney(total)}€</span>
                             </div>
                           )}
-                          <p className="text-xs text-muted-foreground">El resto del servicio ({remaining}€) se paga el día del servicio.</p>
+                          <p className="text-xs text-muted-foreground">El resto del servicio ({fmtMoney(remaining)}€) se paga el día del servicio.</p>
                         </>
                       ) : bookingData.isEvent ? (
                         <>
@@ -1257,11 +1332,11 @@ export default function PaymentPage() {
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Depósito (20%)</span>
-                            <span>{deposit}€</span>
+                            <span>{fmtMoney(deposit)}€</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Saldo el día del servicio</span>
-                            <span>{remaining}€</span>
+                            <span>{fmtMoney(remaining)}€</span>
                           </div>
                         </>
                       ) : (["tour-paris", "tour-nocturno"].includes(bookingData.tourId || "")) ? (
@@ -1282,7 +1357,7 @@ export default function PaymentPage() {
                             lines.push(
                               <div key="opt-price" className="flex justify-between text-sm">
                                 <span>Precio opción</span>
-                                <span>{bookingData.selectedPricingOption.price}€</span>
+                                <span>{fmtMoney(bookingData.selectedPricingOption.price)}€</span>
                               </div>
                             )
                             lines.push(
@@ -1347,7 +1422,7 @@ export default function PaymentPage() {
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span>Precio</span>
-                                <span>{bookingData.selectedPricingOption.price}€</span>
+                                <span>{fmtMoney(bookingData.selectedPricingOption.price)}€</span>
                               </div>
                             </>
                           )}
@@ -1378,26 +1453,26 @@ export default function PaymentPage() {
                           {/* Depósito/Saldo para traslados */}
                           <div className="flex justify-between text-sm">
                             <span>Depósito ({Math.round(depositPercent*100)}%)</span>
-                            <span>{deposit}€</span>
+                            <span>{fmtMoney(deposit)}€</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Saldo el día del servicio</span>
-                            <span>{remaining}€</span>
+                            <span>{fmtMoney(remaining)}€</span>
                           </div>
                         </>
                       ) : (
                         <>
                           <div className="flex justify-between text-sm">
                             <span>Subtotal</span>
-                            <span>{bookingData.totalPrice}€</span>
+                            <span>{fmtMoney(bookingData.totalPrice)}€</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Depósito ({Math.round(depositPercent*100)}%)</span>
-                            <span>{deposit}€</span>
+                            <span>{fmtMoney(deposit)}€</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Saldo el día del servicio</span>
-                            <span>{remaining}€</span>
+                            <span>{fmtMoney(remaining)}€</span>
                           </div>
                         </>
                       )}
@@ -1423,13 +1498,88 @@ export default function PaymentPage() {
                           <span>
                             Total a pagar ahora {payFullNow ? '(100%)' : `(depósito ${depositPercentInt}%)`}
                           </span>
-                          <span className="text-accent animate-pulse">{amountNow}€</span>
+                          <span className="text-accent animate-pulse">{fmtMoney(amountNow)}€</span>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </AnimatedSection>
+              )}
+
+              {/* Si hay múltiples cotizaciones: mostrar solo formulario de contacto en la columna izquierda */}
+              {(carritoState && carritoState.length > 0) && (
+                <AnimatedSection animation="slide-left" delay={200}>
+                  <Card className="transform hover:scale-105 transition-all duration-300">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-primary">
+                        <Users className="w-5 h-5 text-accent" />
+                        Información de Contacto
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Nombre Completo</label>
+                        <Input
+                          placeholder="Tu nombre completo"
+                          data-field="contactName"
+                          className={fieldErrors.contactName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                          value={bookingData.contactName || ''}
+                          onChange={(e) => updateBookingField('contactName', e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium">Teléfono</label>
+                          <PhoneInputIntl
+                            value={bookingData.contactPhone || ''}
+                            onChange={value => updateBookingField('contactPhone', value)}
+                            inputProps={{
+                              name: 'contactPhone',
+                              className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium">Email</label>
+                          <EmailAutocomplete
+                            value={bookingData.contactEmail || ''}
+                            onChange={value => updateBookingField('contactEmail', value)}
+                            className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
+                            name="contactEmail"
+                            data-field="contactEmail"
+                            onBlur={e => validateAndSetEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">¿Dónde nos conociste?</label>
+                        <Select value={bookingData.referralSource || ''} onValueChange={(v)=>updateBookingField('referralSource', v)}>
+                          <SelectTrigger className="cursor-pointer">
+                            <SelectValue placeholder="Selecciona una opción" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="google">Google</SelectItem>
+                            <SelectItem value="facebook">Facebook</SelectItem>
+                            <SelectItem value="instagram">Instagram</SelectItem>
+                            <SelectItem value="referido">Recomendación</SelectItem>
+                            <SelectItem value="otro">Otro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Solicitudes Especiales (opcional)</label>
+                        <Input
+                          placeholder="Asiento bebé, parada extra, etc."
+                          value={bookingData.specialRequests || ''}
+                          onChange={(e) => updateBookingField('specialRequests', e.target.value)}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Esta información se usará para todas las cotizaciones.</p>
+                    </CardContent>
+                  </Card>
+                </AnimatedSection>
+              )}
 
               {/* Payment Section */}
               <AnimatedSection animation="slide-right" delay={300}>
@@ -1510,7 +1660,7 @@ export default function PaymentPage() {
                         <>
                           <div className="flex justify-between">
                             <span>Pago de confirmación</span>
-                            <span>{deposit}€</span>
+                            <span>{fmtMoney(deposit)}€</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
                             Este pago asegura tu reserva. Después de pagarlo, terminarás de rellenar los datos faltantes.
@@ -1524,7 +1674,7 @@ export default function PaymentPage() {
                           </div>
                           <div className="flex justify-between">
                             <span>Valor a pagar el día del servicio</span>
-                            <span>{remaining}€</span>
+                            <span>{fmtMoney(remaining)}€</span>
                           </div>
                           <div className="text-xs text-muted-foreground space-y-1">
                             <p>
@@ -1544,12 +1694,12 @@ export default function PaymentPage() {
                         <>
                           <div className="flex justify-between">
                             <span>Total a pagar ahora {payFullNow ? '(100%)' : `(depósito ${depositPercentInt}%)`}</span>
-                            <span>{amountNow}€</span>
+                            <span>{fmtMoney(amountNow)}€</span>
                           </div>
                           {!payFullNow && (
                             <div className="flex justify-between">
                               <span>Saldo el día del servicio</span>
-                              <span>{remaining}€</span>
+                              <span>{fmtMoney(remaining)}€</span>
                             </div>
                           )}
                           <p className="text-xs text-muted-foreground">
@@ -1617,7 +1767,7 @@ export default function PaymentPage() {
                                   <div className="text-xs text-muted-foreground">{it.date} {it.time} • {it.passengers} pax</div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <div className="text-sm font-bold">{it.totalPrice}€</div>
+                                  <div className="text-sm font-bold">{fmtMoney(it.totalPrice)}€</div>
                                   <Button size="sm" variant="ghost" onClick={() => openEditModal(it)}>Editar</Button>
                                 </div>
                               </div>
@@ -1625,23 +1775,25 @@ export default function PaymentPage() {
                           </div>
                           <div className="flex items-center justify-between">
                             <div className="text-sm">Total carrito</div>
-                            <div className="font-bold">{totalCarrito}€</div>
+                            <div className="font-bold">{fmtMoney(totalCarrito)}€</div>
                           </div>
                           <div className="pt-2">
                             <Button size="sm" variant="outline" onClick={openNewQuoteModal}>Añadir cotización</Button>
                           </div>
                         </div>
                       )}
-                      {/* Texto informativo para cotizar ida y vuelta */}
-<div className="text-center p-4 mt-4 bg-muted border border-dashed rounded-lg">
-  <p className="text-sm text-primary/90">
-    Si deseas un <strong>ida y vuelta</strong>, pulsa
-    <Button size="sm" variant="default" className="mx-2 align-middle" onClick={openReturnQuoteModal}>
-      aquí
-    </Button>
-    y podrás cotizar otro traslado o tour.
-  </p>
-</div>
+                      {/* Texto informativo para cotizar ida y vuelta: ocultar cuando hay más de 1 cotización */}
+                      {!(carritoState && carritoState.length > 0) && (
+                        <div className="text-center p-4 mt-4 bg-muted border border-dashed rounded-lg">
+                          <p className="text-sm text-primary/90">
+                            Si deseas un <strong>ida y vuelta</strong>, pulsa
+                            <Button size="sm" variant="default" className="mx-2 align-middle" onClick={openReturnQuoteModal}>
+                              aquí
+                            </Button>
+                            y podrás cotizar otro traslado o tour.
+                          </p>
+                        </div>
+                      )}
                       {/* Mostrar número de cotizaciones realizadas (items en carrito) */}
                       <div className="text-center mb-3">
                         <span className="text-sm text-muted-foreground">Cotizaciones extras realizadas: <strong>{carritoState?.length || 0}</strong></span>
@@ -1729,6 +1881,14 @@ export default function PaymentPage() {
                                 : `Reserva traslado ${bookingData?.pickupAddress || ''} -> ${bookingData?.dropoffAddress || ''}`
                               // Si hay items en el carrito, hacemos un único cobro combinado (carrito + cotización actual)
                               const amount = carritoState && carritoState.length > 0 ? getCombinedAmountToCharge() : Number(amountNow || 0)
+                              // Replicar datos de contacto para todos los items del carrito
+                              const carritoForSubmit = (carritoState || []).map((it) => ({
+                                ...it,
+                                contactName: bookingData.contactName,
+                                contactPhone: bookingData.contactPhone,
+                                contactEmail: bookingData.contactEmail,
+                                referralSource: bookingData.referralSource || undefined,
+                              }))
                               const res = await fetch('/api/mollie/create', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -1742,7 +1902,13 @@ export default function PaymentPage() {
                                     paymentPickupAddress,
                                     paymentDropoffAddress,
                                   },
-                                  carrito: carritoState || [],
+                                  carrito: carritoForSubmit,
+                                  contact: {
+                                    name: bookingData.contactName,
+                                    phone: bookingData.contactPhone,
+                                    email: bookingData.contactEmail,
+                                    referralSource: bookingData.referralSource || undefined,
+                                  },
                                   metadata: { source: 'web', combinedPayment: !!(carritoState && carritoState.length > 0), itemsCount: (carritoState?.length || 0) + 1 },
                                 }),
                               })
@@ -1779,8 +1945,8 @@ export default function PaymentPage() {
             ) : (
               // Mostrar importes combinados si existen items en carrito
               carritoState && carritoState.length > 0
-                ? (payFullNow ? `Pagar todo (${combinedTotal}€)` : `Pagar depósitos (${combinedDepositSum}€)`)
-                : (payFullNow ? `Pagar todo (${total}€)` : `Pagar depósito ${deposit}€`)
+                ? (payFullNow ? `Pagar todo (${fmtMoney(combinedTotal)}€)` : `Pagar depósitos (${fmtMoney(combinedDepositSum)}€)`)
+                : (payFullNow ? `Pagar todo (${fmtMoney(total)}€)` : `Pagar depósito ${fmtMoney(deposit)}€`)
             )}
                       </Button>
                       {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
@@ -2325,9 +2491,15 @@ export default function PaymentPage() {
                     <Input data-modal-field="dropoffAddress" placeholder="Ubicación exacta" value={modalForm.dropoffAddress || ''} onChange={(e)=>setModalForm((s:any)=>({...s, dropoffAddress: e.target.value}))} className={modalFieldErrors.dropoffAddress ? 'border-destructive' : ''} />
                     {modalFieldErrors.dropoffAddress && <p className="text-xs text-destructive mt-1">{modalFieldErrors.dropoffAddress}</p>}
                   </div>
-                  <div>
-                    <label className="text-xs">Número de Vuelo (opcional)</label>
-                    <Input placeholder="AF1234, BA456" value={modalForm.flightNumber || ''} onChange={(e)=>setModalForm((s:any)=>({...s, flightNumber: e.target.value}))} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs">Número de Vuelo (opcional)</label>
+                      <Input placeholder="AF1234, BA456" value={modalForm.flightNumber || ''} onChange={(e)=>setModalForm((s:any)=>({...s, flightNumber: e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="text-xs">Hora de llegada (opcional)</label>
+                      <Input data-modal-field="flightArrivalTime" type="time" value={modalForm.flightArrivalTime || ''} onChange={(e)=>setModalForm((s:any)=>({...s, flightArrivalTime: e.target.value}))} />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>

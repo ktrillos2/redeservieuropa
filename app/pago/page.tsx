@@ -387,11 +387,8 @@ export default function PaymentPage() {
     }
     // limpiar errores del paso actual
     setModalFieldErrors({})
-    setModalStep((s) => {
-      const next = Math.min(4, s + 1)
-      const hasContact = Boolean(bookingData?.contactName && bookingData?.contactPhone && bookingData?.contactEmail)
-      return next === 3 && hasContact ? 4 : next
-    })
+    // Saltar directamente al paso 4 (Direcciones y equipaje)
+    setModalStep(4)
   }
 
   const handleModalSave = (isEdit = false) => {
@@ -706,6 +703,26 @@ export default function PaymentPage() {
         if (key === 'contactPhone') {
           if (String(value).replace(/\D/g, '').length < 6) return prevErr
         }
+        // Validación extra: si todos los campos requeridos están bien, limpiar todos los errores
+        const passengers = computed.passengers ?? computed.pasajeros
+        const date = computed.date ?? computed.fecha
+        const time = computed.time ?? computed.hora
+        const contactName = computed.contactName
+        const contactPhone = computed.contactPhone
+        const contactEmail = computed.contactEmail
+        const pickupAddress = computed.pickupAddress
+        const dropoffAddress = computed.dropoffAddress
+        const needsAddresses = !computed.isEvent && !computed.isTourQuick && !computed.tourId
+        const allValid = (
+          passengers && Number(passengers) > 0 &&
+          date && String(date).trim() !== '' &&
+          time && String(time).trim() !== '' &&
+          contactName && String(contactName).trim() !== '' &&
+          contactPhone && String(contactPhone).trim() !== '' &&
+          contactEmail && String(contactEmail).trim() !== '' &&
+          (!needsAddresses || (pickupAddress && String(pickupAddress).trim() !== '' && dropoffAddress && String(dropoffAddress).trim() !== ''))
+        )
+        if (allValid) return {}
         const clone = { ...prevErr }
         delete clone[key]
         return clone
@@ -798,6 +815,26 @@ export default function PaymentPage() {
   const isDepositReady = () => {
     if (!bookingData) return false
 
+    // Si hay cotizaciones en el carrito, validar cada una
+    if (carritoState && carritoState.length > 0) {
+      for (const item of carritoState) {
+        if (!item.passengers || Number(item.passengers) < 1) return false
+        if (!item.date || String(item.date).trim() === '') return false
+        if (!item.time || String(item.time).trim() === '') return false
+        // Si es traslado, pickup/dropoff obligatorios
+        if (item.tipo === 'traslado') {
+          if (!item.pickupAddress || String(item.pickupAddress).trim() === '') return false
+          if (!item.dropoffAddress || String(item.dropoffAddress).trim() === '') return false
+        }
+      }
+      // Contacto global
+      if (!bookingData.contactName || !String(bookingData.contactName).trim()) return false
+      if (!bookingData.contactPhone || !String(bookingData.contactPhone).trim()) return false
+      if (!bookingData.contactEmail || !String(bookingData.contactEmail).trim()) return false
+      if (Object.keys(fieldErrors || {}).length > 0) return false
+      return true
+    }
+
     // Normalizar nombres (algunas pantallas usan 'fecha'/'hora'/'pasajeros')
     const passengers = bookingData.passengers ?? bookingData.pasajeros
     const date = bookingData.date ?? bookingData.fecha
@@ -815,8 +852,6 @@ export default function PaymentPage() {
       if (!paymentPickupAddress || !String(paymentPickupAddress).trim()) return false
       if (!paymentDropoffAddress || !String(paymentDropoffAddress).trim()) return false
     }
-
-    // Equipaje: no requerimos que el usuario haya indicado cantidades aquí (0 es válido)
 
     // Contacto: siempre requerimos nombre, teléfono y email para poder pagar el depósito
     if (!bookingData.contactName || !String(bookingData.contactName).trim()) return false
@@ -1024,7 +1059,7 @@ export default function PaymentPage() {
                             {bookingData.eventShortInfo}
                           </div>
                         )}
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <Users className="w-4 h-4 text-accent" />
                           <div className="flex items-center gap-2">
                             <span className="text-sm">{bookingData.isEvent ? "Cupos" : "Pasajeros"}</span>
@@ -1045,7 +1080,10 @@ export default function PaymentPage() {
 
                           {/* Selector para niños (hasta 10) */}
                           <div className="flex items-center gap-2 ml-4">
-                            <span className="text-sm">Niños</span>
+                            <span className="text-sm flex items-center gap-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-3-3v6m9 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              Niños
+                            </span>
                             <Select
                               value={String(bookingData.ninos ?? 0)}
                               onValueChange={(value) => updateBookingField('ninos', Number(value))}
@@ -1060,22 +1098,30 @@ export default function PaymentPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          {/* Edades de niños (< 9 años) visible si hay niños */}
+                          {/* Selector para niños menores de 9 años, igual estilo que el principal */}
                           {Number(bookingData.ninos || 0) > 0 && (
-                            <div className="flex flex-col gap-2 ml-4">
-                              <label className="text-xs text-muted-foreground">Niños menores de 9 años</label>
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                {Array.from({ length: Math.max(0, Number(bookingData.ninos || 0)) }, (_, i) => (
-                                  <Input key={i} placeholder={`Edad niño ${i + 1}`} inputMode="numeric" pattern="[0-9]*" onChange={(e) => {
-                                    const val = e.target.value.replace(/[^0-9]/g, '')
-                                    const arr = Array.isArray((bookingData as any).childrenAges) ? [...(bookingData as any).childrenAges] : []
-                                    arr[i] = val
-                                    updateBookingField('childrenAges', arr)
-                                  }} />
-                                ))}
+                            <>
+                              
+                              <div className="flex items-center gap-2  mt-2">
+                                <span className="text-sm flex items-center gap-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01" /></svg>
+                                  Menores de 9 años
+                                </span>
+                                <Select
+                                  value={String(bookingData.ninosMenores9 ?? 0)}
+                                  onValueChange={(value) => updateBookingField('ninosMenores9', Number(value))}
+                                >
+                                  <SelectTrigger data-field="ninosMenores9" className={"w-20 cursor-pointer " + (fieldErrors.ninosMenores9 ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-72">
+                                    {Array.from({ length: Number(bookingData.ninos || 0) + 1 }, (_, i) => (
+                                      <SelectItem key={i} value={String(i)}>{i}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
-                              <p className="text-[11px] text-muted-foreground">Indique edad en años (solo menores de 9).</p>
-                            </div>
+                            </>
                           )}
                         </div>
                         {fieldErrors.passengers && (
@@ -1096,7 +1142,7 @@ export default function PaymentPage() {
                             <Input
                               type="time"
                               data-field="time"
-                              className={`w-28 ${fieldErrors.time ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                              className={`w-full max-w-xs ${fieldErrors.time ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                               value={bookingData.time || ""}
                               onChange={(e) => updateBookingField("time", e.target.value)}
                             />
@@ -1974,6 +2020,11 @@ export default function PaymentPage() {
                               const url = json?.checkoutUrl
                               try { if (json?.id) localStorage.setItem('lastPaymentId', String(json.id)) } catch { }
                               if (typeof url === 'string') {
+                                // Limpiar carrito de cotizaciones al completar el pago
+                                try {
+                                  localStorage.removeItem('carritoCotizaciones')
+                                  setCarritoState([])
+                                } catch {}
                                 window.location.href = url
                                 return
                               } else {
@@ -2006,6 +2057,17 @@ export default function PaymentPage() {
                             : (payFullNow ? `Pagar todo (${fmtMoney(total)}€)` : `Pagar depósito ${fmtMoney(deposit)}€`)
                         )}
                       </Button>
+                      {/* Mostrar errores debajo del botón si el depósito no está listo */}
+                      {!isDepositReady() && Object.keys(fieldErrors).length > 0 && (
+                        <div className="mt-3 p-3 bg-destructive/10 rounded text-destructive text-sm">
+                          <span className="font-semibold block mb-1">Corrige los siguientes errores para poder pagar:</span>
+                          <ul className="list-disc pl-5">
+                            {Object.entries(fieldErrors).map(([key, msg]) => (
+                              <li key={key}>{msg}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
 
                       <p className="text-xs text-muted-foreground text-center">
@@ -2485,53 +2547,8 @@ export default function PaymentPage() {
               </>
             )}
 
-            {/* Paso 3: Información de contacto */}
-            {modalStep === 3 && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Información de contacto</h4>
-                  <div>
-                    <label className="text-xs">Nombre completo</label>
-                    <Input data-modal-field="contactName" value={modalForm.contactName || ''} onChange={(e) => setModalForm((s: any) => ({ ...s, contactName: e.target.value }))} className={modalFieldErrors.contactName ? 'border-destructive' : ''} />
-                    {modalFieldErrors.contactName && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactName}</p>}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs">Teléfono</label>
-                      <PhoneInputIntl
-                        value={bookingData.contactPhone || ''}
-                        onChange={value => updateBookingField('contactPhone', value)}
-                        inputProps={{
-                          name: 'contactPhone',
-                          className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive ' : ''
-                        }}
-                      />
-                      {modalFieldErrors.contactPhone && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactPhone}</p>}
-                    </div>
-                    <div>
-                      <label className="text-xs">Email</label>
-                      <EmailAutocomplete
-                        value={modalForm.contactEmail || ''}
-                        onChange={value => setModalForm((s: any) => ({ ...s, contactEmail: value }))}
-                        className={modalFieldErrors.contactEmail ? 'border-destructive' : ''}
-                        name="contactEmail"
-                        data-modal-field="contactEmail"
-                        onBlur={e => {
-                          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-                          if (!emailRegex.test(String(e.target.value))) setModalFieldErrors(fe => ({ ...fe, contactEmail: 'Formato inválido' }))
-                          else setModalFieldErrors(fe => { const c = { ...fe }; delete c.contactEmail; return c })
-                        }}
-                      />
-                      {modalFieldErrors.contactEmail && <p className="text-xs text-destructive mt-1">{modalFieldErrors.contactEmail}</p>}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs">Solicitudes especiales (opcional)</label>
-                    <Input value={modalForm.specialRequests || ''} onChange={(e) => setModalForm((s: any) => ({ ...s, specialRequests: e.target.value }))} />
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Paso 3: Información de contacto (oculto por requerimiento) */}
+            {modalStep === 3 && null}
 
             {/* Paso 4: Direcciones y equipaje (final) */}
             {modalStep === 4 && (
@@ -2583,12 +2600,7 @@ export default function PaymentPage() {
                     size="sm"
                     onClick={() => {
                       setModalFieldErrors({})
-                      setModalStep((s) => {
-                        const prev = Math.max(1, s - 1)
-                        const hasContact = Boolean(bookingData?.contactName && bookingData?.contactPhone && bookingData?.contactEmail)
-                        // Si el paso previo sería el 3 y ya hay contacto, saltar al 2 directamente
-                        return prev === 3 && hasContact ? 2 : prev
-                      })
+                      setModalStep(2)
                     }}
                   >
                     Atrás

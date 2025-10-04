@@ -74,6 +74,7 @@ export default defineType({
         defineField({ name: 'name', title: 'Nombre', type: 'string' }),
         defineField({ name: 'email', title: 'Email', type: 'string' }),
         defineField({ name: 'phone', title: 'Teléfono', type: 'string' }),
+        defineField({ name: 'referralSource', title: '¿Dónde nos conociste?', type: 'string' }),
       ]
     }),
     defineField({

@@ -71,6 +71,51 @@ export async function POST(req: Request) {
         await serverClient.patch(o._id).set(patch).commit()
         // eslint-disable-next-line no-console
         console.log('[orders/sync] order patched', { orderId: o._id, status: patch.status, paidAt: patch['payment.paidAt'] })
+
+        // Si el pedido está pagado, solo enviar correo si NO se envió por el webhook (mailLock)
+        if (patch.status === 'paid') {
+          try {
+            // Verificar mailLock antes de enviar
+            // Extraer paymentId correctamente
+            // Acceso directo usando any para evitar error de tipo
+            let paymentId: string | undefined = undefined
+            if ((o as any).payment?.paymentId) {
+              paymentId = (o as any).payment.paymentId
+            }
+            let canSend = true
+            if (paymentId) {
+              const lockDoc = await serverClient.getDocument(`mailLock.payment_${paymentId}`)
+              if (lockDoc?.sentAt) {
+                canSend = false
+                console.log('[orders/sync][mail] Email ya enviado por webhook, no se enviará de nuevo.', { orderId: o._id, paymentId })
+              }
+            }
+            if (canSend) {
+              // Usar origen interno para evitar 401 del proxy externo
+              const internalOrigin = process.env.INTERNAL_API_BASE
+                || (process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.startsWith('http')
+                    ? process.env.NEXT_PUBLIC_SITE_URL
+                    : 'http://localhost:3000')
+              const res = await fetch(`${internalOrigin}/api/orders/send-mail`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ orderId: o._id })
+              })
+              let result = null
+              const contentType = res.headers.get('content-type') || ''
+              if (contentType.includes('application/json')) {
+                result = await res.json()
+              } else {
+                result = { status: res.status, statusText: res.statusText, body: await res.text() }
+              }
+              console.log('[orders/sync][mail] Resultado envío de correo:', { orderId: o._id, ...result })
+            }
+          } catch (err) {
+            console.error('[orders/sync][mail] Error al enviar correo', { orderId: o._id, error: err })
+          }
+        }
       }
     }
 

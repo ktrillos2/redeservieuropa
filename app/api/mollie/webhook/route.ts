@@ -95,114 +95,137 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, note: 'no-orders' })
     }
 
-    // 3) Crear eventos en Calendar por cada servicio SI Mollie dice paid (no dependas del status del order)
-    if (isPaid) {
-      try {
-        for (const ord of orders) {
-          if (!ord?._id) continue
-          let exists = false
-          if (ord.calendar?.eventId) {
-            const evt = await getCalendarEventById(ord.calendar.eventId!)
-            exists = Boolean(evt?.id)
-          }
-          if (exists) continue
-
-          const payload = buildOrderEventPayload(ord)
-          const dedupeKey = `${paymentId}:${ord._id}`
-          const evt = await createCalendarEvent(payload, dedupeKey)
-          if (evt?.id) {
-            await serverClient.patch(ord._id).set({
-              calendar: {
-                eventId: evt.id,
-                htmlLink: evt.htmlLink,
-                createdAt: new Date().toISOString(),
-              },
-            }).commit()
-            // eslint-disable-next-line no-console
-            console.log('[webhook] calendar event created', { orderId: ord._id, eventId: evt.id })
-          }
+    // DEBUG paso a paso: agendamiento en Google Calendar
+    console.log('[webhook][DEBUG] Pago confirmado, iniciando proceso de agendamiento y envío de email')
+    try {
+      for (const ord of orders) {
+        console.log('[webhook][DEBUG] Procesando order para calendar:', { orderId: ord._id })
+        let exists = false
+        if (ord.calendar && ord.calendar.eventId) {
+          console.log('[webhook][DEBUG] Verificando si ya existe evento en calendar:', ord.calendar.eventId)
+          const evt = await getCalendarEventById(ord.calendar.eventId)
+          exists = Boolean(evt?.id)
         }
-      } catch (e) {
-        console.error('[webhook][calendar] error creando eventos múltiples', e)
+        if (exists) {
+          console.log('[webhook][DEBUG] Evento calendar ya existe, saltando:', ord.calendar ? ord.calendar.eventId : 'sin calendar')
+          continue
+        }
+
+        const payload = buildOrderEventPayload(ord)
+        console.log('[webhook][DEBUG] Payload para calendar:', payload)
+        const dedupeKey = `${paymentId}:${ord._id}`
+        const evt = await createCalendarEvent(payload, dedupeKey)
+        if (evt?.id) {
+          await serverClient.patch(ord._id).set({
+            calendar: {
+              eventId: evt.id,
+              htmlLink: evt.htmlLink,
+              createdAt: new Date().toISOString(),
+            },
+          }).commit()
+          console.log('[webhook][DEBUG] Evento calendar creado y guardado:', { orderId: ord._id, eventId: evt.id })
+        }
       }
+    } catch (e) {
+      console.error('[webhook][DEBUG][calendar] error creando eventos múltiples', e)
     }
 
-    // 4) Un SOLO correo consolidado por pago (idempotente por lock)
-    if (isPaid) {
+    // Idempotencia: solo enviar correos si no se ha enviado antes
+    const mailLock = await getMailLock(paymentId)
+    if (mailLock?.sentAt) {
+      console.log('[webhook][mailLock] Correos ya enviados para este pago, no se enviará de nuevo.')
+      return NextResponse.json({ ok: true, skipped: true, reason: 'mailLock-sent' })
+    }
+
+    // Enviar correos (ADMIN y CLIENTE)
+    console.log('[webhook][DEBUG] Iniciando envío de correos (ADMIN y CLIENTE)')
+    const services = orders.map(o => ({
+      type: o.service?.type,
+      title: o.service?.title,
+      date: o.service?.date,
+      time: o.service?.time,
+      totalPrice: o.service?.totalPrice,
+      pickupAddress: o.service?.pickupAddress,
+      dropoffAddress: o.service?.dropoffAddress,
+      flightNumber: o.service?.flightNumber,
+      passengers: o.service?.passengers,
+    }))
+
+    const totalAmount = payment?.amount?.value ? Number(payment.amount.value) :
+      services.reduce((acc, s) => acc + (s.totalPrice || 0), 0)
+
+    const adminHtml = renderAdminNewServicesEmailMulti({
+      mollieId: paymentId,
+      amount: totalAmount,
+      currency: orders[0]?.payment?.currency || 'EUR',
+      method: (payment as any)?.method || null,
+      services
+    })
+
+    const client = orders.find(o => o.contact?.email)?.contact
+    const clientHtml = client ? renderClientThanksEmailMulti({
+      mollieId: paymentId,
+      amount: totalAmount,
+      currency: orders[0]?.payment?.currency || 'EUR',
+      contact: client,
+      services
+    }) : null
+
+    let adminResult = null
+    let clientResult = null
+    let adminError = null
+    let clientError = null
+
+    // Envío ADMIN
+    console.log('[webhook][DEBUG] Enviando correo ADMIN', {
+      to: ['redeservieuropa@gmail.com'],
+      bcc: 'info@redeservieuropa.com',
+      subject: 'Nuevos servicios confirmados'
+    })
+    try {
+      adminResult = await sendMail({
+        to: ['redeservieuropa@gmail.com'],
+        bcc: 'info@redeservieuropa.com',
+        subject: 'Nuevos servicios confirmados',
+        html: adminHtml,
+        from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
+      })
+      console.log('[webhook][DEBUG] Resultado ADMIN:', adminResult)
+    } catch (e) {
+      adminError = e
+      console.error('[webhook][DEBUG] Error al enviar correo ADMIN', e)
+    }
+
+    // Envío CLIENTE (si hay email)
+    if (client?.email && clientHtml) {
+      console.log('[webhook][DEBUG] Enviando correo CLIENTE', {
+        to: client.email,
+        subject: '¡Gracias por tu pago!'
+      })
       try {
-        // Si ya se envió para este pago, no duplicar
-        const already = await getMailLock(paymentId)
-        if (already?.sentAt) {
-          return NextResponse.json({ ok: true, note: 'mail-already-sent' })
-        }
-        // Intentar adquirir lock
-        const lock = await acquireMailLock(paymentId)
-        if (!lock) {
-          return NextResponse.json({ ok: true, note: 'mail-lock-not-acquired' })
-        }
-
-        // Construir listado de servicios
-        const services = orders.map(o => ({
-          type: o.service?.type,
-          title: o.service?.title,
-          date: o.service?.date,
-          time: o.service?.time,
-          totalPrice: o.service?.totalPrice,
-          pickupAddress: o.service?.pickupAddress,
-          dropoffAddress: o.service?.dropoffAddress,
-          flightNumber: o.service?.flightNumber,
-          passengers: o.service?.passengers,
-        }))
-
-        // Total: mejor tomar el total del pago Mollie
-        const totalAmount = payment?.amount?.value ? Number(payment.amount.value) :
-          services.reduce((acc, s) => acc + (s.totalPrice || 0), 0)
-
-        // Plantillas multi
-        const adminHtml = renderAdminNewServicesEmailMulti({
-          mollieId: paymentId,
-          amount: totalAmount,
-          currency: orders[0]?.payment?.currency || 'EUR',
-          method: (payment as any)?.method || null,
-          services
-        })
-
-        const client = orders.find(o => o.contact?.email)?.contact
-        const clientHtml = client ? renderClientThanksEmailMulti({
-          mollieId: paymentId,
-          amount: totalAmount,
-          currency: orders[0]?.payment?.currency || 'EUR',
-          contact: client,
-          services
-        }) : null
-
-        // Envío ADMIN
-        await sendMail({
-          to: ['redeservieuropa@gmail.com'],
-          bcc: 'info@redeservieuropa.com',
-          subject: `Nuevos servicios confirmados – pago ${paymentId}`,
-          html: adminHtml,
+        clientResult = await sendMail({
+          to: client.email,
+          subject: '¡Gracias por tu pago!',
+          html: clientHtml,
           from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
         })
-
-        // Envío CLIENTE (si hay email)
-        if (client?.email && clientHtml) {
-          await sendMail({
-            to: client.email,
-            subject: '¡Gracias por tu pago!',
-            html: clientHtml,
-            from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
-          })
-        }
-
-        // Marca como enviado para NO duplicar
-        await markMailSent(paymentId)
+        console.log('[webhook][DEBUG] Resultado CLIENTE:', clientResult)
       } catch (e) {
-        console.error('[webhook][mail] error enviando consolidado', e)
+        clientError = e
+        console.error('[webhook][DEBUG] Error al enviar correo CLIENTE', e)
       }
     }
 
-    return NextResponse.json({ ok: true })
+    // Marcar como enviado
+    await markMailSent(paymentId)
+
+    return NextResponse.json({
+      ok: true,
+      adminResult,
+      clientResult,
+      adminError: adminError ? String(adminError) : null,
+      clientError: clientError ? String(clientError) : null
+    })
   } catch (e: any) {
     console.error('[Mollie][webhook] Error', e)
     return NextResponse.json({ ok: false, error: e?.message || 'Error' }, { status: 500 })

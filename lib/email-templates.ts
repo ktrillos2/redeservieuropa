@@ -15,9 +15,8 @@ export function renderBrandEmail({ title, intro, contentHtml, footerNote }: {
   footerNote?: string
 }) {
   const { bg, text, card, border, primary, accent } = baseStyles
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || ''
-  // Usa EMAIL_LOGO_URL si está; si no, intenta un logo PNG legible; fallback final a favicon
-  const logoUrl = process.env.EMAIL_LOGO_URL || `${siteUrl}/placeholder-logo.png`
+  // Forzar uso del logo del sitio (PNG) por defecto, siempre absoluto
+  const logoUrl = '/images/logo.png'
   return `
   <!doctype html>
   <html>
@@ -28,8 +27,8 @@ export function renderBrandEmail({ title, intro, contentHtml, footerNote }: {
       <style>
         body { margin:0; padding:0; background:${bg}; color:${text}; font-family: 'Helvetica Neue', Arial, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
         .container { max-width:640px; margin:0 auto; padding:24px; }
-        .brand { text-align:center; margin: 8px 0 16px; }
-  .brand img { display:inline-block; height:64px; }
+    .brand { text-align:center; margin: 8px 0 16px; }
+    .brand img { display:inline-block; max-height:64px; height:auto; width:auto; }
         .card { background:${card}; border:1px solid ${border}; border-radius:12px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
         .title { font-family: Georgia, 'Times New Roman', Times, serif; color:${primary}; font-size:22px; margin:0 0 8px; letter-spacing: 0.2px; }
         .subtitle { color:#3b5763; margin:0 0 16px; }
@@ -134,18 +133,62 @@ export function renderClientThanksEmail(params: {
   amount?: number | string
   currency?: string
   contact?: { name?: string; email?: string; phone?: string }
-  service?: { type?: string; title?: string; date?: string; time?: string; totalPrice?: number }
+  service?: {
+    type?: string
+    title?: string
+    date?: string
+    time?: string
+    totalPrice?: number
+    pickupAddress?: string
+    dropoffAddress?: string
+    passengers?: number
+  }
+  services?: Array<{
+    type?: string
+    title?: string
+    date?: string
+    time?: string
+    totalPrice?: number
+    pickupAddress?: string
+    dropoffAddress?: string
+    passengers?: number
+  }>
 }) {
+  // Si hay varios servicios, mostrar todos
+  let itemsHtml = ''
+  if (Array.isArray(params.services) && params.services.length > 0) {
+    itemsHtml = params.services.map(s => `
+      <li>
+        <b>Servicio:</b> ${escapeHtml(s.title || 'Reserva')}<br/>
+        <b>Tipo:</b> ${escapeHtml(s.type || '\u2014')} 
+        <b>Fecha:</b> ${escapeHtml(s.date || '\u2014')} ${escapeHtml(s.time || '')}<br/>
+        <b>Recogida:</b> ${escapeHtml(s.pickupAddress || '\u2014')} 
+        <b>Destino:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
+        <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}<br/>
+        <b>Importe:</b> ${typeof s.totalPrice === 'number' ? s.totalPrice + ' \u20ac' : '\u2014'}
+      </li>
+    `).join('')
+  } else if (params.service) {
+    itemsHtml = `
+      <li>
+        <b>Servicio:</b> ${escapeHtml(params.service.title || 'Reserva')}<br/>
+        <b>Tipo:</b> ${escapeHtml(params.service.type || '\u2014')} 
+        <b>Fecha:</b> ${escapeHtml(params.service.date || '\u2014')} ${escapeHtml(params.service.time || '')}<br/>
+        <b>Recogida:</b> ${escapeHtml(params.service.pickupAddress || '\u2014')} 
+        <b>Destino:</b> ${escapeHtml(params.service.dropoffAddress || '\u2014')}<br/>
+        <b>Pasajeros:</b> ${typeof params.service.passengers === 'number' ? params.service.passengers : '\u2014'}<br/>
+        <b>Importe:</b> ${typeof params.service.totalPrice === 'number' ? params.service.totalPrice + ' \u20ac' : '\u2014'}
+      </li>
+    `
+  }
   const contentHtml = `
     <p>¡Gracias por tu pago y tu confianza!</p>
     <p>Hemos recibido tu pago y tu reserva ha quedado confirmada.</p>
-    <h3>Detalles de tu servicio</h3>
+    <h3>Detalles de tus servicios</h3>
     <ul class="list">
-      <li><b>Servicio:</b> ${escapeHtml(params.service?.title || 'Reserva')}</li>
-      <li><b>Fecha:</b> ${escapeHtml(params.service?.date || '—')} ${escapeHtml(params.service?.time || '')}</li>
-      <li><b>Importe pagado:</b> ${typeof params.amount === 'number' ? params.amount.toFixed(2) : (params.amount || '—')} ${params.currency || 'EUR'}</li>
-      <li><b>Referencia de pago:</b> ${escapeHtml(params.mollieId)}</li>
+      ${itemsHtml}
     </ul>
+    <p><b>Importe total pagado:</b> ${typeof params.amount === 'number' ? params.amount.toFixed(2) : (params.amount || '\u2014')} ${params.currency || 'EUR'}</p>
     <p>Muy pronto nos pondremos en contacto si necesitamos información adicional. Si tienes alguna duda, puedes responder directamente a este correo.</p>
   `
   return renderBrandEmail({
@@ -214,16 +257,35 @@ export function renderAdminNewServicesEmailMulti(params: {
     </li>
   `).join('')
 
+  let contactHtml = '';
+  if (params.contact && typeof params.contact === 'object') {
+    const name = typeof params.contact.name === 'string' && params.contact.name.trim() ? params.contact.name : '[Falta nombre]';
+    const email = typeof params.contact.email === 'string' && params.contact.email.trim() ? params.contact.email : '[Falta email]';
+    const phone = typeof params.contact.phone === 'string' && params.contact.phone.trim() ? params.contact.phone : '[Falta teléfono]';
+    const referralSource = typeof (params.contact as any).referralSource === 'string' && (params.contact as any).referralSource.trim() ? (params.contact as any).referralSource : '[Falta respuesta]';
+    contactHtml = `
+      <h3>Contacto del usuario</h3>
+      <ul class="list">
+        <li><b>Nombre:</b> ${escapeHtml(name)}</li>
+        <li><b>Email:</b> ${escapeHtml(email)}</li>
+        <li><b>Teléfono:</b> ${escapeHtml(phone)}</li>
+        <li><b>¿Dónde nos conociste?:</b> ${escapeHtml(referralSource)}</li>
+      </ul>
+    `;
+  } else {
+    contactHtml = `<h3>Contacto del usuario</h3><p style='color:#b00'>[No se recibió información de contacto]</p>`;
+  }
   const contentHtml = `
     <p><b>Nuevos servicios confirmados</b></p>
-    <p>Se ha recibido el pago <b>${escapeHtml(params.mollieId)}</b> y se han confirmado los siguientes servicios:</p>
+    <p>Se han confirmado los siguientes servicios:</p>
     <ul class="list">
       ${itemsHtml}
     </ul>
     <p><b>Importe total:</b> ${typeof params.amount === 'number' ? params.amount.toFixed(2) : (params.amount || '\u2014')} ${params.currency || 'EUR'}</p>
+    ${contactHtml}
   `
   return renderBrandEmail({
-    title: `Nuevos servicios confirmados – ${escapeHtml(params.mollieId)}`,
+    title: 'Nuevos servicios confirmados',
     intro: 'Se ha confirmado un pago y los servicios asociados han quedado registrados.',
     contentHtml,
     footerNote: 'Generado automáticamente'
@@ -237,8 +299,58 @@ export function renderAdminNewServiceEmail(params: {
   method?: string | null
   requestedMethod?: string | null
   contact?: { name?: string; email?: string; phone?: string }
-  service?: { type?: string; title?: string; date?: string; time?: string; totalPrice?: number; pickupAddress?: string; dropoffAddress?: string; flightNumber?: string; passengers?: number }
+  service?: {
+    type?: string
+    title?: string
+    date?: string
+    time?: string
+    totalPrice?: number
+    pickupAddress?: string
+    dropoffAddress?: string
+    flightNumber?: string
+    passengers?: number
+  }
+  services?: Array<{
+    type?: string
+    title?: string
+    date?: string
+    time?: string
+    totalPrice?: number
+    pickupAddress?: string
+    dropoffAddress?: string
+    flightNumber?: string
+    passengers?: number
+  }>
 }) {
+  // Si hay varios servicios, mostrar todos
+  let itemsHtml = ''
+  if (Array.isArray(params.services) && params.services.length > 0) {
+    itemsHtml = params.services.map(s => `
+      <li>
+        <b>Servicio:</b> ${escapeHtml(s.title || 'Reserva')}<br/>
+        <b>Tipo:</b> ${escapeHtml(s.type || '\u2014')} 
+        <b>Fecha:</b> ${escapeHtml(s.date || '\u2014')} ${escapeHtml(s.time || '')}<br/>
+        <b>Recogida:</b> ${escapeHtml(s.pickupAddress || '\u2014')} 
+        <b>Destino:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
+        <b>Vuelo:</b> ${escapeHtml(s.flightNumber || '\u2014')} 
+        <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}<br/>
+        <b>Importe estimado:</b> ${typeof s.totalPrice === 'number' ? s.totalPrice + ' \u20ac' : '\u2014'}
+      </li>
+    `).join('')
+  } else if (params.service) {
+    itemsHtml = `
+      <li>
+        <b>Servicio:</b> ${escapeHtml(params.service.title || 'Reserva')}<br/>
+        <b>Tipo:</b> ${escapeHtml(params.service.type || '\u2014')} 
+        <b>Fecha:</b> ${escapeHtml(params.service.date || '\u2014')} ${escapeHtml(params.service.time || '')}<br/>
+        <b>Recogida:</b> ${escapeHtml(params.service.pickupAddress || '\u2014')} 
+        <b>Destino:</b> ${escapeHtml(params.service.dropoffAddress || '\u2014')}<br/>
+        <b>Vuelo:</b> ${escapeHtml(params.service.flightNumber || '\u2014')} 
+        <b>Pasajeros:</b> ${typeof params.service.passengers === 'number' ? params.service.passengers : '\u2014'}<br/>
+        <b>Importe estimado:</b> ${typeof params.service.totalPrice === 'number' ? params.service.totalPrice + ' \u20ac' : '\u2014'}
+      </li>
+    `
+  }
   const contentHtml = `
     <p><b>Nuevo servicio confirmado (pago recibido)</b></p>
     <h3>Pago</h3>
@@ -248,16 +360,9 @@ export function renderAdminNewServiceEmail(params: {
       <li><b>Método final (Mollie):</b> ${paymentMethodLabel(params.method)}</li>
       <li><b>Método solicitado (web):</b> ${params.requestedMethod ? (params.requestedMethod === 'card' ? 'Tarjeta' : params.requestedMethod === 'cash' ? 'Efectivo' : params.requestedMethod === 'paypal' ? 'PayPal' : params.requestedMethod) : '—'}</li>
     </ul>
-    <h3>Servicio</h3>
+    <h3>Servicios</h3>
     <ul class="list">
-      <li><b>Tipo:</b> ${escapeHtml(params.service?.type || '—')}</li>
-      <li><b>Título:</b> ${escapeHtml(params.service?.title || '—')}</li>
-      <li><b>Fecha:</b> ${escapeHtml(params.service?.date || '—')} ${escapeHtml(params.service?.time || '')}</li>
-      <li><b>Pasajeros:</b> ${typeof params.service?.passengers === 'number' ? params.service!.passengers : '—'}</li>
-      <li><b>Recogida:</b> ${escapeHtml(params.service?.pickupAddress || '—')}</li>
-      <li><b>Destino:</b> ${escapeHtml(params.service?.dropoffAddress || '—')}</li>
-      <li><b>Vuelo:</b> ${escapeHtml(params.service?.flightNumber || '—')}</li>
-      <li><b>Total estimado:</b> ${typeof params.service?.totalPrice === 'number' ? params.service!.totalPrice + ' €' : '—'}</li>
+      ${itemsHtml}
     </ul>
     <h3>Contacto</h3>
     <ul class="list">
@@ -267,7 +372,7 @@ export function renderAdminNewServiceEmail(params: {
     </ul>
   `
   return renderBrandEmail({
-    title: `Nuevo ${params.service?.type || 'servicio'} – ${params.service?.title || ''}`.trim(),
+    title: `Nuevo servicio confirmado`,
     intro: 'Se ha confirmado un nuevo servicio con pago recibido.',
     contentHtml,
     footerNote: 'Generado automáticamente por la web'

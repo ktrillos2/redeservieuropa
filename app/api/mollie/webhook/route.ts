@@ -22,7 +22,7 @@ async function getMailLock(paymentId: string): Promise<{ _id: string; sentAt?: s
 async function acquireMailLock(paymentId: string): Promise<boolean> {
   const _id = `mailLock.payment_${paymentId}`
   try {
-    // Crea si no existe
+    // Crear el documento con sentAt=null si no existe
     await serverClient.createIfNotExists({
       _id,
       _type: 'mailLock',
@@ -30,11 +30,33 @@ async function acquireMailLock(paymentId: string): Promise<boolean> {
       createdAt: new Date().toISOString(),
       sentAt: null,
     } as any)
-    // Si ya tenía sentAt, no enviar
+    
+    // Leer el estado actual
     const existing = await serverClient.getDocument(_id)
-    if ((existing as any)?.sentAt) return false
-    // Marca lock "en curso" (opcional)
-    await serverClient.patch(_id).set({ lockAt: new Date().toISOString() }).commit()
+    
+    // Si ya está marcado como enviado, retornar false
+    if ((existing as any)?.sentAt) {
+      console.log('[webhook][mail-lock] El lock ya está marcado como enviado.')
+      return false
+    }
+    
+    // Si tiene un lockAt reciente (menos de 30 segundos), otra instancia lo está procesando
+    const lockAt = (existing as any)?.lockAt
+    if (lockAt) {
+      const lockTime = new Date(lockAt).getTime()
+      const now = Date.now()
+      if (now - lockTime < 30000) {
+        console.log('[webhook][mail-lock] El lock está siendo procesado por otra instancia.')
+        return false
+      }
+    }
+    
+    // Marcar el lock como en proceso
+    await serverClient.patch(_id).set({ 
+      lockAt: new Date().toISOString(),
+      lockBy: 'webhook'
+    }).commit()
+    
     return true
   } catch (e) {
     console.error('[webhook][mail-lock] acquire error', e)
@@ -130,15 +152,37 @@ export async function POST(req: Request) {
       console.error('[webhook][DEBUG][calendar] error creando eventos múltiples', e)
     }
 
-    // Idempotencia: solo enviar correos si no se ha enviado antes
-    const mailLock = await getMailLock(paymentId)
-    if (mailLock?.sentAt) {
-      console.log('[webhook][mailLock] Correos ya enviados para este pago, no se enviará de nuevo.')
-      return NextResponse.json({ ok: true, skipped: true, reason: 'mailLock-sent' })
+    // Idempotencia estricta: solo enviar correos si no se ha enviado antes
+    console.log('[webhook][mailLock] Intentando adquirir lock para paymentId:', paymentId)
+    const acquired = await acquireMailLock(paymentId)
+    if (!acquired) {
+      console.warn('[webhook][mailLock] BLOQUEADO: No se pudo adquirir el lock, correos ya enviados o en proceso.')
+      return NextResponse.json({ ok: true, skipped: true, reason: 'mailLock-already-acquired' })
+    }
+    console.log('[webhook][mailLock] Lock adquirido, procediendo con envío de correos.')
+
+    // Validar datos de contacto para el admin
+    const clientContact = orders.find(o => o.contact?.email)?.contact
+    let contactValid = true
+    let contactFields = ['name', 'email', 'phone', 'referralSource']
+    let missingFields: string[] = []
+    if (!clientContact) {
+      contactValid = false
+      missingFields = contactFields
+    } else {
+      for (const f of contactFields) {
+        const value = (clientContact as any)[f];
+        if (!value || typeof value !== 'string' || !value.trim()) {
+          contactValid = false;
+          missingFields.push(f);
+        }
+      }
+    }
+    if (!contactValid) {
+      console.warn('[webhook][contact] Información de contacto incompleta para el admin:', missingFields)
     }
 
-    // Enviar correos (ADMIN y CLIENTE)
-    console.log('[webhook][DEBUG] Iniciando envío de correos (ADMIN y CLIENTE)')
+    // Preparar servicios y correos
     const services = orders.map(o => ({
       type: o.service?.type,
       title: o.service?.title,
@@ -150,24 +194,23 @@ export async function POST(req: Request) {
       flightNumber: o.service?.flightNumber,
       passengers: o.service?.passengers,
     }))
+    const totalAmount = payment?.amount?.value ? Number(payment.amount.value) : services.reduce((acc, s) => acc + (s.totalPrice || 0), 0)
 
-    const totalAmount = payment?.amount?.value ? Number(payment.amount.value) :
-      services.reduce((acc, s) => acc + (s.totalPrice || 0), 0)
-
+    // Plantilla admin con validación
     const adminHtml = renderAdminNewServicesEmailMulti({
       mollieId: paymentId,
       amount: totalAmount,
       currency: orders[0]?.payment?.currency || 'EUR',
       method: (payment as any)?.method || null,
+      contact: clientContact,
       services
     })
-
-    const client = orders.find(o => o.contact?.email)?.contact
-    const clientHtml = client ? renderClientThanksEmailMulti({
+    // Plantilla cliente
+    const clientHtml = clientContact ? renderClientThanksEmailMulti({
       mollieId: paymentId,
       amount: totalAmount,
       currency: orders[0]?.payment?.currency || 'EUR',
-      contact: client,
+      contact: clientContact,
       services
     }) : null
 
@@ -176,12 +219,7 @@ export async function POST(req: Request) {
     let adminError = null
     let clientError = null
 
-    // Envío ADMIN
-    console.log('[webhook][DEBUG] Enviando correo ADMIN', {
-      to: ['redeservieuropa@gmail.com'],
-      bcc: 'info@redeservieuropa.com',
-      subject: 'Nuevos servicios confirmados'
-    })
+    // Envío ADMIN (solo si no se ha enviado antes)
     try {
       adminResult = await sendMail({
         to: ['redeservieuropa@gmail.com'],
@@ -196,15 +234,11 @@ export async function POST(req: Request) {
       console.error('[webhook][DEBUG] Error al enviar correo ADMIN', e)
     }
 
-    // Envío CLIENTE (si hay email)
-    if (client?.email && clientHtml) {
-      console.log('[webhook][DEBUG] Enviando correo CLIENTE', {
-        to: client.email,
-        subject: '¡Gracias por tu pago!'
-      })
+    // Envío CLIENTE (solo si no se ha enviado antes)
+    if (clientContact?.email && clientHtml) {
       try {
         clientResult = await sendMail({
-          to: client.email,
+          to: clientContact.email,
           subject: '¡Gracias por tu pago!',
           html: clientHtml,
           from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
@@ -216,8 +250,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // Marcar como enviado
+    // Marcar como enviado SOLO si ambos intentos se realizaron
     await markMailSent(paymentId)
+    console.log('[webhook][mailLock] Correos marcados como enviados para este pago.')
 
     return NextResponse.json({
       ok: true,

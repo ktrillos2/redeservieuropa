@@ -7,6 +7,7 @@ import { serverClient } from '@/sanity/lib/server-client'
 import { buildOrderEventPayload, createCalendarEvent, getCalendarEventById } from '@/lib/google-calendar'
 
 export async function POST(req: Request) {
+  // ...
   try {
     const { paymentId } = await req.json().catch(() => ({})) as { paymentId?: string }
     if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 })
@@ -72,16 +73,9 @@ export async function POST(req: Request) {
         // eslint-disable-next-line no-console
         console.log('[orders/sync] order patched', { orderId: o._id, status: patch.status, paidAt: patch['payment.paidAt'] })
 
-        // Si el pedido está pagado, solo enviar correo si NO se envió por el webhook (mailLock)
+        // Si el pedido está pagado, enviar correo solo si NO se envió por el webhook (mailLock)
         if (patch.status === 'paid') {
           try {
-            // Verificar mailLock antes de enviar
-            // Extraer paymentId correctamente
-            // Acceso directo usando any para evitar error de tipo
-            let paymentId: string | undefined = undefined
-            if ((o as any).payment?.paymentId) {
-              paymentId = (o as any).payment.paymentId
-            }
             let canSend = true
             if (paymentId) {
               const lockDoc = await serverClient.getDocument(`mailLock.payment_${paymentId}`)
@@ -91,7 +85,6 @@ export async function POST(req: Request) {
               }
             }
             if (canSend) {
-              // Usar origen interno para evitar 401 del proxy externo
               const internalOrigin = process.env.INTERNAL_API_BASE
                 || (process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.startsWith('http')
                     ? process.env.NEXT_PUBLIC_SITE_URL

@@ -229,7 +229,11 @@ export function buildOrderEventPayload(order: any) {
   lines.push('')
   lines.push('Contacto:')
   lines.push(`• Nombre: ${order?.contact?.name || '—'}`)
-  lines.push(`• Teléfono: ${order?.contact?.phone || '—'}`)
+  let phone = order?.contact?.phone || '—';
+  if (typeof phone === 'string' && phone && !phone.startsWith('+')) {
+    phone = '+' + phone.replace(/^\+?/, '')
+  }
+  lines.push(`• Teléfono: ${phone}`)
   lines.push(`• Email: ${order?.contact?.email || '—'}`)
 
   const summary = `[${String(order?.service?.type || '').toUpperCase()}] ${order?.service?.title || 'Reserva'} – ${order?.contact?.name || ''}`

@@ -19,6 +19,7 @@ async function getMailLock(paymentId: string): Promise<{ _id: string; sentAt?: s
 async function acquireMailLock(paymentId: string): Promise<boolean> {
   const _id = `mailLock.payment_${paymentId}`
   try {
+    // Crear el documento con sentAt=null si no existe
     await sanityClient.createIfNotExists({
       _id,
       _type: 'mailLock',
@@ -26,9 +27,33 @@ async function acquireMailLock(paymentId: string): Promise<boolean> {
       createdAt: new Date().toISOString(),
       sentAt: null,
     } as any)
+    
+    // Leer el estado actual
     const existing = await sanityClient.getDocument(_id)
-    if ((existing as any)?.sentAt) return false
-    await sanityClient.patch(_id).set({ lockAt: new Date().toISOString() }).commit()
+    
+    // Si ya está marcado como enviado, retornar false
+    if ((existing as any)?.sentAt) {
+      console.log('[send-mail][mail-lock] El lock ya está marcado como enviado.')
+      return false
+    }
+    
+    // Si tiene un lockAt reciente (menos de 30 segundos), otra instancia lo está procesando
+    const lockAt = (existing as any)?.lockAt
+    if (lockAt) {
+      const lockTime = new Date(lockAt).getTime()
+      const now = Date.now()
+      if (now - lockTime < 30000) {
+        console.log('[send-mail][mail-lock] El lock está siendo procesado por otra instancia.')
+        return false
+      }
+    }
+    
+    // Marcar el lock como en proceso
+    await sanityClient.patch(_id).set({ 
+      lockAt: new Date().toISOString(),
+      lockBy: 'send-mail'
+    }).commit()
+    
     return true
   } catch (e) {
     console.error('[send-mail][mail-lock] acquire error', e)
@@ -105,55 +130,56 @@ export async function POST(req: Request) {
     console.log('[send-mail][DEBUG] Plantilla admin generada:', !!adminHtml)
     console.log('[send-mail][DEBUG] Plantilla cliente generada:', !!clientHtml)
 
-    // Idempotencia: solo enviar correos si no se ha enviado antes
+    // Validar paymentId
     let adminInfo = null
     let clientInfo = null
     const paymentId = order.payment?.paymentId
-    let canSend = true
-    if (paymentId) {
-      const mailLock = await getMailLock(paymentId)
-      if (mailLock?.sentAt) {
-        canSend = false
-        console.log('[send-mail][DEBUG] Correos ya enviados previamente, no se enviarán de nuevo.')
-      }
+    if (!paymentId) {
+      console.error('[send-mail][ERROR] No se encontró paymentId en el pedido, no se puede enviar correo.')
+      return NextResponse.json({ ok: false, error: 'No se encontró paymentId en el pedido.' }, { status: 400 })
     }
-    if (canSend) {
-      // Enviar correo ADMIN
+    
+    // Idempotencia estricta: intentar adquirir el lock
+    console.log('[send-mail][mailLock] Intentando adquirir lock para paymentId:', paymentId)
+    const acquired = await acquireMailLock(paymentId)
+    if (!acquired) {
+      console.warn('[send-mail][mailLock] No se pudo adquirir el lock, correos ya enviados o en proceso.')
+      return NextResponse.json({ ok: true, skipped: true, reason: 'mailLock-already-acquired' })
+    }
+    console.log('[send-mail][mailLock] Lock adquirido, procediendo con envío de correos.')
+    // Enviar correo ADMIN
+    try {
+      console.log('[send-mail][DEBUG] Enviando correo ADMIN...')
+      adminInfo = await sendMail({
+        to: ['redeservieuropa@gmail.com'],
+        bcc: 'info@redeservieuropa.com',
+        subject: `Nuevos servicios confirmados – pedido ${orderId}`,
+        html: adminHtml,
+        from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
+      })
+      console.log('[send-mail][DEBUG] Correo ADMIN enviado:', adminInfo)
+    } catch (e: any) {
+      console.error('[send-mail][admin] error', e)
+      return NextResponse.json({ ok: false, error: 'Error enviando correo admin', details: e?.message || String(e) }, { status: 500 })
+    }
+    // Enviar correo CLIENTE
+    if (client?.email && clientHtml) {
       try {
-        console.log('[send-mail][DEBUG] Enviando correo ADMIN...')
-        adminInfo = await sendMail({
-          to: ['redeservieuropa@gmail.com'],
-          bcc: 'info@redeservieuropa.com',
-          subject: `Nuevos servicios confirmados – pedido ${orderId}`,
-          html: adminHtml,
+        console.log('[send-mail][DEBUG] Enviando correo CLIENTE...')
+        clientInfo = await sendMail({
+          to: client.email,
+          subject: '¡Gracias por tu pago!',
+          html: clientHtml,
           from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
         })
-        console.log('[send-mail][DEBUG] Correo ADMIN enviado:', adminInfo)
+        console.log('[send-mail][DEBUG] Correo CLIENTE enviado:', clientInfo)
       } catch (e: any) {
-        console.error('[send-mail][admin] error', e)
-        return NextResponse.json({ ok: false, error: 'Error enviando correo admin', details: e?.message || String(e) }, { status: 500 })
+        console.error('[send-mail][cliente] error', e)
+        return NextResponse.json({ ok: false, error: 'Error enviando correo cliente', details: e?.message || String(e) }, { status: 500 })
       }
-      // Enviar correo CLIENTE
-      if (client?.email && clientHtml) {
-        try {
-          console.log('[send-mail][DEBUG] Enviando correo CLIENTE...')
-          clientInfo = await sendMail({
-            to: client.email,
-            subject: '¡Gracias por tu pago!',
-            html: clientHtml,
-            from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>'
-          })
-          console.log('[send-mail][DEBUG] Correo CLIENTE enviado:', clientInfo)
-        } catch (e: any) {
-          console.error('[send-mail][cliente] error', e)
-          return NextResponse.json({ ok: false, error: 'Error enviando correo cliente', details: e?.message || String(e) }, { status: 500 })
-        }
-      }
-      // Marcar como enviado
-      await markMailSent(paymentId)
-    } else {
-      console.log('[send-mail][DEBUG] Correos ya fueron enviados, no se repite.')
     }
+    // Marcar como enviado
+    await markMailSent(paymentId)
 
     console.log('[send-mail][DEBUG] Proceso finalizado')
     return NextResponse.json({ ok: true, adminMessageId: (adminInfo as any)?.messageId, clientMessageId: (clientInfo as any)?.messageId })

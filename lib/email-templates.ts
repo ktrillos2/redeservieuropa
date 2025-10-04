@@ -257,24 +257,8 @@ export function renderAdminNewServicesEmailMulti(params: {
     </li>
   `).join('')
 
-  let contactHtml = '';
-  if (params.contact && typeof params.contact === 'object') {
-    const name = typeof params.contact.name === 'string' && params.contact.name.trim() ? params.contact.name : '[Falta nombre]';
-    const email = typeof params.contact.email === 'string' && params.contact.email.trim() ? params.contact.email : '[Falta email]';
-    const phone = typeof params.contact.phone === 'string' && params.contact.phone.trim() ? params.contact.phone : '[Falta teléfono]';
-    const referralSource = typeof (params.contact as any).referralSource === 'string' && (params.contact as any).referralSource.trim() ? (params.contact as any).referralSource : '[Falta respuesta]';
-    contactHtml = `
-      <h3>Contacto del usuario</h3>
-      <ul class="list">
-        <li><b>Nombre:</b> ${escapeHtml(name)}</li>
-        <li><b>Email:</b> ${escapeHtml(email)}</li>
-        <li><b>Teléfono:</b> ${escapeHtml(phone)}</li>
-        <li><b>¿Dónde nos conociste?:</b> ${escapeHtml(referralSource)}</li>
-      </ul>
-    `;
-  } else {
-    contactHtml = `<h3>Contacto del usuario</h3><p style='color:#b00'>[No se recibió información de contacto]</p>`;
-  }
+  // Ya no se envía la información de contacto en el correo al admin
+  const contactHtml = '';
   const contentHtml = `
     <p><b>Nuevos servicios confirmados</b></p>
     <p>Se han confirmado los siguientes servicios:</p>

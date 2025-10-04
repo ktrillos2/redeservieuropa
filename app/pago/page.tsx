@@ -921,19 +921,22 @@ export default function PaymentPage() {
   const addCurrentToCart = () => {
     if (!bookingData) return
     try {
+      // Asegurar que origen y destino nunca queden vacíos
+      const safeOrigen = bookingData.origen || bookingData.pickupAddress || paymentPickupAddress || ''
+      const safeDestino = bookingData.destino || bookingData.dropoffAddress || paymentDropoffAddress || ''
       const item = {
         id: Date.now(),
         tipo: bookingData.isEvent ? 'tour' : (bookingData.tipoReserva || (bookingData.tourId ? 'tour' : 'traslado')),
         // Mostrar etiqueta basada en ubicaciones generales (labelMap) y mantener direcciones exactas como detalle
         serviceLabel: (() => {
           if (bookingData.isEvent) return serviceLabel
-          const originLabel = bookingData.origen ? (labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen) : (bookingData.pickupAddress || paymentPickupAddress || '')
-          const destLabel = bookingData.destino ? (labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino) : (bookingData.dropoffAddress || paymentDropoffAddress || '')
+          const originLabel = safeOrigen ? (labelMap[safeOrigen as keyof typeof labelMap] || safeOrigen) : ''
+          const destLabel = safeDestino ? (labelMap[safeDestino as keyof typeof labelMap] || safeDestino) : ''
           if (!originLabel && !destLabel) return serviceLabel
           return `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
         })(),
-        origen: bookingData.origen || '',
-        destino: bookingData.destino || '',
+        origen: safeOrigen,
+        destino: safeDestino,
         pickupAddress: bookingData.pickupAddress || paymentPickupAddress || '',
         dropoffAddress: bookingData.dropoffAddress || paymentDropoffAddress || '',
         date: bookingData.date || bookingData.fecha || '',
@@ -987,11 +990,11 @@ export default function PaymentPage() {
               <p className="text-xl text-muted-foreground">Confirma tu reserva y procede con el pago seguro</p>
             </AnimatedSection>
 
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid lg:grid-cols-2 gap-8 min-h-[900px] lg:overflow-visible">
               {/* Booking Summary: ocultar si hay múltiples cotizaciones (actual + extras) */}
               {!(carritoState && carritoState.length > 0) && (
                 <AnimatedSection animation="slide-left" delay={200}>
-                  <Card className="transform hover:scale-105 transition-all duration-300">
+                  <Card className="transform hover:scale-105 transition-all duration-300 lg:sticky lg:top-24 z-20">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-primary">
                         <CheckCircle className="w-6 h-6 text-accent" />
@@ -1562,7 +1565,8 @@ export default function PaymentPage() {
               {/* Si hay múltiples cotizaciones: mostrar solo formulario de contacto en la columna izquierda */}
               {(carritoState && carritoState.length > 0) && (
                 <AnimatedSection animation="slide-left" delay={200}>
-                  <Card className="transform hover:scale-105 transition-all duration-300">
+                  <div className="lg:block lg:h-full">
+                    <Card className="transform hover:scale-105 transition-all duration-300 lg:sticky lg:top-40 lg:z-30">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-primary">
                         <Users className="w-5 h-5 text-accent" />
@@ -1629,7 +1633,8 @@ export default function PaymentPage() {
                       </div>
                       <p className="text-[11px] text-muted-foreground">Esta información se usará para todas las cotizaciones.</p>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
                 </AnimatedSection>
               )}
 

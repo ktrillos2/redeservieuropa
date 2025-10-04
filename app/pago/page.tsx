@@ -349,17 +349,10 @@ export default function PaymentPage() {
 
       return { valid: Object.keys(errs).length === 0, errors: errs }
     }
-    // Step 3: Información de contacto + comprobaciones finales (fecha/hora/pasajeros)
-    // Step 3: Información de contacto (separado del paso de direcciones)
+    // Step 3: Información de contacto
+    // Ya no requerimos volver a rellenar la información de contacto dentro del modal para avanzar.
     if (step === 3) {
-      if (!mf.contactName || String(mf.contactName).trim() === '') errs.contactName = 'Requerido'
-      if (!mf.contactPhone || String(mf.contactPhone).trim() === '') errs.contactPhone = 'Requerido'
-      if (!mf.contactEmail || String(mf.contactEmail).trim() === '') errs.contactEmail = 'Requerido'
-      else {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-        if (!emailRegex.test(String(mf.contactEmail))) errs.contactEmail = 'Formato inválido'
-      }
-      return { valid: Object.keys(errs).length === 0, errors: errs }
+      return { valid: true, errors: {} }
     }
     // Step 4: Direcciones y equipaje (final) + comprobaciones finales (fecha/hora/pasajeros)
     if (step === 4) {
@@ -394,7 +387,11 @@ export default function PaymentPage() {
     }
     // limpiar errores del paso actual
     setModalFieldErrors({})
-    setModalStep((s) => Math.min(4, s + 1))
+    setModalStep((s) => {
+      const next = Math.min(4, s + 1)
+      const hasContact = Boolean(bookingData?.contactName && bookingData?.contactPhone && bookingData?.contactEmail)
+      return next === 3 && hasContact ? 4 : next
+    })
   }
 
   const handleModalSave = (isEdit = false) => {
@@ -472,13 +469,68 @@ export default function PaymentPage() {
       contactPhone: modalForm.contactPhone || '',
       contactEmail: modalForm.contactEmail || '',
     }
-    const updated = [...carritoState, item]
+    // Además: añadir la cotización ACTUAL al carrito (si no existe ya)
+    let updated = [...carritoState]
+    try {
+      const currentTipo = bookingData.isEvent ? 'tour' : (bookingData.tipoReserva || (bookingData.tourId ? 'tour' : 'traslado'))
+      const currentDate = bookingData.date || bookingData.fecha || ''
+      const currentTime = bookingData.time || bookingData.hora || ''
+      const currentPassengers = bookingData.passengers || bookingData.pasajeros || 1
+      const currentPickupAddress = bookingData.pickupAddress || paymentPickupAddress || ''
+      const currentDropoffAddress = bookingData.dropoffAddress || paymentDropoffAddress || ''
+
+      const alreadyHasCurrent = updated.some((it) => (
+        (it.tipo || '') === (currentTipo || '') &&
+        (String(it.date || '')) === String(currentDate || '') &&
+        (String(it.time || '')) === String(currentTime || '') &&
+        (String(it.passengers || 1)) === String(currentPassengers || 1) &&
+        (String(it.pickupAddress || '')) === String(currentPickupAddress || '') &&
+        (String(it.dropoffAddress || '')) === String(currentDropoffAddress || '')
+      ))
+
+      if (!alreadyHasCurrent) {
+        // Construir etiqueta visible del servicio actual
+        const currentServiceLabel = (() => {
+          if (bookingData.isEvent) return serviceLabel
+          const originLabel = bookingData.origen ? (labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen) : (bookingData.pickupAddress || paymentPickupAddress || '')
+          const destLabel = bookingData.destino ? (labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino) : (bookingData.dropoffAddress || paymentDropoffAddress || '')
+          if (!originLabel && !destLabel) return serviceLabel
+          return `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
+        })()
+
+        const currentItem = {
+          id: Date.now() + 1, // asegurar id distinto
+          tipo: currentTipo,
+          serviceLabel: currentServiceLabel,
+          origen: bookingData.origen || '',
+          destino: bookingData.destino || '',
+          pickupAddress: currentPickupAddress,
+          dropoffAddress: currentDropoffAddress,
+          date: currentDate,
+          time: currentTime,
+          passengers: currentPassengers,
+          vehicle: bookingData.vehicle || bookingData.vehiculo || '',
+          totalPrice: Number(bookingData.totalPrice || 0),
+        }
+        updated.push(currentItem)
+      }
+    } catch { /* noop */ }
+
+    // Finalmente, añadir la NUEVA cotización del modal
+    updated.push(item)
     persistCarrito(updated)
     // reset modal editing state and close
     setModalEditingId(null)
     setModalStep(1)
     setQuoteModalOpen(false)
-    toast({ title: 'Añadido', description: 'Cotización añadida al carrito.' })
+    // Mensaje dinámico según cuántas se hayan añadido
+    try {
+      const addedCount = updated.length - (carritoState?.length || 0)
+      toast({ title: 'Añadido', description: addedCount > 1 ? 'Se añadieron 2 cotizaciones al carrito.' : 'Cotización añadida al carrito.' })
+    } catch {
+      // fallback
+      toast({ title: 'Añadido', description: 'Cotización añadida al carrito.' })
+    }
   }
 
   const updateExistingItem = () => {
@@ -2520,7 +2572,23 @@ export default function PaymentPage() {
             {/* Controles de navegación */}
             <div className="flex items-center justify-between pt-4">
               <div>
-                {modalStep > 1 && <Button variant="outline" size="sm" onClick={() => { setModalFieldErrors({}); setModalStep(s => Math.max(1, s - 1)) }}>Atrás</Button>}
+                {modalStep > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setModalFieldErrors({})
+                      setModalStep((s) => {
+                        const prev = Math.max(1, s - 1)
+                        const hasContact = Boolean(bookingData?.contactName && bookingData?.contactPhone && bookingData?.contactEmail)
+                        // Si el paso previo sería el 3 y ya hay contacto, saltar al 2 directamente
+                        return prev === 3 && hasContact ? 2 : prev
+                      })
+                    }}
+                  >
+                    Atrás
+                  </Button>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {modalStep < 4 && (

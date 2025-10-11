@@ -47,8 +47,89 @@ const fmtMoney = (n: number | string | undefined | null) => {
   }
 }
 
+type PricingItem = { _key?: string; pax: number; price: number }
+type PricingOption = { _key?: string; _type?: 'pricingOption'; label: string; hours?: number; price: number }
+
+type SanityImageRef = { _type: 'image'; asset: { _ref?: string; _type?: 'reference' } }
+type TourData = {
+  _id: string
+  amenities?: string[]
+  basePrice?: number
+  basePriceDay?: number | null
+  basePriceNight?: number | null
+  description?: string
+  distance?: string
+  duration?: string
+  extraSections?: any
+  features?: string[]
+  gallery?: SanityImageRef[]
+  included?: string[]
+  infoLists?: any
+  isActive?: boolean
+  mainImage?: SanityImageRef
+  notes?: any
+  order?: number
+  pricing?: PricingItem[]
+  pricingOptions?: PricingOption[]
+  pricingP4?: any
+  pricingP5?: any
+  requireFlightInfo?: boolean | null
+  slug: string
+  title: string
+  mainImageUrl?: string
+}
+
+type CommonBookingFields = {
+  quickDeposit?: boolean
+  quickType?: 'tour' | 'traslado'
+  passengers?: number
+  ninos?: number
+  date?: string
+  time?: string
+  contactName?: string
+  contactPhone?: string
+  contactEmail?: string
+  referralSource?: string
+  pickupAddress?: string
+  dropoffAddress?: string
+  flightNumber?: string
+  flightArrivalTime?: string
+  specialRequests?: string
+  totalPrice?: number
+  // UI/runtime helpers:
+  isNightTime?: boolean
+  extraLuggage?: boolean
+}
+
+type TourBookingData = CommonBookingFields & {
+  isTourQuick?: boolean
+  tourCategory?: 'ciudad' | 'escala' | string
+  tourSubtype?: 'diurno' | 'nocturno' | string
+  vehicleType?: 'coche' | 'minivan' | 'van' | string
+  tourId?: string
+  tourData?: TourData
+  basePrice?: number
+  isNight?: boolean
+  hours?: number
+  // flag obligatorio actual:
+  requireFlightInfo?: boolean
+  // Opcionalmente si usas selectedPricingOption:
+  selectedPricingOption?: { label: string; hours?: number; price: number }
+}
+
+type TransferBookingData = CommonBookingFields & {
+  tipoReserva?: 'traslado'
+  origen?: string
+  destino?: string
+  vehiculo?: 'coche' | 'minivan' | 'van' | string
+  // flag obligatorio actual también aplica para traslados desde aeropuerto:
+  requireFlightInfo?: boolean
+}
+
+type BookingData = TourBookingData | TransferBookingData
+
 export default function PaymentPage() {
-  const [destino, setDestino] = useState<any>(null)
+  const [destino, setDestino] = useState<BookingData|null>(null)
   const [bookingData, setBookingData] = useState<any>(null)
   // Guardar origen/destino al cargar la página (por ejemplo después de redirigir desde la cotización)
   const [savedOriginOnLoad, setSavedOriginOnLoad] = useState<string | null>(null)
@@ -96,7 +177,7 @@ export default function PaymentPage() {
   const [modalFieldErrors, setModalFieldErrors] = useState<Record<string, string>>({})
 
   // Lista de tours para los selects dentro del modal (cargada desde API)
-  const [toursList, setToursList] = useState<Array<{ title: string; slug?: string }>>([])
+  const [toursList, setToursList] = useState<TourData[]>([])
 
   useEffect(() => {
     let mounted = true;
@@ -857,6 +938,12 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
       if (!bookingData.contactPhone || !String(bookingData.contactPhone).trim()) return false
       if (!bookingData.contactEmail || !String(bookingData.contactEmail).trim()) return false
       if (Object.keys(fieldErrors || {}).length > 0) return false
+      // ...dentro de isDepositReady()
+const requireFlight = bookingData?.tourData?.requireFlightInfo === true || bookingData?.requireFlightInfo === true;
+if (requireFlight) {
+  if (!bookingData.flightNumber || !bookingData.flightNumber.trim()) return false;
+  if (!bookingData.flightArrivalTime || !bookingData.flightArrivalTime.trim()) return false;
+}
       return true
     }
 
@@ -885,7 +972,12 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
 
     // No hay errores activos
     if (Object.keys(fieldErrors || {}).length > 0) return false
-
+// ...dentro de isDepositReady()
+const requireFlight = bookingData?.tourData?.requireFlightInfo === true || bookingData?.requireFlightInfo === true;
+if (requireFlight) {
+  if (!bookingData.flightNumber || !bookingData.flightNumber.trim()) return false;
+  if (!bookingData.flightArrivalTime || !bookingData.flightArrivalTime.trim()) return false;
+}
     return true
   }
 
@@ -1073,7 +1165,8 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
   <span className="font-medium">{bookingData.isEvent ? "Evento:" : "Servicio:"}</span>
   {isTour ? (
     <Badge className="bg-accent text-accent-foreground">
-      {bookingData.tourTitle || "Tour"}
+      {console.log(bookingData)}
+      {bookingData.tourData.title || "Tour"}
     </Badge>
   ) : (
     <Badge className="bg-accent text-accent-foreground">
@@ -1186,26 +1279,64 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
 
                         {/* Direcciones: editables en traslados, sólo lectura en tours / eventos */}
                         {isTour ? (
-                          <>
-                            {bookingData.pickupAddress && (
-                              <div className="flex items-start gap-3">
-                                <MapPin className="w-4 h-4 text-accent mt-0.5" />
-                                <div className="text-sm">
-                                  <p className="font-medium">Recogida:</p>
-                                  <p className="text-muted-foreground">{bookingData.pickupAddress}</p>
-                                </div>
+                         <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                            <h4 className="font-medium text-primary">Direcciones (información adicional)</h4>
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium">
+                                {`Origen del servicio${bookingData?.origen ? ` [${labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen}]` : ''}`}
+                              </label>
+                              <p className="text-sm text-muted-foreground">{(carritoState && carritoState.length > 0) ? '' : (bookingData.pickupAddress || (labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen) || 'No especificado')}</p>
+                              <Input
+                                placeholder="Ubicación exacta"
+                                data-field="paymentPickupAddress"
+                                className={fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
+                                value={paymentPickupAddress}
+                                onChange={(e) => { setPaymentPickupAddress(e.target.value); updateBookingField('pickupAddress', e.target.value); if (fieldErrors.pickupAddress) setFieldErrors(f => { const c = { ...f }; delete c.pickupAddress; return c }) }}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium">
+                                {`Destino del servicio${bookingData?.destino ? ` [${labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino}]` : ''}`}
+                              </label>
+                              <p className="text-sm text-muted-foreground">{(carritoState && carritoState.length > 0) ? '' : (bookingData.dropoffAddress || (labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino) || 'No especificado')}</p>
+                             <Input
+  placeholder="Ubicación exacta"
+  data-field="paymentDropoffAddress"
+  className={fieldErrors.dropoffAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
+  value={paymentDropoffAddress}
+  onChange={(e) => { 
+    setPaymentDropoffAddress(e.target.value);
+    updateBookingField('dropoffAddress', e.target.value);
+    if (fieldErrors.dropoffAddress) setFieldErrors(f => { const c = { ...f }; delete c.dropoffAddress; return c }) 
+  }}
+/>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <label className="text-xs font-medium">Número de Vuelo {bookingData?.tourData.requireFlightInfo ? '(obligatorio)' : '(opcional)'}</label>
+                                <Input
+                                  placeholder="AF1234, BA456, etc."
+                                  className={fieldErrors.flightNumber ? 'border-destructive focus-visible:ring-destructive' : ''}
+
+                                  value={(carritoState && carritoState.length > 0) ? '' : (bookingData.flightNumber || '')}
+                                  onChange={(e) => updateBookingField('flightNumber', e.target.value)}
+                                />
+                                {fieldErrors.flightNumber && <p className="text-xs text-destructive mt-1">{fieldErrors.flightNumber}</p>}
+
                               </div>
-                            )}
-                            {bookingData.dropoffAddress && (
-                              <div className="flex items-start gap-3">
-                                <MapPin className="w-4 h-4 text-accent mt-0.5" />
-                                <div className="text-sm">
-                                  <p className="font-medium">Destino:</p>
-                                  <p className="text-muted-foreground">{bookingData.dropoffAddress}</p>
-                                </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-medium">Hora de llegada {bookingData?.tourData.requireFlightInfo ? '(obligatorio)' : '(opcional)'}</label>
+                                <Input
+                                  type="time"
+                                  placeholder="HH:MM"
+                                  className={fieldErrors.flightArrivalTime ? 'border-destructive focus-visible:ring-destructive' : ''}
+                                  value={bookingData.flightArrivalTime || ''}
+                                  onChange={(e) => updateBookingField('flightArrivalTime', e.target.value)}
+                                />
+                                {fieldErrors.flightArrivalTime && <p className="text-xs text-destructive mt-1">{fieldErrors.flightArrivalTime}</p>}
                               </div>
-                            )}
-                          </>
+                            </div>
+                          </div>
                         ) : (
                           <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                             <h4 className="font-medium text-primary">Direcciones (información adicional)</h4>
@@ -1219,7 +1350,7 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
                                 data-field="paymentPickupAddress"
                                 className={fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
                                 value={paymentPickupAddress}
-                                onChange={(e) => { setPaymentPickupAddress(e.target.value); if (fieldErrors.pickupAddress) setFieldErrors(f => { const c = { ...f }; delete c.pickupAddress; return c }) }}
+                                onChange={(e) => { setPaymentPickupAddress(e.target.value); updateBookingField('pickupAddress', e.target.value); if (fieldErrors.pickupAddress) setFieldErrors(f => { const c = { ...f }; delete c.pickupAddress; return c }) }}
                               />
                             </div>
                             <div className="space-y-2">
@@ -1366,6 +1497,8 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
                           </div>
                         </div>
                       ) : isTour ? (
+                        <>
+                        
                           <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                           <h4 className="font-medium text-primary">Información de Contacto</h4>
                           <div className="space-y-2">
@@ -1426,6 +1559,7 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
                             />
                           </div>
                         </div>
+                        </>
                       ) : (
                         <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                           <h4 className="font-medium text-primary">Información de Contacto</h4>
@@ -2071,8 +2205,8 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
                             try {
                               const description = bookingData?.isEvent
                                 ? `Evento: ${bookingData?.eventTitle || 'Reserva'}`
-                                : bookingData?.tourId
-                                  ? `Reserva tour: ${bookingData.tourId}`
+                                : bookingData?.tourData.title
+                                  ? `Reserva tour: ${bookingData.tourData.title}`
                                   : `Reserva traslado ${bookingData?.pickupAddress || ''} -> ${bookingData?.dropoffAddress || ''}`
                               // Si hay items en el carrito, hacemos un único cobro combinado (carrito + cotización actual)
                               const amount = carritoState && carritoState.length > 0 ? getCombinedAmountToCharge() : Number(amountNow || 0)

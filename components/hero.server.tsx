@@ -24,7 +24,7 @@ export default async function HeroServer() {
           .map((img) => (img ? urlFor(img).width(1600).url() : undefined))
           .filter((u): u is string => typeof u === 'string')
       : undefined,
-  }))
+  }));
   return (
     <Hero
       title={hero?.title}
@@ -35,13 +35,11 @@ export default async function HeroServer() {
       secondaryCtaLabel={hero?.secondaryCta?.label}
       bookingForm={hero?.bookingForm as any}
       events={mappedEvents}
-      toursList={(tours || []).map(t => ({
-        title: t.title,
-        slug: t.slug?.current,
-        basePrice: typeof t.basePrice === 'number' ? t.basePrice : undefined,
-        basePriceDay: typeof t.basePriceDay === 'number' ? t.basePriceDay : undefined,
-        basePriceNight: typeof t.basePriceNight === 'number' ? t.basePriceNight : undefined,
-      }))}
+      toursList={tours?.map(t => ({
+  ...t,
+  slug: t.slug?.current, // Normaliza el slug para fácil acceso
+  mainImageUrl: t.mainImage ? urlFor(t.mainImage).width(1200).url() : undefined,
+}))}
     />
   )
 }

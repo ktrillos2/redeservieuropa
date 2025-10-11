@@ -358,6 +358,8 @@ export function Hero({
     return { total: undefined, label: "Precio a confirmar según duración, horario y vehículo" }
   }, [bookingData.tipoReserva, bookingData.pasajeros, bookingData.vehiculo, bookingData.categoriaTour, bookingData.subtipoTour, bookingData.tipoTour, bookingData.selectedTourSlug, toursList, bookingData.hora])
 
+  
+
   // Enviar a página de pago con un depósito de confirmación de 5€ (quick deposit)
   const goToPayment = () => {
     try {
@@ -392,20 +394,40 @@ export function Hero({
     // roundtrip removed
         })
       } else if (bookingData.tipoReserva === "tour") {
-        Object.assign(data, {
-          quickType: "tour",
-          isTourQuick: true,
-          tourCategory: bookingData.categoriaTour || (bookingData.tipoTour === "escala" ? "escala" : "ciudad"),
-          tourSubtype: bookingData.subtipoTour || (bookingData.tipoTour === "escala" ? "" : bookingData.tipoTour || ""),
-          passengers: pax,
-          ninos: bookingData.ninos ?? 0,
-          date: bookingData.fecha || "",
-          time: bookingData.hora || "",
-          vehicleType: bookingData.vehiculo || "",
-          tourId: bookingData.selectedTourSlug || undefined,
-          // Para quick deposit, si no hay estimación, mantenemos 0 como estimado, pero el pago ahora será 5€.
-          totalPrice: typeof tourQuote?.total === "number" ? tourQuote.total : 0,
-        })
+       // Buscar el tour seleccionado en toursList
+  const selectedTour = (toursList || []).find(
+    t => (t.slug || t.title) === bookingData.selectedTourSlug
+  );
+  console.log(toursList)
+
+
+  // Calcular el precio del tour según el horario (diurno/nocturno)
+  const isNight = bookingData.subtipoTour === "nocturno" || isNightTime(bookingData.hora);
+  const basePrice = isNight
+    ? selectedTour?.basePriceNight ?? selectedTour?.basePrice
+    : selectedTour?.basePriceDay ?? selectedTour?.basePrice;
+  const hours = isNight ? 3 : 2;
+  const totalPrice = basePrice ? basePrice * hours : 0;
+
+  // Guardar todos los datos del tour en bookingData
+  Object.assign(data, {
+    quickType: "tour",
+    isTourQuick: true,
+    tourCategory: bookingData.categoriaTour || "ciudad",
+    tourSubtype: bookingData.subtipoTour || "",
+    passengers: pax,
+    ninos: bookingData.ninos ?? 0,
+    date: bookingData.fecha || "",
+    time: bookingData.hora || "",
+    vehicleType: bookingData.vehiculo || "",
+    tourId: selectedTour?.slug,
+    tourData: selectedTour, // Aquí guardas TODO el objeto del tour
+    totalPrice: totalPrice,
+    basePrice: basePrice,
+    isNight: isNight,
+    hours: hours,
+  });
+
       }
 
       localStorage.setItem("bookingData", JSON.stringify(data))

@@ -40,15 +40,32 @@ export const EVENTS_FOR_HERO_QUERY = `
 `
 
 export const TOURS_LIST_QUERY = `
-*[_type == "tours" && isActive == true] | order(coalesce(order, 999) asc, _createdAt asc){
-  _id,
-  title,
-  slug,
-  description,
-  duration,
-  distance,
-  mainImage,
-}
+  *[_type == "tours"]{
+    _id,
+    title,
+    slug,
+    description,
+    duration,
+    distance,
+    mainImage,
+    gallery,
+    features,
+    included,
+    amenities,
+    notes,
+    requireFlightInfo,
+    basePrice,
+    basePriceDay,
+    basePriceNight,
+    pricing,
+    pricingOptions,
+    pricingP4,
+    pricingP5,
+    extraSections,
+    infoLists,
+    isActive,
+    order
+  }
 `
 export const TOUR_BY_SLUG_QUERY = `
 *[_type == "tours" && slug.current == $slug][0]{

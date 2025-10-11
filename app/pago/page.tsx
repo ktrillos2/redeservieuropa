@@ -428,107 +428,132 @@ export default function PaymentPage() {
   }
 
   const saveModalAsNew = () => {
-    // Construir la etiqueta visible del servicio usando las ubicaciones generales (labelMap)
-    let serviceLabel = 'Traslado'
-    if (modalForm.tipo === 'tour') {
-      serviceLabel = 'Tour'
-    } else {
-      const originLabel = modalForm.origen ? (labelMap[modalForm.origen as keyof typeof labelMap] || modalForm.origen) : (modalForm.pickupAddress || '')
-      const destLabel = modalForm.destino ? (labelMap[modalForm.destino as keyof typeof labelMap] || modalForm.destino) : (modalForm.dropoffAddress || '')
-
-      if (originLabel || destLabel) serviceLabel = `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
-    }
-
-    const item = {
-      id: Date.now(),
-      tipo: modalForm.tipo,
-      // serviceLabel muestra la ubicación general (Aeropuerto CDG, París Centro, etc.)
-      serviceLabel,
-      origen: modalForm.origen || '',
-      destino: modalForm.destino || '',
-      // pickup/dropoff mantienen la dirección exacta como detalle adicional
-      pickupAddress: modalForm.pickupAddress || '',
-      dropoffAddress: modalForm.dropoffAddress || '',
-      date: modalForm.date || '',
-      time: modalForm.time || '',
-      passengers: modalForm.passengers || 1,
-      ninos: modalForm.ninos || 0,
-      vehicle: modalForm.vehicle || 'coche',
-      selectedTourSlug: modalForm.selectedTourSlug || '',
-      categoriaTour: modalForm.categoriaTour || '',
-      subtipoTour: modalForm.subtipoTour || '',
-      flightNumber: modalForm.flightNumber || '',
-      luggage23kg: modalForm.luggage23kg ?? 0,
-      luggage10kg: modalForm.luggage10kg ?? 0,
-      specialRequests: modalForm.specialRequests || '',
-      totalPrice: Number(modalForm.totalPrice || 0),
-      contactName: modalForm.contactName || '',
-      contactPhone: modalForm.contactPhone || '',
-      contactEmail: modalForm.contactEmail || '',
-    }
-    // Además: añadir la cotización ACTUAL al carrito (si no existe ya)
-    let updated = [...carritoState]
-    try {
-      const currentTipo = bookingData.isEvent ? 'tour' : (bookingData.tipoReserva || (bookingData.tourId ? 'tour' : 'traslado'))
-      const currentDate = bookingData.date || bookingData.fecha || ''
-      const currentTime = bookingData.time || bookingData.hora || ''
-      const currentPassengers = bookingData.passengers || bookingData.pasajeros || 1
-      const currentPickupAddress = bookingData.pickupAddress || paymentPickupAddress || ''
-      const currentDropoffAddress = bookingData.dropoffAddress || paymentDropoffAddress || ''
-
-      const alreadyHasCurrent = updated.some((it) => (
-        (it.tipo || '') === (currentTipo || '') &&
-        (String(it.date || '')) === String(currentDate || '') &&
-        (String(it.time || '')) === String(currentTime || '') &&
-        (String(it.passengers || 1)) === String(currentPassengers || 1) &&
-        (String(it.pickupAddress || '')) === String(currentPickupAddress || '') &&
-        (String(it.dropoffAddress || '')) === String(currentDropoffAddress || '')
-      ))
-
-      if (!alreadyHasCurrent) {
-        // Construir etiqueta visible del servicio actual
-        const currentServiceLabel = (() => {
-          if (bookingData.isEvent) return serviceLabel
-          const originLabel = bookingData.origen ? (labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen) : (bookingData.pickupAddress || paymentPickupAddress || '')
-          const destLabel = bookingData.destino ? (labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino) : (bookingData.dropoffAddress || paymentDropoffAddress || '')
-          if (!originLabel && !destLabel) return serviceLabel
-          return `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
-        })()
-
-        const currentItem = {
-          id: Date.now() + 1, // asegurar id distinto
-          tipo: currentTipo,
-          serviceLabel: currentServiceLabel,
-          origen: bookingData.origen || '',
-          destino: bookingData.destino || '',
-          pickupAddress: currentPickupAddress,
-          dropoffAddress: currentDropoffAddress,
-          date: currentDate,
-          time: currentTime,
-          passengers: currentPassengers,
-          vehicle: bookingData.vehicle || bookingData.vehiculo || '',
-          totalPrice: Number(bookingData.totalPrice || 0),
-        }
-        updated.push(currentItem)
-      }
-    } catch { /* noop */ }
-
-    // Finalmente, añadir la NUEVA cotización del modal
-    updated.push(item)
-    persistCarrito(updated)
-    // reset modal editing state and close
-    setModalEditingId(null)
-    setModalStep(1)
-    setQuoteModalOpen(false)
-    // Mensaje dinámico según cuántas se hayan añadido
-    try {
-      const addedCount = updated.length - (carritoState?.length || 0)
-      toast({ title: 'Añadido', description: addedCount > 1 ? 'Se añadieron 2 cotizaciones al carrito.' : 'Cotización añadida al carrito.' })
-    } catch {
-      // fallback
-      toast({ title: 'Añadido', description: 'Cotización añadida al carrito.' })
-    }
+  // Construir la etiqueta visible del servicio usando las ubicaciones generales (labelMap)
+  let serviceLabel = 'Traslado'
+  if (modalForm.tipo === 'tour') {
+    serviceLabel = 'Tour'
+  } else {
+    const originLabel = modalForm.origen ? (labelMap[modalForm.origen as keyof typeof labelMap] || modalForm.origen) : (modalForm.pickupAddress || '')
+    const destLabel = modalForm.destino ? (labelMap[modalForm.destino as keyof typeof labelMap] || modalForm.destino) : (modalForm.dropoffAddress || '')
+    if (originLabel || destLabel) serviceLabel = `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
   }
+
+  // --- NUEVO: Calcular precio real del tour si aplica ---
+  let tourPrice = 0
+if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
+  console.log("toursList", toursList)
+  const selectedTour = toursList.find(
+    t => (t.slug || t.title) === modalForm.selectedTourSlug
+  )
+  if (selectedTour) {
+    const isNight = modalForm.subtipoTour === "nocturno" || (() => {
+      if (!modalForm.time) return false
+      const [hh] = String(modalForm.time).split(":").map(Number)
+      const h = hh || 0
+      return h >= 21 || h < 6
+    })()
+    // Usa basePriceNight/basePriceDay/basePrice en orden de prioridad
+    let basePrice = 0
+    if (isNight && typeof selectedTour.basePriceNight === "number") {
+      basePrice = selectedTour.basePriceNight
+    } else if (!isNight && typeof selectedTour.basePriceDay === "number") {
+      basePrice = selectedTour.basePriceDay
+    } else if (typeof selectedTour.basePrice === "number") {
+      basePrice = selectedTour.basePrice
+    }
+    const hours = isNight ? 3 : 2
+    tourPrice = basePrice * hours
+  }
+}
+
+  const item = {
+    id: Date.now(),
+    tipo: modalForm.tipo,
+    serviceLabel,
+    origen: modalForm.origen || '',
+    destino: modalForm.destino || '',
+    pickupAddress: modalForm.pickupAddress || '',
+    dropoffAddress: modalForm.dropoffAddress || '',
+    date: modalForm.date || '',
+    time: modalForm.time || '',
+    passengers: modalForm.passengers || 1,
+    ninos: modalForm.ninos || 0,
+    vehicle: modalForm.vehicle || 'coche',
+    selectedTourSlug: modalForm.selectedTourSlug || '',
+    categoriaTour: modalForm.categoriaTour || '',
+    subtipoTour: modalForm.subtipoTour || '',
+    flightNumber: modalForm.flightNumber || '',
+    luggage23kg: modalForm.luggage23kg ?? 0,
+    luggage10kg: modalForm.luggage10kg ?? 0,
+    specialRequests: modalForm.specialRequests || '',
+    totalPrice: modalForm.tipo === "tour" ? tourPrice : Number(modalForm.totalPrice || 0),
+    contactName: modalForm.contactName || '',
+    contactPhone: modalForm.contactPhone || '',
+    contactEmail: modalForm.contactEmail || '',
+  }
+
+  // Además: añadir la cotización ACTUAL al carrito (si no existe ya)
+  let updated = [...carritoState]
+  try {
+    const currentTipo = bookingData.isEvent ? 'tour' : (bookingData.tipoReserva || (bookingData.tourId ? 'tour' : 'traslado'))
+    const currentDate = bookingData.date || bookingData.fecha || ''
+    const currentTime = bookingData.time || bookingData.hora || ''
+    const currentPassengers = bookingData.passengers || bookingData.pasajeros || 1
+    const currentPickupAddress = bookingData.pickupAddress || paymentPickupAddress || ''
+    const currentDropoffAddress = bookingData.dropoffAddress || paymentDropoffAddress || ''
+
+    const alreadyHasCurrent = updated.some((it) => (
+      (it.tipo || '') === (currentTipo || '') &&
+      (String(it.date || '')) === String(currentDate || '') &&
+      (String(it.time || '')) === String(currentTime || '') &&
+      (String(it.passengers || 1)) === String(currentPassengers || 1) &&
+      (String(it.pickupAddress || '')) === String(currentPickupAddress || '') &&
+      (String(it.dropoffAddress || '')) === String(currentDropoffAddress || '')
+    ))
+
+    if (!alreadyHasCurrent) {
+      // Construir etiqueta visible del servicio actual
+      const currentServiceLabel = (() => {
+        if (bookingData.isEvent) return serviceLabel
+        const originLabel = bookingData.origen ? (labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen) : (bookingData.pickupAddress || paymentPickupAddress || '')
+        const destLabel = bookingData.destino ? (labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino) : (bookingData.dropoffAddress || paymentDropoffAddress || '')
+        if (!originLabel && !destLabel) return serviceLabel
+        return `${originLabel}${originLabel && destLabel ? ' → ' : ''}${destLabel}`
+      })()
+
+      const currentItem = {
+        id: Date.now() + 1, // asegurar id distinto
+        tipo: currentTipo,
+        serviceLabel: currentServiceLabel,
+        origen: bookingData.origen || '',
+        destino: bookingData.destino || '',
+        pickupAddress: currentPickupAddress,
+        dropoffAddress: currentDropoffAddress,
+        date: currentDate,
+        time: currentTime,
+        passengers: currentPassengers,
+        vehicle: bookingData.vehicle || bookingData.vehiculo || '',
+        totalPrice: Number(bookingData.totalPrice || 0),
+      }
+      updated.push(currentItem)
+    }
+  } catch { /* noop */ }
+
+  // Finalmente, añadir la NUEVA cotización del modal
+  updated.push(item)
+  persistCarrito(updated)
+  // reset modal editing state and close
+  setModalEditingId(null)
+  setModalStep(1)
+  setQuoteModalOpen(false)
+  // Mensaje dinámico según cuántas se hayan añadido
+  try {
+    const addedCount = updated.length - (carritoState?.length || 0)
+    toast({ title: 'Añadido', description: addedCount > 1 ? 'Se añadieron 2 cotizaciones al carrito.' : 'Cotización añadida al carrito.' })
+  } catch {
+    toast({ title: 'Añadido', description: 'Cotización añadida al carrito.' })
+  }
+}
 
   const updateExistingItem = () => {
     if (modalEditingId === null) return
@@ -1045,11 +1070,17 @@ export default function PaymentPage() {
                         <EventImagesCarousel images={bookingData.eventImages} shortInfo={bookingData.eventShortInfo} />
                       )}
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">{bookingData.isEvent ? "Evento:" : "Servicio:"}</span>
-                        <Badge className="bg-accent text-accent-foreground">
-                          {serviceLabel}
-                        </Badge>
-                      </div>
+  <span className="font-medium">{bookingData.isEvent ? "Evento:" : "Servicio:"}</span>
+  {isTour ? (
+    <Badge className="bg-accent text-accent-foreground">
+      {bookingData.tourTitle || "Tour"}
+    </Badge>
+  ) : (
+    <Badge className="bg-accent text-accent-foreground">
+      {serviceLabel}
+    </Badge>
+  )}
+</div>
 
                       <Separator />
 
@@ -1468,6 +1499,12 @@ export default function PaymentPage() {
                               <span>Depósito para confirmar</span>
                               <span>{fmtMoney(deposit)}€</span>
                             </div>
+                            {isTour && (
+  <div className="flex justify-between text-sm">
+    <span>Precio del tour</span>
+    <span>{fmtMoney(bookingData.totalPrice)}€</span>
+  </div>
+)}
                             {total > 0 && (
                               <div className="flex justify-between text-xs text-muted-foreground">
                                 <span>Importe total estimado del servicio</span>

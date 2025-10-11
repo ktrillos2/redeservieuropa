@@ -984,15 +984,16 @@ if (requireFlight) {
   // Etiquetas seguras para servicio/route en quick
   const quickType: "traslado" | "tour" | undefined = bookingData?.quickType
   const serviceLabel = bookingData?.isEvent
-    ? "EVENTO ESPECIAL"
-    : isQuick
-      ? (quickType === "traslado"
-        ? (bookingData?.pickupAddress && bookingData?.dropoffAddress
-          ? `${bookingData.pickupAddress} → ${bookingData.dropoffAddress}`
-          : "TRASLADO")
-        : "TOUR")
-      : (bookingData?.tourId ? bookingData.tourId.replace("-", " → ").toUpperCase() : "SERVICIO")
-
+  ? "EVENTO ESPECIAL"
+  : isQuick
+    ? (quickType === "traslado"
+      ? (
+        bookingData?.origen && bookingData?.destino
+          ? `${labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen} → ${labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino}`
+          : "TRASLADO"
+      )
+      : "TOUR")
+    : (bookingData?.tourId ? bookingData.tourId.replace("-", " → ").toUpperCase() : "SERVICIO")
   // Enviar a WhatsApp cuando el método es efectivo
   const sendWhatsApp = () => {
     try {
@@ -1283,16 +1284,26 @@ if (requireFlight) {
                             <h4 className="font-medium text-primary">Direcciones (información adicional)</h4>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Origen del servicio${bookingData?.origen ? ` [${labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen}]` : ''}`}
-                              </label>
-                              <p className="text-sm text-muted-foreground">{(carritoState && carritoState.length > 0) ? '' : (bookingData.pickupAddress || (labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen) || 'No especificado')}</p>
-                              <Input
-                                placeholder="Ubicación exacta"
-                                data-field="paymentPickupAddress"
-                                className={fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
-                                value={paymentPickupAddress}
-                                onChange={(e) => { setPaymentPickupAddress(e.target.value); updateBookingField('pickupAddress', e.target.value); if (fieldErrors.pickupAddress) setFieldErrors(f => { const c = { ...f }; delete c.pickupAddress; return c }) }}
-                              />
+  {`Origen del servicio${bookingData?.origen ? ` [${labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen}]` : ''}`}
+</label>
+<p className="text-sm text-muted-foreground">
+  {(carritoState && carritoState.length > 0)
+    ? ''
+    : (paymentPickupAddress || 'No especificado')}
+</p>
+<Input
+  placeholder="Ubicación exacta"
+  data-field="paymentPickupAddress"
+  className={fieldErrors.pickupAddress ? 'border-destructive focus-visible:ring-destructive' : ''}
+  value={paymentPickupAddress}
+  onChange={(e) => {
+    setPaymentPickupAddress(e.target.value)
+    // no tocar bookingData.pickupAddress para que el label del servicio no cambie
+    if (fieldErrors.pickupAddress) {
+      setFieldErrors(f => { const c = { ...f }; delete c.pickupAddress; return c })
+    }
+  }}
+/>
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
@@ -2138,151 +2149,174 @@ if (requireFlight) {
                       )}
 
                       <Button
-                        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300"
-                        size="lg"
-                        onClick={() => {
-                          if (!bookingData) return
-                          // Usar la validación central
-                          const ok = isDepositReady()
-                          if (!ok) {
-                            // Reconstruir errores para mostrar al usuario los campos faltantes
-                            const errors: Record<string, string> = {}
+  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300"
+  size="lg"
+  onClick={() => {
+    if (!bookingData) return
+    // Usar la validación central
+    const ok = isDepositReady()
+    if (!ok) {
+      // Reconstruir errores para mostrar al usuario los campos faltantes
+      const errors: Record<string, string> = {}
 
-                            // Normalizar nombres de campos
-                            const passengers = bookingData.passengers ?? bookingData.pasajeros
-                            const date = bookingData.date ?? bookingData.fecha
-                            const time = bookingData.time ?? bookingData.hora
+      // Normalizar nombres de campos
+      const passengers = bookingData.passengers ?? bookingData.pasajeros
+      const date = bookingData.date ?? bookingData.fecha
+      const time = bookingData.time ?? bookingData.hora
 
-                            if (!passengers || Number(passengers) < 1) errors.passengers = 'Requerido'
-                            if (!date) errors.date = 'Requerido'
-                            if (!time) errors.time = 'Requerido'
+      if (!passengers || Number(passengers) < 1) errors.passengers = 'Requerido'
+      if (!date) errors.date = 'Requerido'
+      if (!time) errors.time = 'Requerido'
 
-                            const requiresContact = !bookingData.quickDeposit
-                            if (requiresContact) {
-                              if (!bookingData.contactName || !String(bookingData.contactName).trim()) errors.contactName = 'Requerido'
-                              if (!bookingData.contactPhone || !String(bookingData.contactPhone).trim()) errors.contactPhone = 'Requerido'
-                              if (!bookingData.contactEmail || !String(bookingData.contactEmail).trim()) errors.contactEmail = 'Requerido'
-                            }
+      const requiresContact = !bookingData.quickDeposit
+      if (requiresContact) {
+        if (!bookingData.contactName || !String(bookingData.contactName).trim()) errors.contactName = 'Requerido'
+        if (!bookingData.contactPhone || !String(bookingData.contactPhone).trim()) errors.contactPhone = 'Requerido'
+        if (!bookingData.contactEmail || !String(bookingData.contactEmail).trim()) errors.contactEmail = 'Requerido'
+      }
 
-                            const needsAddresses = !bookingData.isEvent && !bookingData.isTourQuick && !bookingData.tourId
-                            if (needsAddresses) {
-                              if (!paymentPickupAddress || !String(paymentPickupAddress).trim()) errors.pickupAddress = 'Requerido'
-                              if (!paymentDropoffAddress || !String(paymentDropoffAddress).trim()) errors.dropoffAddress = 'Requerido'
-                            }
+      const needsAddresses = !bookingData.isEvent && !bookingData.isTourQuick && !bookingData.tourId
+      if (needsAddresses) {
+        if (!paymentPickupAddress || !String(paymentPickupAddress).trim()) errors.pickupAddress = 'Requerido'
+        if (!paymentDropoffAddress || !String(paymentDropoffAddress).trim()) errors.dropoffAddress = 'Requerido'
+      }
 
-                            // Formatos básicos
-                            if (!errors.contactEmail && bookingData.contactEmail) {
-                              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-                              if (!emailRegex.test(String(bookingData.contactEmail))) errors.contactEmail = 'Formato inválido'
-                            }
-                            if (!errors.contactPhone && bookingData.contactPhone) {
-                              if (String(bookingData.contactPhone).replace(/\D/g, '').length < 6) errors.contactPhone = 'Teléfono inválido'
-                            }
+      // Formatos básicos
+      if (!errors.contactEmail && bookingData.contactEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+        if (!emailRegex.test(String(bookingData.contactEmail))) errors.contactEmail = 'Formato inválido'
+      }
+      if (!errors.contactPhone && bookingData.contactPhone) {
+        if (String(bookingData.contactPhone).replace(/\D/g, '').length < 6) errors.contactPhone = 'Teléfono inválido'
+      }
 
-                            setFieldErrors(errors)
-                            requestAnimationFrame(() => {
-                              const first = Object.keys(errors)[0]
-                              // Mapear claves normalizadas a los data-field reales usados en los inputs
-                              const fieldMap: Record<string, string> = {
-                                passengers: 'passengers',
-                                date: 'date',
-                                time: 'time',
-                                contactName: 'contactName',
-                                contactPhone: 'contactPhone',
-                                contactEmail: 'contactEmail',
-                                pickupAddress: 'pickupAddress',
-                                dropoffAddress: 'dropoffAddress'
-                              }
-                              const selector = `[data-field="${fieldMap[first] || first}"]`
-                              const el = document.querySelector(selector) as HTMLElement | null
-                              if (el) el.focus()
-                            })
-                            return
-                          }
+      setFieldErrors(errors)
+      requestAnimationFrame(() => {
+        const first = Object.keys(errors)[0]
+        // Mapear claves normalizadas a los data-field reales usados en los inputs
+        const fieldMap: Record<string, string> = {
+          passengers: 'passengers',
+          date: 'date',
+          time: 'time',
+          contactName: 'contactName',
+          contactPhone: 'contactPhone',
+          contactEmail: 'contactEmail',
+          pickupAddress: 'pickupAddress',
+          dropoffAddress: 'dropoffAddress'
+        }
+        const selector = `[data-field="${fieldMap[first] || first}"]`
+        const el = document.querySelector(selector) as HTMLElement | null
+        if (el) el.focus()
+      })
+      return
+    }
 
-                          // Crear pago en backend (Mollie) y redirigir a checkout
-                          const doPay = async () => {
-                            try {
-                              const description = bookingData?.isEvent
-                                ? `Evento: ${bookingData?.eventTitle || 'Reserva'}`
-                                : bookingData?.tourData.title
-                                  ? `Reserva tour: ${bookingData.tourData.title}`
-                                  : `Reserva traslado ${bookingData?.pickupAddress || ''} -> ${bookingData?.dropoffAddress || ''}`
-                              // Si hay items en el carrito, hacemos un único cobro combinado (carrito + cotización actual)
-                              const amount = carritoState && carritoState.length > 0 ? getCombinedAmountToCharge() : Number(amountNow || 0)
-                              // Replicar datos de contacto para todos los items del carrito
-                              const carritoForSubmit = (carritoState || []).map((it) => ({
-                                ...it,
-                                contactName: bookingData.contactName,
-                                contactPhone: bookingData.contactPhone,
-                                contactEmail: bookingData.contactEmail,
-                                referralSource: bookingData.referralSource || undefined,
-                              }))
-                              const res = await fetch('/api/mollie/create', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  amount,
-                                  description: carritoState && carritoState.length > 0 ? `Pago combinado (${(carritoState.length + 1)} servicios)` : description,
-                                  method: paymentMethod,
-                                  // Enviamos el booking actual y el carrito para que el backend pueda crear una única orden
-                                  booking: {
-                                    ...bookingData,
-                                    paymentPickupAddress,
-                                    paymentDropoffAddress,
-                                  },
-                                  carrito: carritoForSubmit,
-                                  contact: {
-                                    name: bookingData.contactName,
-                                    phone: bookingData.contactPhone,
-                                    email: bookingData.contactEmail,
-                                    referralSource: bookingData.referralSource || undefined,
-                                  },
-                                  metadata: { source: 'web', combinedPayment: !!(carritoState && carritoState.length > 0), itemsCount: (carritoState?.length || 0) + 1 },
-                                }),
-                              })
-                              if (!res.ok) throw new Error(`Error creando pago: ${res.status}`)
-                              const json = await res.json()
-                              const url = json?.checkoutUrl
-                              try { if (json?.id) localStorage.setItem('lastPaymentId', String(json.id)) } catch { }
-                              if (typeof url === 'string') {
-                                // Limpiar carrito de cotizaciones al completar el pago
-                                try {
-                                  localStorage.removeItem('carritoCotizaciones')
-                                  setCarritoState([])
-                                } catch {}
-                                window.location.href = url
-                                return
-                              } else {
-                                throw new Error('checkoutUrl no recibido')
-                              }
-                            } catch (e) {
-                              console.error('No se pudo iniciar el pago:', e)
-                              alert('No se pudo iniciar el pago. Intenta nuevamente más tarde.')
-                            } finally {
-                              // Si no hubo redirect el botón debe volver a su estado normal
-                              try { setIsPaying(false) } catch { }
-                            }
-                          }
-                          // Marcar que se está procesando el pago para deshabilitar el botón y mostrar feedback
-                          setIsPaying(true)
-                          doPay()
-                        }}
-                        disabled={!isDepositReady() || isPaying}
-                        aria-disabled={!isDepositReady() || isPaying}
-                      >
-                        {isPaying ? (
-                          <span className="inline-flex items-center gap-2">
-                            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                            Procesando...
-                          </span>
-                        ) : (
-                          // Mostrar importes combinados si existen items en carrito
-                          carritoState && carritoState.length > 0
-                            ? (payFullNow ? `Pagar todo (${fmtMoney(combinedTotal)}€)` : `Pagar depósitos (${fmtMoney(combinedDepositSum)}€)`)
-                            : (payFullNow ? `Pagar todo (${fmtMoney(total)}€)` : `Pagar depósito ${fmtMoney(deposit)}€`)
-                        )}
-                      </Button>
+    // Crear pago en backend (Mollie) y redirigir a checkout
+    const doPay = async () => {
+      try {
+        const description = bookingData?.isEvent
+          ? `Evento: ${bookingData?.eventTitle || 'Reserva'}`
+          : bookingData?.tourData?.title
+            ? `Reserva tour: ${bookingData.tourData.title}`
+            : `Reserva traslado ${bookingData?.pickupAddress || ''} -> ${bookingData?.dropoffAddress || ''}`
+
+        // Si hay items en el carrito, hacemos un único cobro combinado (carrito + cotización actual)
+        const amount = (carritoState && carritoState.length > 0)
+          ? getCombinedAmountToCharge()
+          : Number(amountNow || 0)
+
+        // Replicar datos de contacto para todos los items del carrito
+        const carritoForSubmit = (carritoState || []).map((it) => ({
+          ...it,
+          contactName: bookingData.contactName,
+          contactPhone: bookingData.contactPhone,
+          contactEmail: bookingData.contactEmail,
+          // ✅ aseguramos referralSource por item
+          referralSource: bookingData.referralSource || it.referralSource || '',
+        }))
+
+        const res = await fetch('/api/mollie/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount,
+            description: (carritoState && carritoState.length > 0)
+              ? `Pago combinado (${(carritoState.length + 1)} servicios)`
+              : description,
+            method: paymentMethod,
+
+            // ✅ nuevo: enviar siempre el “cómo nos conociste” a nivel raíz
+            referralSource: bookingData?.referralSource || '',
+
+            // ✅ nuevo: marcar si paga 100% ahora
+            payFullNow,
+
+            // Enviamos el booking actual y el carrito para que el backend pueda crear una única orden
+            booking: {
+              ...bookingData,
+              referralSource: bookingData?.referralSource || '', // ✅ también dentro de booking
+              paymentPickupAddress,
+              paymentDropoffAddress,
+            },
+            carrito: carritoForSubmit,
+
+            contact: {
+              name: bookingData.contactName,
+              phone: bookingData.contactPhone,
+              email: bookingData.contactEmail,
+              referralSource: bookingData.referralSource || '',
+            },
+            metadata: {
+              source: 'web',
+              combinedPayment: !!(carritoState && carritoState.length > 0),
+              itemsCount: (carritoState?.length || 0) + 1,
+            },
+          }),
+        })
+        if (!res.ok) throw new Error(`Error creando pago: ${res.status}`)
+        const json = await res.json()
+        const url = json?.checkoutUrl
+        try { if (json?.id) localStorage.setItem('lastPaymentId', String(json.id)) } catch { }
+        if (typeof url === 'string') {
+          // Limpiar carrito de cotizaciones al completar el pago
+          try {
+            localStorage.removeItem('carritoCotizaciones')
+            setCarritoState([])
+          } catch {}
+          window.location.href = url
+          return
+        } else {
+          throw new Error('checkoutUrl no recibido')
+        }
+      } catch (e) {
+        console.error('No se pudo iniciar el pago:', e)
+        alert('No se pudo iniciar el pago. Intenta nuevamente más tarde.')
+      } finally {
+        // Si no hubo redirect el botón debe volver a su estado normal
+        try { setIsPaying(false) } catch { }
+      }
+    }
+
+    // Marcar que se está procesando el pago para deshabilitar el botón y mostrar feedback
+    setIsPaying(true)
+    doPay()
+  }}
+  disabled={!isDepositReady() || isPaying}
+  aria-disabled={!isDepositReady() || isPaying}
+>
+  {isPaying ? (
+    <span className="inline-flex items-center gap-2">
+      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+      Procesando...
+    </span>
+  ) : (
+    // Mostrar importes combinados si existen items en carrito
+    carritoState && carritoState.length > 0
+      ? (payFullNow ? `Pagar todo (${fmtMoney(combinedTotal)}€)` : `Pagar depósitos (${fmtMoney(combinedDepositSum)}€)`)
+      : (payFullNow ? `Pagar todo (${fmtMoney(total)}€)` : `Pagar depósito ${fmtMoney(deposit)}€`)
+  )}
+</Button>
+
                       {/* Mostrar errores debajo del botón si el depósito no está listo */}
                       {!isDepositReady() && Object.keys(fieldErrors).length > 0 && (
                         <div className="mt-3 p-3 bg-destructive/10 rounded text-destructive text-sm">

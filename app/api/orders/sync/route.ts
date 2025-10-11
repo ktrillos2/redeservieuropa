@@ -5,25 +5,83 @@ export const dynamic = 'force-dynamic'
 import { getMollieClient } from '@/app/api/mollie/client'
 import { serverClient } from '@/sanity/lib/server-client'
 import { buildOrderEventPayload, createCalendarEvent, getCalendarEventById } from '@/lib/google-calendar'
+import { sendMail } from '@/lib/mailer'
+import { renderClientThanksEmailMulti, renderAdminNewServicesEmailMulti } from '@/lib/email-templates'
 
+/*───────────────────────────────────────────────────────────────*
+ *   🔐 MailLock atómico para evitar correos duplicados
+ *───────────────────────────────────────────────────────────────*/
+async function acquireMailLock(paymentId: string): Promise<boolean> {
+  const _id = `mailLock.payment_${paymentId}`
+  try {
+    await serverClient.createIfNotExists({
+      _id,
+      _type: 'mailLock',
+      paymentId,
+      createdAt: new Date().toISOString(),
+      sentAt: null,
+      sendingAt: null,
+      lockAt: null,
+      lockBy: null,
+    } as any)
+
+    const existing: any = await serverClient.getDocument(_id)
+    if (!existing) return false
+
+    if (existing.sentAt) return false
+
+    if (existing.sendingAt && Date.now() - new Date(existing.sendingAt).getTime() < 45_000) {
+      return false
+    }
+
+    const patch = serverClient
+      .patch(_id)
+      .ifRevisionId(existing._rev) // 👈 lock atómico
+      .set({
+        lockAt: new Date().toISOString(),
+        lockBy: 'orders/sync',
+        sendingAt: new Date().toISOString(),
+      })
+
+    await patch.commit({ returnDocuments: false })
+    return true
+  } catch (e) {
+    console.warn('[sync][mailLock] no adquirido (race)', e?.message || e)
+    return false
+  }
+}
+
+async function markMailSent(paymentId: string) {
+  const _id = `mailLock.payment_${paymentId}`
+  try {
+    await serverClient
+      .patch(_id)
+      .set({ sentAt: new Date().toISOString(), sendingAt: null })
+      .commit({ returnDocuments: false })
+  } catch (e) {
+    console.error('[sync][mailLock] mark sent error', e)
+  }
+}
+
+/*───────────────────────────────────────────────────────────────*
+ *   🧾 POST /api/orders/sync
+ *───────────────────────────────────────────────────────────────*/
 export async function POST(req: Request) {
-  // ...
   try {
     const { paymentId } = await req.json().catch(() => ({})) as { paymentId?: string }
     if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 })
 
-    const url = new URL(req.url)
-    const token = url.searchParams.get('token') || undefined
-    const bypass = url.searchParams.get('bypass') === '1'
+    const mollie = getMollieClient()
+    let payment: any
+    let status: string = 'pending'
+    try {
+      payment = await mollie.payments.get(paymentId)
+      status = payment.status
+    } catch (err) {
+      console.warn('[orders/sync] Mollie error o entorno local', err)
+    }
 
-    const orders = await serverClient.fetch<Array<{
-      _id: string
-      status?: string
-      payment?: { amount?: number; paidAt?: string | null; method?: string | null; requestedMethod?: string | null; currency?: string; status?: string | null }
-      contact?: { name?: string; email?: string; phone?: string }
-      service?: { type?: string; title?: string; date?: string; time?: string; totalPrice?: number; pickupAddress?: string; dropoffAddress?: string; flightNumber?: string; passengers?: number }
-      calendar?: { eventId?: string | null; htmlLink?: string | null }
-    }>>(
+    const orders = await serverClient.fetch<Array<any>>(
       `*[_type == "order" && payment.paymentId == $pid]{
         _id, status,
         payment{amount,paidAt,method,requestedMethod,currency,status},
@@ -34,114 +92,104 @@ export async function POST(req: Request) {
       { pid: paymentId }
     )
 
-    const mollie = getMollieClient()
-    let payment: any | undefined
-    let status: string = 'pending'
-    let chosenMethod: string | undefined
+    if (!orders?.length)
+      return NextResponse.json({ ok: true, note: 'no-orders' })
 
-    try {
-      payment = await mollie.payments.get(paymentId)
-      status = payment.status
-      chosenMethod = (payment as any)?.method
-    } catch (err) {
-      const expected = process.env.MAIL_TEST_TOKEN
-      if (expected && token === expected && bypass) {
-        const first = orders?.[0]
-        status = (first?.payment?.status as any) || first?.status || 'pending'
-        chosenMethod = first?.payment?.method || undefined
-      } else {
-        throw err
-      }
-    }
-
-    // PATCH de pago/estado para TODOS los orders
-    if (Array.isArray(orders) && orders.length > 0) {
+    /*──────── PATCH: actualiza órdenes a pagadas ────────*/
+    if (status === 'paid') {
       for (const o of orders) {
-        const patch: any = {
-          'payment.provider': 'mollie',
-          'payment.paymentId': paymentId,
-          'payment.status': status,
-          'payment.paidAt': status === 'paid' ? new Date().toISOString() : undefined,
-          ...(typeof o.payment?.amount !== 'number' && payment?.amount?.value ? { 'payment.amount': Number(payment.amount.value) } : {}),
-          ...(chosenMethod ? { 'payment.method': String(chosenMethod) } : {}),
-          status: status === 'paid'
-            ? 'paid'
-            : (status === 'failed' || status === 'canceled' || status === 'expired' ? 'failed' : 'pending'),
+        await serverClient.patch(o._id).set({
+          'payment.status': 'paid',
+          'payment.paidAt': new Date().toISOString(),
+          status: 'paid',
           'metadata.updatedAt': new Date().toISOString(),
-        }
-        await serverClient.patch(o._id).set(patch).commit()
-        // eslint-disable-next-line no-console
-        console.log('[orders/sync] order patched', { orderId: o._id, status: patch.status, paidAt: patch['payment.paidAt'] })
+        }).commit()
+        console.log('[orders/sync] order patched', { orderId: o._id, status: 'paid' })
+      }
+    }
 
-        // Si el pedido está pagado, enviar correo solo si NO se envió por el webhook (mailLock)
-        if (patch.status === 'paid') {
-          try {
-            let canSend = true
-            if (paymentId) {
-              const lockDoc = await serverClient.getDocument(`mailLock.payment_${paymentId}`)
-              if (lockDoc?.sentAt) {
-                canSend = false
-                console.log('[orders/sync][mail] Email ya enviado por webhook, no se enviará de nuevo.', { orderId: o._id, paymentId })
-              }
-            }
-            if (canSend) {
-              const internalOrigin = process.env.INTERNAL_API_BASE
-                || (process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.startsWith('http')
-                    ? process.env.NEXT_PUBLIC_SITE_URL
-                    : 'http://localhost:3000')
-              const res = await fetch(`${internalOrigin}/api/orders/send-mail`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ orderId: o._id })
-              })
-              let result = null
-              const contentType = res.headers.get('content-type') || ''
-              if (contentType.includes('application/json')) {
-                result = await res.json()
-              } else {
-                result = { status: res.status, statusText: res.statusText, body: await res.text() }
-              }
-              console.log('[orders/sync][mail] Resultado envío de correo:', { orderId: o._id, ...result })
-            }
-          } catch (err) {
-            console.error('[orders/sync][mail] Error al enviar correo', { orderId: o._id, error: err })
-          }
+    /*──────── Google Calendar: 1 evento por servicio ────────*/
+    if (status === 'paid') {
+      for (const ord of orders) {
+        let exists = false
+        if (ord.calendar?.eventId) {
+          const evt = await getCalendarEventById(ord.calendar.eventId)
+          exists = Boolean(evt?.id)
+        }
+        if (exists) continue
+
+        const total = Number(ord.service?.totalPrice || 0)
+        const paid20 = Number((total * 0.2).toFixed(1))
+
+        const payload = buildOrderEventPayload({
+          ...ord,
+          payment: { ...(ord.payment || {}), paidAmount: paid20 },
+        })
+
+        const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}`)
+        if (evt?.id) {
+          await serverClient.patch(ord._id).set({
+            calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
+          }).commit()
+          console.log('[orders/sync] event created', { orderId: ord._id, eventId: evt.id })
         }
       }
     }
 
-    // Calendar: crear 1 evento por CADA order pagado faltante (idempotente)
-    try {
-      if (status === 'paid' && Array.isArray(orders) && orders.length > 0) {
-        for (const ord of orders) {
-          if (!ord?._id) continue
+    /*──────── Envío de correos (idempotente) ────────*/
+    if (status === 'paid') {
+      const totalAmount = orders.reduce((a, o) => a + (o.service?.totalPrice || 0), 0)
+      const paidAmount = Number((totalAmount * 0.2).toFixed(1))
+      const acquired = await acquireMailLock(paymentId)
 
-          let exists = false
-          if (ord.calendar?.eventId) {
-            const evt = await getCalendarEventById(ord.calendar.eventId!)
-            exists = Boolean(evt?.id)
-          }
-          if (exists) continue
+      if (acquired) {
+        const services = orders.map(o => o.service)
+        const contact = orders.find(o => o.contact?.email)?.contact
 
-          const payload = buildOrderEventPayload(ord)
-          const dedupeKey = `${paymentId}:${ord._id}`
-          const evt = await createCalendarEvent(payload, dedupeKey)
-          if (evt?.id) {
-            await serverClient.patch(ord._id).set({
-              calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
-            }).commit()
-            // eslint-disable-next-line no-console
-            console.log('[orders/sync] event created', { orderId: ord._id, eventId: evt.id })
-          }
+        const adminHtml = renderAdminNewServicesEmailMulti({
+          mollieId: paymentId,
+          amount: paidAmount,
+          currency: orders[0]?.payment?.currency || 'EUR',
+          contact,
+          services,
+        })
+
+        const clientHtml = contact
+          ? renderClientThanksEmailMulti({
+              mollieId: paymentId,
+              amount: paidAmount,
+              currency: orders[0]?.payment?.currency || 'EUR',
+              contact,
+              services,
+            })
+          : null
+
+        // Admin
+        await sendMail({
+          to: ['redeservieuropa@gmail.com'],
+          bcc: 'info@redeservieuropa.com',
+          subject: 'Nuevos servicios confirmados',
+          html: adminHtml,
+          from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>',
+        })
+
+        // Cliente
+        if (contact?.email && clientHtml) {
+          await sendMail({
+            to: contact.email,
+            subject: '¡Gracias por tu pago!',
+            html: clientHtml,
+            from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>',
+          })
         }
+
+        await markMailSent(paymentId)
+        console.log('[orders/sync][mail] Correos enviados y lock marcado.')
+      } else {
+        console.log('[orders/sync][mail] lock ya adquirido; no se reenvían correos.')
       }
-    } catch (err) {
-      console.error('[orders/sync][calendar] No se pudo crear los eventos múltiples', err)
     }
 
-    // IMPORTANTE: NO enviar emails aquí (todo lo hace el webhook)
     return NextResponse.json({ ok: true, status })
   } catch (e: any) {
     console.error('[Orders][sync] Error', e)
@@ -149,28 +197,16 @@ export async function POST(req: Request) {
   }
 }
 
-// Respaldo: crear eventos faltantes para TODOS los orders del pago
+/*──────── PUT de respaldo: recrea eventos faltantes ────────*/
 export async function PUT(req: Request) {
   try {
     const { paymentId } = await req.json().catch(() => ({})) as { paymentId?: string }
     if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 })
 
-    const orders = await serverClient.fetch<Array<{
-      _id: string
-      status?: string
-      calendar?: { eventId?: string | null; htmlLink?: string | null }
-      contact?: any
-      service?: any
-    }>>(
-      `*[_type == "order" && payment.paymentId == $pid]{
-        _id, status, calendar{eventId,htmlLink}, contact, service
-      }`,
+    const orders = await serverClient.fetch<Array<any>>(
+      `*[_type == "order" && payment.paymentId == $pid]{_id, calendar{eventId}, service}`,
       { pid: paymentId }
     )
-
-    if (!Array.isArray(orders) || orders.length === 0) {
-      return NextResponse.json({ ok: true, results: [] })
-    }
 
     const results: any[] = []
 
@@ -180,21 +216,24 @@ export async function PUT(req: Request) {
         const evt = await getCalendarEventById(ord.calendar.eventId!)
         exists = Boolean(evt?.id)
       }
-
       if (!exists) {
-        const payload = buildOrderEventPayload(ord)
+        const total = Number(ord.service?.totalPrice || 0)
+        const paid20 = Number((total * 0.2).toFixed(1))
+        const payload = buildOrderEventPayload({
+          ...ord,
+          payment: { ...(ord as any).payment, paidAmount: paid20 },
+        })
         const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}`)
         if (evt?.id) {
           await serverClient.patch(ord._id).set({
-            calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() }
+            calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
           }).commit()
         }
-        results.push({ orderId: ord._id, created: Boolean(evt?.id), event: evt || null })
+        results.push({ orderId: ord._id, created: Boolean(evt?.id) })
       } else {
-        results.push({ orderId: ord._id, created: false, exists: true, eventId: ord.calendar?.eventId })
+        results.push({ orderId: ord._id, exists: true })
       }
     }
-
     return NextResponse.json({ ok: true, results })
   } catch (e: any) {
     console.error('[Orders][sync PUT] Error', e)

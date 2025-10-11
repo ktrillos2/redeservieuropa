@@ -64,47 +64,61 @@ export async function POST(req: Request) {
 
       // Helper para construir doc desde un elemento (item o booking)
       const buildDocFrom = (src: any) => {
-        return {
-          _type: 'order',
-          orderNumber: undefined,
-          status: 'pending',
-          payment: {
-            provider: 'mollie',
-            paymentId: payment.id,
-            status: 'open',
-            amount: Number(src.totalPrice || amountNumber) || amountNumber,
-            currency: 'EUR',
-            requestedMethod: methodFromBody || undefined,
-            createdAt: new Date().toISOString(),
-            raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links })
-          },
-          contact: src ? {
-            name: src.contactName || src.name || booking?.contactName,
-            email: src.contactEmail || src.email || booking?.contactEmail,
-            phone: src.contactPhone || src.phone || booking?.contactPhone,
-          } : undefined,
-          service: src ? {
-            type: src.isEvent ? 'evento' : (src.tourId || src.tipo === 'tour' ? 'tour' : 'traslado'),
-            title: src.isEvent ? (src.eventTitle || 'Evento') : (src.tourId || src.serviceLabel || `${src.pickupAddress || ''} -> ${src.dropoffAddress || ''}`),
-            date: src.date || src.fecha || undefined,
-            time: src.time || src.hora || src.arrivalTime || undefined,
-            passengers: src.passengers ? Number(src.passengers) : (src.pasajeros ? Number(src.pasajeros) : undefined),
-            pickupAddress: src.pickupAddress || src.pickup || undefined,
-            dropoffAddress: src.dropoffAddress || src.dropoff || undefined,
-            flightNumber: src.flightNumber || src.numeroVuelo || undefined,
-            ninos: src.ninos ?? undefined,
-            ninosMenores9: src.ninosMenores9 ?? undefined,
-            luggage23kg: Object.prototype.hasOwnProperty.call(src, 'luggage23kg') ? Number(src.luggage23kg) : undefined,
-            luggage10kg: Object.prototype.hasOwnProperty.call(src, 'luggage10kg') ? Number(src.luggage10kg) : undefined,
-            isNightTime: Boolean(src.isNightTime),
-            extraLuggage: Boolean(src.extraLuggage),
-            totalPrice: Number(src.totalPrice || amountNumber) || amountNumber,
-            selectedPricingOption: src.selectedPricingOption || undefined,
-            notes: src.specialRequests || undefined,
-          } : undefined,
-          metadata: { source: 'web', createdAt: new Date().toISOString() }
-        }
-      }
+  // leer flags del front
+  const payFullNow = Boolean(src?.payFullNow)
+  const referralSource = src?.referralSource || src?.comoNosConocio || src?.heardFrom || null
+
+  // puedes guardar el % explícito si lo mandas desde el front; si no, que lo calcule el servidor/plantilla
+  const depositPercent = typeof src?.depositPercent === 'number' ? src.depositPercent : null
+
+  return {
+    _type: 'order',
+    orderNumber: undefined,
+    status: 'pending',
+    payment: {
+      provider: 'mollie',
+      paymentId: payment.id,
+      status: 'open',
+      amount: Number(src.totalPrice || amountNumber) || amountNumber,
+      currency: 'EUR',
+      requestedMethod: methodFromBody || undefined,
+      createdAt: new Date().toISOString(),
+      // persistimos banderas útiles para emails/calendar
+      payFullNow,
+      depositPercent,
+      raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links })
+    },
+    contact: src ? {
+      name: src.contactName || src.name || booking?.contactName,
+      email: src.contactEmail || src.email || booking?.contactEmail,
+      phone: src.contactPhone || src.phone || booking?.contactPhone,
+      referralSource: referralSource || booking?.referralSource || null,
+    } : undefined,
+    service: src ? {
+      type: src.isEvent ? 'evento' : (src.tourId || src.tipo === 'tour' ? 'tour' : 'traslado'),
+      title: src.isEvent ? (src.eventTitle || 'Evento') : (src.tourId || src.serviceLabel || `${src.pickupAddress || ''} -> ${src.dropoffAddress || ''}`),
+      date: src.date || src.fecha || undefined,
+      time: src.time || src.hora || src.arrivalTime || undefined,
+      passengers: src.passengers ? Number(src.passengers) : (src.pasajeros ? Number(src.pasajeros) : undefined),
+      pickupAddress: src.pickupAddress || src.pickup || undefined,
+      dropoffAddress: src.dropoffAddress || src.dropoff || undefined,
+      flightNumber: src.flightNumber || src.numeroVuelo || undefined,
+      ninos: src.ninos ?? undefined,
+      ninosMenores9: src.ninosMenores9 ?? undefined,
+      luggage23kg: Object.prototype.hasOwnProperty.call(src, 'luggage23kg') ? Number(src.luggage23kg) : undefined,
+      luggage10kg: Object.prototype.hasOwnProperty.call(src, 'luggage10kg') ? Number(src.luggage10kg) : undefined,
+      isNightTime: Boolean(src.isNightTime),
+      extraLuggage: Boolean(src.extraLuggage),
+      totalPrice: Number(src.totalPrice || amountNumber) || amountNumber,
+      selectedPricingOption: src.selectedPricingOption || undefined,
+      notes: src.specialRequests || undefined,
+      // persistimos también en service por comodidad
+      payFullNow,
+      depositPercent,
+    } : undefined,
+    metadata: { source: 'web', createdAt: new Date().toISOString() }
+  }
+}
 
       // Crear docs desde carrito
       if (items.length > 0) {

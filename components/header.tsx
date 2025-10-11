@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronUp, ShoppingCart } from "lucide-react"
 
 const MenuIcon = () => (
   <svg
@@ -326,6 +326,14 @@ export function Header({
             <Link href="#contacto" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
               Contacto
             </Link>
+            {/* Icono de carrito persistente (desktop) */}
+            <Link
+              href="/pago"
+              aria-label="Ver cotizaciones"
+              className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}
+            >
+              <ShoppingCart className="size-6" />
+            </Link>
           </nav>
 
           <Button
@@ -338,7 +346,7 @@ export function Header({
           </Button>
         </div>
 
-        {isMenuOpen && (
+  {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 soft-fade-in">
             <nav className="flex flex-col space-y-5 pt-4 font-display px-2">
               {/* Servicios (acordeón simple en móvil) */}
@@ -415,6 +423,18 @@ export function Header({
                 style={{ color: "#000000", fontWeight: "600" }}
               >
                 Contacto
+              </Link>
+              {/* Icono de carrito de compras (móvil) */}
+              <Link
+                href="/pago"
+                className="inline-flex items-center justify-center transition-colors rounded-full p-2 w-fit self-start"
+                aria-label="Ver cotizaciones (carrito)"
+                prefetch={false}
+              >
+                <ShoppingCart
+                  className="size-6"
+                  style={{ color: useDarkText ? "#000000" : "#ffffff" }}
+                />
               </Link>
             </nav>
           </div>

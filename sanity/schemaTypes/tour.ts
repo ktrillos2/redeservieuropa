@@ -34,6 +34,14 @@ export default defineType({
     // NUEVO: comodidades del vehículo
     defineField({ name: 'amenities', title: 'Comodidades del vehículo', type: 'array', of: [{ type: 'string' }], description: 'Ej: WiFi, Agua, Cargadores USB, Asientos confort, Climatización bizona.' }),
   defineField({ name: 'notes', title: 'Notas (bullets)', type: 'array', of: [{ type: 'string' }], description: 'Notas informativas adicionales (bullets cortos).' }),
+    // NUEVO: Solo el selector de requiere info de vuelo
+    defineField({
+      name: 'requireFlightInfo',
+      title: '¿Requiere info de vuelo?',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Activa esto si el tour inicia o termina en un aeropuerto. El cliente deberá ingresar la info de vuelo al reservar.'
+    }),
     defineField({ name: 'basePrice', title: 'Precio base (€)', type: 'number' }),
     defineField({ name: 'basePriceDay', title: 'Precio por hora Diurno (€)', type: 'number' }),
     defineField({ name: 'basePriceNight', title: 'Precio por hora Nocturno (€)', type: 'number' }),

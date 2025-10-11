@@ -115,7 +115,7 @@ export default function PaymentPage() {
     const d = bookingData.destino ?? bookingData.destination ?? bookingData.dropoffAddress ?? bookingData.to ?? ''
     setSavedOriginOnLoad(o || null)
     setSavedDestinationOnLoad(d || null)
-
+    
   }, [bookingData])
 
   // Exponer en el body un atributo cuando el modal de cotización esté abierto
@@ -1001,6 +1001,7 @@ export default function PaymentPage() {
       alert('No se pudo agregar al carrito. Intenta nuevamente.')
     }
   }
+  
 
   return (
     <main className="min-h-screen">
@@ -1334,11 +1335,65 @@ export default function PaymentPage() {
                           </div>
                         </div>
                       ) : isTour ? (
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-primary">Información de Contacto:</h4>
-                          <p className="text-sm">{bookingData.contactName}</p>
-                          <p className="text-sm text-muted-foreground">{bookingData.contactPhone}</p>
-                          <p className="text-sm text-muted-foreground">{bookingData.contactEmail}</p>
+                          <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                          <h4 className="font-medium text-primary">Información de Contacto</h4>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Nombre Completo</label>
+                            <Input
+                              placeholder="Tu nombre completo"
+                              data-field="contactName"
+                              className={fieldErrors.contactName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                              value={bookingData.contactName || ''}
+                              onChange={(e) => updateBookingField('contactName', e.target.value)}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium">Teléfono</label>
+                              <PhoneInputIntl
+                                value={bookingData.contactPhone || ''}
+                                onChange={value => updateBookingField('contactPhone', value)}
+                                inputProps={{
+                                  name: 'contactPhone',
+                                  className: fieldErrors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : ''
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium">Email</label>
+                              <EmailAutocomplete
+                                value={bookingData.contactEmail || ''}
+                                onChange={value => updateBookingField('contactEmail', value)}
+                                className={fieldErrors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : ''}
+                                name="contactEmail"
+                                data-field="contactEmail"
+                                onBlur={e => validateAndSetEmail(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">¿Dónde nos conociste?</label>
+                            <Select value={bookingData.referralSource || ''} onValueChange={(v) => updateBookingField('referralSource', v)}>
+                              <SelectTrigger className="cursor-pointer">
+                                <SelectValue placeholder="Selecciona una opción" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="google">Google</SelectItem>
+                                <SelectItem value="facebook">Facebook</SelectItem>
+                                <SelectItem value="instagram">Instagram</SelectItem>
+                                <SelectItem value="referido">Recomendación</SelectItem>
+                                <SelectItem value="otro">Otro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium">Solicitudes Especiales (opcional)</label>
+                            <Input
+                              placeholder="Asiento bebé, parada extra, etc."
+                              value={bookingData.specialRequests || ''}
+                              onChange={(e) => updateBookingField('specialRequests', e.target.value)}
+                            />
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
@@ -2307,8 +2362,7 @@ export default function PaymentPage() {
                         <Select
                           value={String(modalForm.ninos ?? 0)}
                           onValueChange={value => {
-                            const maxByPassengers = parsePassengers(modalForm.passengers as any)
-                            const maxNinos = Math.min(10, maxByPassengers)
+                            const maxNinos = parsePassengers(modalForm.passengers as any)
                             let n = Number(value)
                             if (n > maxNinos) n = maxNinos
                             setModalForm({ ...modalForm, ninos: n })
@@ -2320,7 +2374,7 @@ export default function PaymentPage() {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="max-h-72">
-                            {Array.from({ length: Math.min(10, parsePassengers(modalForm.passengers as any)) + 1 }, (_, i) => i).map((n) => (
+                            {Array.from({ length: parsePassengers(modalForm.passengers as any) + 1 }, (_, i) => i).map((n) => (
                               <SelectItem key={n} value={String(n)}>{n}</SelectItem>
                             ))}
                           </SelectContent>
@@ -2345,9 +2399,9 @@ export default function PaymentPage() {
                               <SelectValue placeholder="Selecciona: Coche, Minivan o Van" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="coche">Coche</SelectItem>
-                              <SelectItem value="minivan">Minivan</SelectItem>
-                              <SelectItem value="van">Van</SelectItem>
+                              <SelectItem value="coche">{bookingForm?.vehicleField?.labelCoche || 'Coche (4 personas)'}</SelectItem>
+                              <SelectItem value="minivan">{bookingForm?.vehicleField?.labelMinivan || 'Minivan (6 pasajeros)'}</SelectItem>
+                              <SelectItem value="van">{bookingForm?.vehicleField?.labelVan || 'Van (8 pasajeros)'}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

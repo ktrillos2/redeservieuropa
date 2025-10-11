@@ -10,6 +10,21 @@ export default defineType({
   fields: [
     defineField({ name: 'from', title: 'Desde', type: 'string', validation: r => r.required() }),
     defineField({ name: 'to', title: 'Hasta', type: 'string', validation: r => r.required() }),
+    // NUEVO: Solo el selector de requiere info de vuelo
+    defineField({
+      name: 'requireFlightInfo',
+      title: '¿Requiere info de vuelo?',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Activa esto si el traslado inicia o termina en un aeropuerto. El cliente deberá ingresar la info de vuelo al reservar.'
+    }),
+    defineField({
+      name: 'requireFlightNumber',
+      title: 'Obligar número de vuelo',
+      type: 'boolean',
+      description: 'Si está activo, se requerirá número de vuelo al reservar este traslado.',
+      initialValue: false,
+    }),
     defineField({
       name: 'slug',
       title: 'Slug',

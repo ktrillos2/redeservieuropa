@@ -262,8 +262,8 @@ export default function PaymentPage() {
       destino: hasMultiple ? '' : (bookingData?.destino || ''),
       pickupAddress: hasMultiple ? '' : (paymentPickupAddress || bookingData?.pickupAddress || ''),
       dropoffAddress: hasMultiple ? '' : (paymentDropoffAddress || bookingData?.dropoffAddress || ''),
-      date: bookingData?.date || bookingData?.fecha || '',
-      time: bookingData?.time || bookingData?.hora || '',
+      date: '',
+      time: '',
       passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
       ninos: bookingData?.ninos || 0,
       vehicle: bookingData?.vehicle || bookingData?.vehiculo || 'coche',
@@ -300,8 +300,8 @@ export default function PaymentPage() {
       pickupAddress: bookingData?.dropoffAddress || paymentDropoffAddress || '',
       dropoffAddress: bookingData?.pickupAddress || paymentPickupAddress || '',
       // --- FIN DE LÓGICA ---
-      date: bookingData?.date || bookingData?.fecha || '',
-      time: bookingData?.time || bookingData?.hora || '',
+      date: '',
+      time: '',
       passengers: String(bookingData?.passengers || bookingData?.pasajeros || 1),
       ninos: bookingData?.ninos || 0,
       vehicle: bookingData?.vehicle || bookingData?.vehiculo || bookingData?.vehicleType || 'coche',
@@ -2124,16 +2124,16 @@ if (requireFlight) {
                       )}
                       {/* Texto informativo para cotizar ida y vuelta: ocultar cuando hay más de 1 cotización */}
                       {!(carritoState && carritoState.length > 0) && (
-                        <div className="text-center p-4 mt-4 bg-muted border border-dashed rounded-lg">
-                          <p className="text-sm text-primary/90">
-                            Si deseas un <strong>ida y vuelta</strong>, pulsa
-                            <Button size="sm" variant="default" className="mx-2 align-middle" onClick={openReturnQuoteModal}>
-                              aquí
-                            </Button>
-                            y podrás cotizar otro traslado o tour.
-                          </p>
-                        </div>
-                      )}
+  <div className="text-center p-4 mt-4 bg-muted border border-dashed rounded-lg">
+    <p className="text-sm text-primary/90">
+      Si deseas añadir <strong>Otra Cotización</strong> , pulsa
+      <Button size="sm" variant="default" className="mx-2 align-middle" onClick={openReturnQuoteModal}>
+        aquí
+      </Button>
+      y podrás cotizar otro traslado o tour.
+    </p>
+  </div>
+)}
                       {/* Mostrar número de cotizaciones realizadas (items en carrito) */}
                       <div className="text-center mb-3">
                         <span className="text-sm text-muted-foreground">Cotizaciones extras realizadas: <strong>{carritoState?.length || 0}</strong></span>

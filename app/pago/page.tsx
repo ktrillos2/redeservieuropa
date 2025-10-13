@@ -1,4 +1,5 @@
 "use client"
+import { TooltipBriefInfo } from "@/components/ui/tooltip-brief-info"
 
 // Mapa de etiquetas amigables para mostrar en los labels
 const labelMap = {
@@ -1164,16 +1165,23 @@ if (requireFlight) {
                       )}
                       <div className="flex items-center justify-between">
   <span className="font-medium">{bookingData.isEvent ? "Evento:" : "Servicio:"}</span>
-  {isTour ? (
-    <Badge className="bg-accent text-accent-foreground">
-      {console.log(bookingData)}
-      {bookingData.tourData.title || "Tour"}
-    </Badge>
-  ) : (
-    <Badge className="bg-accent text-accent-foreground">
-      {serviceLabel}
-    </Badge>
-  )}
+  <div className="flex items-center gap-2 relative">
+    {isTour ? (
+      <Badge className="bg-accent text-accent-foreground">
+        {bookingData.tourData.title || "Tour"}
+      </Badge>
+    ) : (
+      <Badge className="bg-accent text-accent-foreground">
+        {serviceLabel}
+      </Badge>
+    )}
+    {/* Tooltip info breve */}
+    {(isTour ? bookingData.tourData?.briefInfo : bookingData.transferData?.briefInfo) && (
+      <TooltipBriefInfo info={isTour ? bookingData.tourData?.briefInfo : bookingData.transferData?.briefInfo} />
+    )}
+
+  </div>
+
 </div>
 
                       <Separator />

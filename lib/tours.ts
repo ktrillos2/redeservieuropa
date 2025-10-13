@@ -249,7 +249,7 @@ export const tourData: Record<string, TourInfo> = {
     ],
   },
   "paris-dl-dl": {
-    title: "Disneyland ➡ Paris Tour ➡ Disneyland",
+    title: "Disneyland ➡ Paris Tour ➡ Disneylandfdf",
     description:
       "Disfruta un recorrido por París saliendo desde Disneyland y regresando al mismo punto. Ideal para conocer lo imprescindible en un solo trayecto con paradas para fotos.",
     basePrice: 200,

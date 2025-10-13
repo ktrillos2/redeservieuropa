@@ -792,18 +792,46 @@ export function Hero({
                                   Tour
                                 </label>
                                 <Select
-                                  value={bookingData.selectedTourSlug}
-                                  onValueChange={(value) => setBookingData({ ...bookingData, selectedTourSlug: value })}
-                                >
-                                  <SelectTrigger data-field="tour" className="cursor-pointer">
-                                    <SelectValue placeholder="Selecciona un tour" />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-h-72">
-                                    {toursList.map((t, idx) => (
-                                      <SelectItem key={idx} value={t.slug || t.title}>{t.title}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+  value={bookingData.selectedTourSlug}
+  onValueChange={(value) =>
+    setBookingData({ ...bookingData, selectedTourSlug: value })
+  }
+>
+  {/* Trigger (botón visible) */}
+  <SelectTrigger
+    data-field="tour"
+    className="cursor-pointer max-w-[260px] truncate"
+  >
+    <SelectValue
+      placeholder="Selecciona un tour"
+      renderValue={(value) => {
+        if (!value) return "Selecciona un tour"
+        const selectedTour = toursList.find(
+          (t) => t.slug === value || t.title === value
+        )
+        if (!selectedTour) return value
+        const title = selectedTour.title
+        // Truncar solo en el valor seleccionado
+        return title.length > 40 ? title.slice(0, 40) + "…" : title
+      }}
+    />
+  </SelectTrigger>
+
+  {/* Lista del selector (sin truncar) */}
+  <SelectContent className="max-h-72">
+    {toursList.map((t, idx) => (
+      <SelectItem
+        key={idx}
+        value={t.slug || t.title}
+        className="whitespace-normal max-w-[400px]" // muestra el texto completo
+        title={t.title}
+      >
+        {t.title}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
                               </div>
                             )}
                             {/* Tipo de tour (Diurno, Nocturno o Escala) */}

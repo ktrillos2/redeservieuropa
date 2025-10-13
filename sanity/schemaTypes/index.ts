@@ -3,7 +3,7 @@ import generalInfo from './generalInfo'
 import header, { menuGroup, menuLink, menuSeparator } from './header'
 import hero from './hero'
 import event from './event'
-import tour, { pricingItem } from './tour'
+import tour from './tour'
 import transfers from './transfers'
 import toursSection from './toursSection'
 import testimonialsSection, { testimonialItem } from './testimonialsSection'
@@ -23,7 +23,6 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     header,
     hero,
   event,
-    pricingItem,
   tour,
   transfers,
   transfersSectionContent,

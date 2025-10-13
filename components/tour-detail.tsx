@@ -1109,7 +1109,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                     <h3 className="text-xl font-semibold text-primary mb-2">Tarifas Tour: hasta 4 pasajeros</h3>
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value="dl-dl-4">
-                        <AccordionTrigger>Disneyland ➡ Paris Tour ➡ Disneyland</AccordionTrigger>
+                        <AccordionTrigger>Disneyland ➡ Paris Tour ➡ Disneylandsss</AccordionTrigger>
                         <AccordionContent>
                           <ul className="list-disc pl-5 space-y-1">
                             <li>Paris Tour (3h): <span className="font-semibold">300€</span></li>

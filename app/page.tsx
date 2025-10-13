@@ -1,11 +1,11 @@
 import HeroServer from "@/components/hero.server"
-import { Services } from "@/components/services"
 import { TransfersSection } from "@/components/transfers-section"
 import { Testimonials } from "@/components/testimonials"
 import { Contact } from "@/components/contact"
 import HeaderServer from "@/components/header.server"
 import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
+import ServicesServer from "@/components/services.server"
 
 export default function HomePage() {
   return (
@@ -16,7 +16,7 @@ export default function HomePage() {
         <HeroServer />
       </AnimatedSection>
       <AnimatedSection animation="slide-left" delay={200}>
-        <Services />
+        <ServicesServer />
       </AnimatedSection>
       <AnimatedSection animation="slide-right" delay={300}>
         <TransfersSection />

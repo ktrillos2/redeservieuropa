@@ -3,7 +3,6 @@ import { urlFor } from '@/sanity/lib/image'
 import { getActiveEventsForHero } from '@/sanity/lib/events'
 import { getToursList } from '@/sanity/lib/tours'
 import { Hero } from './hero'
-
 export default async function HeroServer() {
   const hero = await ensureAndGetHero()
   const events = await getActiveEventsForHero()

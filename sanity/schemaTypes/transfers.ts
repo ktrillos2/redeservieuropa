@@ -10,6 +10,7 @@ export default defineType({
   fields: [
     defineField({ name: 'from', title: 'Desde', type: 'string', validation: r => r.required() }),
     defineField({ name: 'to', title: 'Hasta', type: 'string', validation: r => r.required() }),
+  defineField({ name: 'briefInfo', title: 'Información breve', type: 'text', rows: 4, description: 'Texto breve o detalles clave que se mostrarán con un tooltip en la cotización.' }),
     // NUEVO: Solo el selector de requiere info de vuelo
     defineField({
       name: 'requireFlightInfo',

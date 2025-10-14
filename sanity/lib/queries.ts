@@ -55,27 +55,25 @@ export const TOURS_LIST_QUERY = `
 }
 `
 export const TOUR_BY_SLUG_QUERY = `
-*[_type == "tours" && slug.current == $slug][0]{
+*[_type == "tour" && slug.current == $slug][0]{
   _id,
   title,
-  slug,
+  "slug": slug.current,
+  summary,
   description,
-  duration,
-  distance,
   mainImage,
-  gallery,
+  route{origin, destination, circuitName, roundTrip},
   features,
-  included,
-  amenities,
+  includes,
+  visitedPlaces,
   notes,
-  infoLists,
-  basePrice,
-  basePriceDay,
-  basePriceNight,
-  pricing,
-  pricingP4,
-  pricingP5,
-  extraSections
+  amenities,
+  pricingMode,
+  pricingRules{ baseUpTo4EUR },
+  pricingTable{ p4,p5,p6,p7,p8,extraFrom9 },
+  booking{ startingPriceEUR },
+  isPopular,
+  orderRank
 }
 `
 

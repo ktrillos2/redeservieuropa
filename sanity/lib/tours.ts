@@ -56,22 +56,22 @@ export type TourDoc = {
 
 
   // --- CAMPOS ANTIGUOS (opcional mantener si hay data vieja) ---
-  // duration?: string
-  // distance?: string
-  // basePrice?: number
-  // basePriceDay?: number
-  // basePriceNight?: number
-  // pricing?: { pax: number; price: number }[]
-  // pricingP4?: { threeH?: number; twoH?: number; eiffelArco?: number }
-  // pricingP5?: { threeH?: number; twoH?: number; eiffelArco?: number }
+  duration?: string
+  distance?: string
+  basePrice?: number
+  basePriceDay?: number
+  basePriceNight?: number
+  pricing?: { pax: number; price: number }[]
+  pricingP4?: { threeH?: number; twoH?: number; eiffelArco?: number }
+  pricingP5?: { threeH?: number; twoH?: number; eiffelArco?: number }
 
-  // // --- SECCIONES ADICIONALES ---
-  // extraSections?: Array<{
-  //   title?: string
-  //   body?: any
-  //   included?: string[]
-  //   itinerary?: string[]
-  // }>
+  // --- SECCIONES ADICIONALES ---
+  extraSections?: Array<{
+    title?: string
+    body?: any
+    included?: string[]
+    itinerary?: string[]
+  }>
 }
 
 

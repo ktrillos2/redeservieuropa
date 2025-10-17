@@ -163,49 +163,96 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
       return base + nightFee + luggageFee
     })()
 
-    const submitCmsBooking = () => {
-      const newErrors: Record<string, string> = {}
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-      if (!contactName.trim()) newErrors.contactName = "Requerido"
-      if (!contactPhone.trim()) newErrors.contactPhone = "Requerido"
-      if (!contactEmail.trim()) newErrors.contactEmail = "Requerido"
-      else if (!emailRegex.test(contactEmail.trim())) newErrors.contactEmail = "Email inválido"
-      if (!date) newErrors.date = "Requerido"
-      if (!time) newErrors.time = "Requerido"
-      if (!pickupAddress.trim()) newErrors.pickupAddress = "Requerido"
-      if (passengers < 1) newErrors.passengers = "Debe ser ≥1"
+    // === TOUR-DETAIL (CMS): función completa para enviar a /pago con tourDoc ===
+const submitCmsBooking = () => {
+  const newErrors: Record<string, string> = {}
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-      setFieldErrors(newErrors)
-      if (Object.keys(newErrors).length > 0) {
-        const firstKey = Object.keys(newErrors)[0]
-        try { document.querySelector<HTMLInputElement>(`[data-field="${firstKey}"]`)?.focus() } catch {}
-        return
-      }
+  if (!contactName.trim()) newErrors.contactName = 'Requerido'
+  if (!contactPhone.trim()) newErrors.contactPhone = 'Requerido'
+  if (!contactEmail.trim()) newErrors.contactEmail = 'Requerido'
+  else if (!emailRegex.test(contactEmail.trim())) newErrors.contactEmail = 'Email inválido'
+  if (!date) newErrors.date = 'Requerido'
+  if (!time) newErrors.time = 'Requerido'
+  if (!pickupAddress.trim()) newErrors.pickupAddress = 'Requerido'
+  if (passengers < 1) newErrors.passengers = 'Debe ser ≥1'
 
-      const bookingData = {
-        tourId,
-        passengers,
-        date,
-        time,
-        pickupAddress,
-        dropoffAddress,
-        flightNumber,
-        luggage23kg,
-        luggage10kg,
-        babyStrollers,
-        childrenAges,
-        specialRequests,
-        contactName,
-        contactPhone,
-        contactEmail,
-        totalPrice: Number(totalCms || 0),
-        isNightTime,
-        extraLuggage: Number(luggage23kg || 0) > 3,
-        pricingMode: tourFromCms.pricingMode,
-      }
-      localStorage.setItem("bookingData", JSON.stringify(bookingData))
-      router.push("/pago")
-    }
+  setFieldErrors(newErrors)
+  if (Object.keys(newErrors).length > 0) {
+    const firstKey = Object.keys(newErrors)[0]
+    try { document.querySelector<HTMLInputElement>(`[data-field="${firstKey}"]`)?.focus() } catch {}
+    return
+  }
+
+  // Determinar nocturno simple por hora introducida
+  const isNight = (() => {
+    if (!time) return false
+    const [hh] = String(time).split(':').map(Number)
+    const h = hh || 0
+    return h >= 21 || h < 6
+  })()
+
+  // Construir tourDoc con el esquema nuevo
+  const tourDoc = {
+    _id: tourId,
+    title: tourFromCms!.title,
+    route: tourFromCms!.route,
+    summary: tourFromCms!.summary,
+    description: tourFromCms!.description,
+    amenities: tourFromCms!.amenities,
+    features: tourFromCms!.features,
+    includes: tourFromCms!.includes,
+    visitedPlaces: tourFromCms!.visitedPlaces,
+    notes: tourFromCms!.notes,
+    overCapacityNote: tourFromCms!.overCapacityNote,
+    pricingMode: tourFromCms!.pricingMode,       // 'rules' | 'table'
+    pricingRules: tourFromCms!.pricingRules,     // { baseUpTo4EUR }
+    pricingTable: tourFromCms!.pricingTable,     // { p4..p8, extraFrom9 }
+    booking: { startingPriceEUR: tourFromCms!.startingPriceEUR },
+   isPopular: Boolean(
+  (tourFromCms as any)?.isPopular === true ||
+  (tourFromCms as any)?.isPopular === 'yes'
+),
+  }
+
+  // Total inicial (lo recalcularemos en /pago con tourDoc y passengers)
+  const initialTotal = 0
+
+  const bookingData: any = {
+    quickType: 'tour',
+    isTourQuick: true,
+
+    tourId,                     // slug/id del tour
+    passengers,
+    date,
+    time,
+    pickupAddress,
+    dropoffAddress,
+    flightNumber,
+    luggage23kg,
+    luggage10kg,
+    babyStrollers,
+    childrenAges,
+    specialRequests,
+    contactName,
+    contactPhone,
+    contactEmail,
+
+    // Tour del CMS (nuevo esquema)
+    tourDoc,
+
+    // Flags
+    isNightTime: isNight,
+    extraLuggage: Number(luggage23kg || 0) > 3,
+
+    // Total inicial
+    totalPrice: initialTotal,
+  }
+
+  try { localStorage.setItem('bookingData', JSON.stringify(bookingData)) } catch {}
+
+  router.push(`/pago?tour=${encodeURIComponent(tourId)}`)
+}
 
     return (
       <div className="min-h-screen pt-20">

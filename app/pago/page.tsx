@@ -51,6 +51,42 @@ const fmtMoney = (n: number | string | undefined | null) => {
 type PricingItem = { _key?: string; pax: number; price: number }
 type PricingOption = { _key?: string; _type?: 'pricingOption'; label: string; hours?: number; price: number }
 
+// === /pago: helper de precio según esquema nuevo (ACTUALIZADO) ===
+const INC_5 = 34, INC_6 = 32, INC_7 = 28, INC_8 = 26
+
+function computeFromTourDoc(pax: number, tourDoc: any) {
+  const n = Math.max(1, Math.floor(pax || 0))
+  const mode = tourDoc?.pricingMode
+
+  // MODO "rules": base hasta 4; 5→+34; 6→+32; 7→+28; 8→+26
+  // NUEVO: 9+ = (precio de 8) + INC_8 * (n - 8)
+  if (mode === 'rules' && tourDoc?.pricingRules?.baseUpTo4EUR != null) {
+    const base = Number(tourDoc.pricingRules.baseUpTo4EUR || 0)
+    if (n <= 4) return base
+    if (n === 5) return base + INC_5
+    if (n === 6) return base + INC_5 + INC_6
+    if (n === 7) return base + INC_5 + INC_6 + INC_7
+    if (n === 8) return base + INC_5 + INC_6 + INC_7 + INC_8
+    // n > 8
+    const priceAt8 = base + INC_5 + INC_6 + INC_7 + INC_8
+    return priceAt8 + INC_8 * (n - 8)
+  }
+
+  // MODO "table": 4..8 explícitos + extraFrom9 por cada pasajero > 8 (ya contemplaba 9+ sin tope)
+  if (mode === 'table' && tourDoc?.pricingTable) {
+    const { p4 = 0, p5 = 0, p6 = 0, p7 = 0, p8 = 0, extraFrom9 = 0 } = tourDoc.pricingTable
+    if (n <= 4) return p4
+    if (n === 5) return p5
+    if (n === 6) return p6
+    if (n === 7) return p7
+    if (n === 8) return p8
+    return p8 + extraFrom9 * (n - 8)
+  }
+
+  // Fallback si no hay modo ni tabla
+  return Number(tourDoc?.booking?.startingPriceEUR ?? 0) || 0
+}
+
 type SanityImageRef = { _type: 'image'; asset: { _ref?: string; _type?: 'reference' } }
 type TourData = {
   _id: string
@@ -199,6 +235,34 @@ export default function PaymentPage() {
     setSavedDestinationOnLoad(d || null)
     
   }, [bookingData])
+
+  // === /pago: recalcular total cuando cambian pax/nocturno/equipaje (COMPLETO) ===
+useEffect(() => {
+  if (!bookingData?.tourDoc) return
+
+  const pax = Number(bookingData.passengers || 1)
+
+  // 1) base según doc del tour
+  let total = computeFromTourDoc(pax, bookingData.tourDoc)
+
+  // 2) recargos globales (si los usas)
+  if (bookingData.isNightTime) total += 5
+  if (Number(bookingData.luggage23kg || 0) > 3) total += 10
+
+  // 3) sincroniza estado y localStorage si cambió
+  if (total !== Number(bookingData.totalPrice || 0)) {
+    setBookingData((prev: any) => {
+      const next = { ...prev, totalPrice: total }
+      try { localStorage.setItem('bookingData', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+}, [
+  bookingData?.tourDoc,         // cambia el tour
+  bookingData?.passengers,      // cambia cantidad de pasajeros
+  bookingData?.isNightTime,     // cambia horario (nocturno)
+  bookingData?.luggage23kg      // cambia equipaje
+])
 
   // Exponer en el body un atributo cuando el modal de cotización esté abierto
   useEffect(() => {
@@ -741,67 +805,22 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
   }, [bookingData?.passengers, bookingData?.pasajeros, bookingData?.ninos])
 
   const updateBookingField = (key: string, value: any) => {
-    setBookingData((prev: any) => {
-      const next: any = { ...prev, [key]: value }
+  setBookingData((prev: any) => {
+    const next: any = { ...prev, [key]: value }
 
-      // Recalcular derivados (total, extras) solo si aplica
-      const recalc = (n: any) => {
-        // Normalizar campos numéricos
-        n.passengers = Math.max(1, Math.min(9, Number(n.passengers || 1)))
-        n.luggage23kg = Math.max(0, Number(n.luggage23kg ?? 0))
-        n.luggage10kg = Math.max(0, Number(n.luggage10kg ?? 0))
+    // 🔧 Normalizar campos numéricos (SIN límite 9)
+    next.passengers  = Math.max(1, Math.min(56, Number(next.passengers || 1)))
+    next.luggage23kg = Math.max(0, Number(next.luggage23kg ?? 0))
+    next.luggage10kg = Math.max(0, Number(next.luggage10kg ?? 0))
 
-        // Eventos: total = precio por persona * cupos
-        if (n.isEvent && typeof n.pricePerPerson === "number") {
-          const total = Number(n.pricePerPerson) * Number(n.passengers || 1)
-          n.totalPrice = Number(total.toFixed(2))
-          return n
-        }
-
-        // Traslados: calcular base por ruta y pax
-        if (n.pickupAddress && n.dropoffAddress) {
-          // Intentar deducir origen/destino a partir de etiquetas
-          const from = (n.pickupAddress || "").toLowerCase().includes("cdg") ? "cdg"
-            : (n.pickupAddress || "").toLowerCase().includes("orly") ? "orly"
-              : (n.pickupAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
-                : (n.pickupAddress || "").toLowerCase().includes("disney") ? "disneyland"
-                  : (n.pickupAddress || "").toLowerCase().includes("parís") || (n.pickupAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
-          const to = (n.dropoffAddress || "").toLowerCase().includes("cdg") ? "cdg"
-            : (n.dropoffAddress || "").toLowerCase().includes("orly") ? "orly"
-              : (n.dropoffAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
-                : (n.dropoffAddress || "").toLowerCase().includes("disney") ? "disneyland"
-                  : (n.dropoffAddress || "").toLowerCase().includes("parís") || (n.dropoffAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
-          const pax = Math.max(1, Number(n.passengers || 1))
-          const baseCalc = calcBaseTransferPrice(from, to, pax)
-          const base = typeof baseCalc === "number" ? baseCalc : Number(n.basePrice || 0)
-
-          const isNight = (() => {
-            if (!n.time) return false
-            const [hh] = String(n.time).split(":").map(Number)
-            const h = hh || 0
-            return h >= 21 || h < 6
-          })()
-          // Equipaje voluminoso: más de 3 maletas de 23Kg
-          const extraLuggage = Number(n.luggage23kg ?? 0) > 3
-          const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0)
-          n.isNightTime = isNight
-          n.extraLuggage = extraLuggage
-          n.luggageCount = Number(n.luggage23kg ?? 0) + Number(n.luggage10kg ?? 0)
-          n.totalPrice = Number((base + extrasSum).toFixed(2))
-          n.basePrice = base
-          return n
-        }
-
-        // Por defecto: mantener total
-        return n
-      }
-
-      const computed = recalc(next)
-      localStorage.setItem("bookingData", JSON.stringify(computed))
-      // Limpiar error del campo si ahora tiene valor válido
+    // 🎫 Eventos: total = precio por persona * cupos
+    if (next.isEvent && typeof next.pricePerPerson === "number") {
+      const total = Number(next.pricePerPerson) * Number(next.passengers || 1)
+      next.totalPrice = Number(total.toFixed(2))
+      try { localStorage.setItem("bookingData", JSON.stringify(next)) } catch {}
+      // limpieza de errores
       setFieldErrors((prevErr) => {
         if (!prevErr[key]) return prevErr
-        // Revalidaciones simples: si el valor ya no está vacío / formato básico
         if (typeof value === 'string' && value.trim() === '') return prevErr
         if (key === 'contactEmail') {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -810,16 +829,15 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
         if (key === 'contactPhone') {
           if (String(value).replace(/\D/g, '').length < 6) return prevErr
         }
-        // Validación extra: si todos los campos requeridos están bien, limpiar todos los errores
-        const passengers = computed.passengers ?? computed.pasajeros
-        const date = computed.date ?? computed.fecha
-        const time = computed.time ?? computed.hora
-        const contactName = computed.contactName
-        const contactPhone = computed.contactPhone
-        const contactEmail = computed.contactEmail
-        const pickupAddress = computed.pickupAddress
-        const dropoffAddress = computed.dropoffAddress
-        const needsAddresses = !computed.isEvent && !computed.isTourQuick && !computed.tourId
+        const passengers = next.passengers ?? next.pasajeros
+        const date = next.date ?? next.fecha
+        const time = next.time ?? next.hora
+        const contactName = next.contactName
+        const contactPhone = next.contactPhone
+        const contactEmail = next.contactEmail
+        const pickupAddress = next.pickupAddress
+        const dropoffAddress = next.dropoffAddress
+        const needsAddresses = !next.isEvent && !next.isTourQuick && !next.tourId
         const allValid = (
           passengers && Number(passengers) > 0 &&
           date && String(date).trim() !== '' &&
@@ -834,9 +852,146 @@ if (modalForm.tipo === 'tour' && Array.isArray(toursList)) {
         delete clone[key]
         return clone
       })
-      return computed
+      return next
+    }
+
+    // 🧮 Si hay tourDoc, delegar el total a la lógica de 9+ (precio de 8 + extra por pax)
+    if (next.tourDoc) {
+      const n = Number(next.passengers || 1)
+      let total = computeFromTourDoc(n, next.tourDoc)
+      if (next.isNightTime) total += 5
+      if (Number(next.luggage23kg || 0) > 3) total += 10
+      next.totalPrice = Number(total.toFixed(2))
+      try { localStorage.setItem("bookingData", JSON.stringify(next)) } catch {}
+
+      // limpieza de errores (igual que antes)
+      setFieldErrors((prevErr) => {
+        if (!prevErr[key]) return prevErr
+        if (typeof value === 'string' && value.trim() === '') return prevErr
+        if (key === 'contactEmail') {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+          if (!emailRegex.test(String(value))) return prevErr
+        }
+        if (key === 'contactPhone') {
+          if (String(value).replace(/\D/g, '').length < 6) return prevErr
+        }
+        const passengers = next.passengers ?? next.pasajeros
+        const date = next.date ?? next.fecha
+        const time = next.time ?? next.hora
+        const contactName = next.contactName
+        const contactPhone = next.contactPhone
+        const contactEmail = next.contactEmail
+        const pickupAddress = next.pickupAddress
+        const dropoffAddress = next.dropoffAddress
+        const needsAddresses = !next.isEvent && !next.isTourQuick && !next.tourId
+        const allValid = (
+          passengers && Number(passengers) > 0 &&
+          date && String(date).trim() !== '' &&
+          time && String(time).trim() !== '' &&
+          contactName && String(contactName).trim() !== '' &&
+          contactPhone && String(contactPhone).trim() !== '' &&
+          contactEmail && String(contactEmail).trim() !== '' &&
+          (!needsAddresses || (pickupAddress && String(pickupAddress).trim() !== '' && dropoffAddress && String(dropoffAddress).trim() !== ''))
+        )
+        if (allValid) return {}
+        const clone = { ...prevErr }
+        delete clone[key]
+        return clone
+      })
+      return next
+    }
+
+    // 🚗 Traslados: calcular base por ruta y pax (sin límite de 9)
+    if (next.pickupAddress && next.dropoffAddress) {
+      const from = (next.pickupAddress || "").toLowerCase().includes("cdg") ? "cdg"
+        : (next.pickupAddress || "").toLowerCase().includes("orly") ? "orly"
+          : (next.pickupAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
+            : (next.pickupAddress || "").toLowerCase().includes("disney") ? "disneyland"
+              : (next.pickupAddress || "").toLowerCase().includes("parís") || (next.pickupAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
+      const to = (next.dropoffAddress || "").toLowerCase().includes("cdg") ? "cdg"
+        : (next.dropoffAddress || "").toLowerCase().includes("orly") ? "orly"
+          : (next.dropoffAddress || "").toLowerCase().includes("beauvais") ? "beauvais"
+            : (next.dropoffAddress || "").toLowerCase().includes("disney") ? "disneyland"
+              : (next.dropoffAddress || "").toLowerCase().includes("parís") || (next.dropoffAddress || "").toLowerCase().includes("paris") ? "paris" : undefined
+
+      const pax = Math.max(1, Number(next.passengers || 1))
+      const baseCalc = calcBaseTransferPrice(from, to, pax)
+      const base = typeof baseCalc === "number" ? baseCalc : Number(next.basePrice || 0)
+
+      const isNight = (() => {
+        if (!next.time) return false
+        const [hh] = String(next.time).split(":").map(Number)
+        const h = hh || 0
+        return h >= 21 || h < 6
+      })()
+      const extraLuggage = Number(next.luggage23kg ?? 0) > 3
+      const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0)
+
+      next.isNightTime = isNight
+      next.extraLuggage = extraLuggage
+      next.luggageCount = Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0)
+      next.totalPrice = Number((base + extrasSum).toFixed(2))
+      next.basePrice = base
+
+      try { localStorage.setItem("bookingData", JSON.stringify(next)) } catch {}
+
+      // limpieza de errores
+      setFieldErrors((prevErr) => {
+        if (!prevErr[key]) return prevErr
+        if (typeof value === 'string' && value.trim() === '') return prevErr
+        if (key === 'contactEmail') {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+          if (!emailRegex.test(String(value))) return prevErr
+        }
+        if (key === 'contactPhone') {
+          if (String(value).replace(/\D/g, '').length < 6) return prevErr
+        }
+        const passengers = next.passengers ?? next.pasajeros
+        const date = next.date ?? next.fecha
+        const time = next.time ?? next.hora
+        const contactName = next.contactName
+        const contactPhone = next.contactPhone
+        const contactEmail = next.contactEmail
+        const pickupAddress = next.pickupAddress
+        const dropoffAddress = next.dropoffAddress
+        const needsAddresses = !next.isEvent && !next.isTourQuick && !next.tourId
+        const allValid = (
+          passengers && Number(passengers) > 0 &&
+          date && String(date).trim() !== '' &&
+          time && String(time).trim() !== '' &&
+          contactName && String(contactName).trim() !== '' &&
+          contactPhone && String(contactPhone).trim() !== '' &&
+          contactEmail && String(contactEmail).trim() !== '' &&
+          (!needsAddresses || (pickupAddress && String(pickupAddress).trim() !== '' && dropoffAddress && String(dropoffAddress).trim() !== ''))
+        )
+        if (allValid) return {}
+        const clone = { ...prevErr }
+        delete clone[key]
+        return clone
+      })
+
+      return next
+    }
+
+    // 🧩 Por defecto: persistir y limpiar error del campo
+    try { localStorage.setItem("bookingData", JSON.stringify(next)) } catch {}
+    setFieldErrors((prevErr) => {
+      if (!prevErr[key]) return prevErr
+      if (typeof value === 'string' && value.trim() === '') return prevErr
+      if (key === 'contactEmail') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+        if (!emailRegex.test(String(value))) return prevErr
+      }
+      if (key === 'contactPhone') {
+        if (String(value).replace(/\D/g, '').length < 6) return prevErr
+      }
+      const clone = { ...prevErr }
+      delete clone[key]
+      return clone
     })
-  }
+    return next
+  })
+}
 
   // Validar email en blur y actualizar errores de campo
   const validateAndSetEmail = (value: string) => {
@@ -1196,21 +1351,49 @@ if (requireFlight) {
                         <div className="flex flex-wrap items-center gap-3">
                           <Users className="w-4 h-4 text-accent" />
                           <div className="flex items-center gap-2">
-                            <span className="text-sm">{bookingData.isEvent ? "Cupos" : "Pasajeros"}</span>
-                            <Select
-                              value={String(bookingData.passengers || 1)}
-                              onValueChange={(value) => updateBookingField('passengers', Number(value))}
-                            >
-                              <SelectTrigger data-field="passengers" className={`w-24 cursor-pointer ${fieldErrors.passengers ? 'border-destructive focus-visible:ring-destructive' : ''}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-72">
-                                {Array.from({ length: 56 }, (_, i) => i + 1).map((n) => (
-                                  <SelectItem key={n} value={String(n)}>{n} {n === 1 ? 'Pasajero' : 'Pasajeros'}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+  <span className="text-sm">
+    {bookingData.isEvent ? "Cupos" : "Pasajeros"}
+  </span>
+
+  <Select
+    value={String(bookingData.passengers ?? 1)}
+    onValueChange={(value) => {
+      const n = Math.max(1, Math.min(56, Number(value) || 1))
+      updateBookingField("passengers", n)
+      
+
+      // 🔹 Guarda también en localStorage si el pago depende de ello
+      try {
+        const stored = localStorage.getItem("bookingData")
+        if (stored) {
+          const obj = JSON.parse(stored)
+          obj.passengers = n
+          localStorage.setItem("bookingData", JSON.stringify(obj))
+        }
+      } catch {}
+    }}
+  >
+    <SelectTrigger
+      data-field="passengers"
+      className={`w-24 cursor-pointer ${
+        fieldErrors.passengers
+          ? "border-destructive focus-visible:ring-destructive"
+          : ""
+      }`}
+    >
+      <SelectValue placeholder="Selecciona" />
+    </SelectTrigger>
+
+    {/* 🔹 Lista dinámica de 1 a 56 pasajeros */}
+    <SelectContent className="max-h-72 overflow-y-auto">
+      {Array.from({ length: 56 }, (_, i) => i + 1).map((n) => (
+        <SelectItem key={n} value={String(n)}>
+          {n} {n === 1 ? "Pasajero" : "Pasajeros"}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 
                           {/* Selector para niños (hasta 10) */}
                           <div className="flex items-center gap-2 ml-4">

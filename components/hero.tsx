@@ -361,81 +361,180 @@ export function Hero({
   
 
   // Enviar a página de pago con un depósito de confirmación de 5€ (quick deposit)
-  const goToPayment = () => {
-    try {
-      // Run validation and set errors / focus as side-effects here (not during render)
-      const errs = computeValidationErrors()
-      setFieldErrors(errs)
-      if (Object.keys(errs).length) {
-        const first = Object.keys(errs)[0]
-        try { document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus() } catch {}
-        return
-      }
-
-      const pax = parsePassengers(bookingData.pasajeros)
-      const data: any = { quickDeposit: true }
-
-      if (bookingData.tipoReserva === "traslado") {
-        const pax = parsePassengers(bookingData.pasajeros)
-        const base = getBasePrice(bookingData.origen, bookingData.destino, pax)
-        const total = quote?.total ?? base ?? 0
-        Object.assign(data, {
-          quickType: "traslado",
-          basePrice: base,
-          totalPrice: Number(total || 0),
-          passengers: pax,
-          ninos: bookingData.ninos ?? 0,
-          date: bookingData.fecha || "",
-          time: bookingData.hora || "",
-          vehicleType: bookingData.vehiculo || "",
-          pickupAddress: (labelMap as any)[bookingData.origen] || bookingData.origen || "",
-          dropoffAddress: (labelMap as any)[bookingData.destino] || bookingData.destino || "",
-          flightNumber: bookingData.flightNumber || "",
-    // roundtrip removed
-        })
-      } else if (bookingData.tipoReserva === "tour") {
-       // Buscar el tour seleccionado en toursList
-  const selectedTour = (toursList || []).find(
-    t => (t.slug || t.title) === bookingData.selectedTourSlug
-  );
-  console.log(toursList)
-
-
-  // Calcular el precio del tour según el horario (diurno/nocturno)
-  const isNight = bookingData.subtipoTour === "nocturno" || isNightTime(bookingData.hora);
-  const basePrice = isNight
-    ? selectedTour?.basePriceNight ?? selectedTour?.basePrice
-    : selectedTour?.basePriceDay ?? selectedTour?.basePrice;
-  const hours = isNight ? 3 : 2;
-  const totalPrice = basePrice ? basePrice * hours : 0;
-
-  // Guardar todos los datos del tour en bookingData
-  Object.assign(data, {
-    quickType: "tour",
-    isTourQuick: true,
-    tourCategory: bookingData.categoriaTour || "ciudad",
-    tourSubtype: bookingData.subtipoTour || "",
-    passengers: pax,
-    ninos: bookingData.ninos ?? 0,
-    date: bookingData.fecha || "",
-    time: bookingData.hora || "",
-    vehicleType: bookingData.vehiculo || "",
-    tourId: selectedTour?.slug,
-    tourData: selectedTour, // Aquí guardas TODO el objeto del tour
-    totalPrice: totalPrice,
-    basePrice: basePrice,
-    isNight: isNight,
-    hours: hours,
-  });
-
-      }
-
-      localStorage.setItem("bookingData", JSON.stringify(data))
-      router.push("/pago")
-    } catch (e) {
-      console.error("No se pudo preparar el pago:", e)
+  // === HERO: función COMPLETA para preparar bookingData y enviar a /pago ===
+const goToPayment = () => {
+  try {
+    // 1) Validación de campos del paso actual
+    const errs = computeValidationErrors()
+    setFieldErrors(errs)
+    if (Object.keys(errs).length) {
+      const first = Object.keys(errs)[0]
+      try { document.querySelector<HTMLElement>(`[data-field="${first}"]`)?.focus() } catch {}
+      return
     }
+
+    // Helpers locales
+    const pax = parsePassengers(bookingData.pasajeros)
+    const isNight = bookingData.subtipoTour === "nocturno" || isNightTime(bookingData.hora)
+
+    // ==========================================================
+    // 2) Construcción de bookingData para TRASLADO
+    // ==========================================================
+    if (bookingData.tipoReserva === "traslado") {
+      // Cálculo que ya tienes en 'quote'
+      const base = getBasePrice(bookingData.origen, bookingData.destino, pax)
+      const total = quote?.total ?? base ?? 0
+
+      const data: any = {
+        quickDeposit: true,
+        quickType: "traslado",
+        passengers: pax,
+        ninos: bookingData.ninos ?? 0,
+        date: bookingData.fecha || "",
+        time: bookingData.hora || "",
+        vehicleType: bookingData.vehiculo || "",
+        pickupAddress: (labelMap as any)[bookingData.origen] || bookingData.origen || "",
+        dropoffAddress: (labelMap as any)[bookingData.destino] || bookingData.destino || "",
+        flightNumber: bookingData.flightNumber || "",
+        basePrice: base,
+        totalPrice: Number(total || 0),
+      }
+
+      try { localStorage.setItem("bookingData", JSON.stringify(data)) } catch {}
+      router.push("/pago")
+      return
+    }
+
+    // ==========================================================
+    // 3) Construcción de bookingData para TOUR (esquema nuevo)
+    //    Enviamos el tour COMPLETO (tourDoc) y un total inicial.
+    //    /pago recalculará el total con pricingMode/rules/table.
+    // ==========================================================
+
+    // 3.1 Buscar el tour seleccionado
+    const selectedTour =
+      (toursList || []).find(t => (t.slug || t.title) === bookingData.selectedTourSlug) || null
+
+    // 3.2 Normaliza slug
+    const tourSlug =
+      selectedTour
+        ? (typeof selectedTour.slug === "string"
+            ? selectedTour.slug
+            : (selectedTour as any).slug?.current ?? "")
+        : bookingData.selectedTourSlug || ""
+
+    // 3.3 Armar tourDoc con el esquema NUEVO (si tu lista ya viene del CMS, expondrá estos campos)
+    //     Si tu toursList aún no tiene todos, no pasa nada: los que vengan se guardan.
+    const tourDoc = selectedTour && {
+      _id: (selectedTour as any)._id || tourSlug || selectedTour.title,
+      title: selectedTour.title,
+      // Si tu lista trae estos campos, los copiamos:
+      route: (selectedTour as any).route,
+      summary: (selectedTour as any).summary,
+      description: (selectedTour as any).description,
+      amenities: (selectedTour as any).amenities,
+      features: (selectedTour as any).features,
+      includes: (selectedTour as any).includes,
+      visitedPlaces: (selectedTour as any).visitedPlaces,
+      notes: (selectedTour as any).notes,
+      overCapacityNote: (selectedTour as any).overCapacityNote,
+      pricingMode: (selectedTour as any).pricingMode,           // 'rules' | 'table'
+      pricingRules: (selectedTour as any).pricingRules,         // { baseUpTo4EUR }
+      pricingTable: (selectedTour as any).pricingTable,         // { p4..p8, extraFrom9 }
+      booking: { startingPriceEUR: (selectedTour as any).booking?.startingPriceEUR },
+      isPopular: (selectedTour as any).isPopular === true || (selectedTour as any).isPopular === "yes",
+      mainImage: (selectedTour as any).mainImage,               // por si /pago lo muestra
+      slug: tourSlug ? { current: tourSlug } : undefined,
+    }
+
+    // 3.4 Helper inline para calcular un total inicial a partir del doc (sin recargos de noche/equipaje)
+    //     /pago añadirá sus recargos globales, si aplican.
+    const INC_5 = 34, INC_6 = 32, INC_7 = 28, INC_8 = 26
+    const computeInitialFromTourDoc = (pax: number, doc: any): number => {
+      if (!doc) return 0
+      const n = Math.max(1, Math.floor(pax || 0))
+      const mode = doc?.pricingMode
+
+      if (mode === "rules" && doc?.pricingRules?.baseUpTo4EUR != null) {
+        const base = Number(doc.pricingRules.baseUpTo4EUR || 0)
+        if (n <= 4) return base
+        if (n === 5) return base + INC_5
+        if (n === 6) return base + INC_5 + INC_6
+        if (n === 7) return base + INC_5 + INC_6 + INC_7
+        return base + INC_5 + INC_6 + INC_7 + INC_8 // 8+
+      }
+
+      if (mode === "table" && doc?.pricingTable) {
+        const { p4 = 0, p5 = 0, p6 = 0, p7 = 0, p8 = 0, extraFrom9 = 0 } = doc.pricingTable
+        if (n <= 4) return p4
+        if (n === 5) return p5
+        if (n === 6) return p6
+        if (n === 7) return p7
+        if (n === 8) return p8
+        return p8 + extraFrom9 * (n - 8)
+      }
+
+      // Fallback si aún no tienes pricingMode/tabla en la lista:
+      // usa "desde" de booking.startingPriceEUR o basePrice*horas como último recurso.
+      const fallbackStart = Number((doc?.booking?.startingPriceEUR) ?? 0)
+      if (fallbackStart > 0) return fallbackStart
+
+      const baseLegacy = isNight
+        ? ((selectedTour as any)?.basePriceNight ?? (selectedTour as any)?.basePrice ?? 0)
+        : ((selectedTour as any)?.basePriceDay ?? (selectedTour as any)?.basePrice ?? 0)
+      const hoursLegacy = isNight ? 3 : 2
+      return Number(baseLegacy || 0) * hoursLegacy
+    }
+
+    const initialTotal = computeInitialFromTourDoc(pax, tourDoc)
+
+    // 3.5 Armar bookingData de TOUR (enviando tourDoc COMPLETO)
+    const data: any = {
+      quickDeposit: true,
+      quickType: "tour",
+      isTourQuick: true,
+
+      tourId: tourSlug,
+      tourCategory: bookingData.categoriaTour || "ciudad",
+      tourSubtype: bookingData.subtipoTour || "",
+      passengers: pax,
+      ninos: bookingData.ninos ?? 0,
+
+      date: bookingData.fecha || "",
+      time: bookingData.hora || "",
+      vehicleType: bookingData.vehiculo || "",
+
+      // Campos de contacto si ya los tienes en este paso (si no, /pago los pedirá)
+      contactName: bookingData.contactName || "",
+      contactPhone: bookingData.contactPhone || "",
+      contactEmail: bookingData.contactEmail || "",
+
+      // Direcciones: para tour no son obligatorias; las dejamos vacías
+      pickupAddress: bookingData.pickupAddress || "",
+      dropoffAddress: bookingData.dropoffAddress || "",
+
+      // Flags usados en /pago
+      isNightTime: isNight,
+      extraLuggage: Number(bookingData.luggage23kg || 0) > 3,
+      luggage23kg: bookingData.luggage23kg || 0,
+      luggage10kg: bookingData.luggage10kg || 0,
+
+      // Doc del CMS (esquema nuevo). /pago recalcula usando esto.
+      tourDoc,
+
+      // Total inicial (se recalculará en /pago según pax / recargos)
+      totalPrice: Number(initialTotal || 0),
+    }
+
+    try { localStorage.setItem("bookingData", JSON.stringify(data)) } catch {}
+
+    // Enviar a /pago. Pasamos el slug por query (opcional, útil para tracking)
+    router.push(`/pago?tour=${encodeURIComponent(tourSlug)}`)
+
+  } catch (e) {
+    console.error("No se pudo preparar el pago:", e)
   }
+}
 
   // Función para manejar el cambio de niños
   function handleNinosChange(value: string) {

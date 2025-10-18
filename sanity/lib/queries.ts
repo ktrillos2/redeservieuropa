@@ -51,7 +51,8 @@ export const TOURS_LIST_QUERY = `
   pricingRules{ baseUpTo4EUR },
   pricingTable{ p4, p5, p6, p7, p8, extraFrom9 },
   booking{ startingPriceEUR },
-  isPopular
+  isPopular,
+  requirements{ requireTime, requireFlightNumber }
 }
 `
 export const TOUR_BY_SLUG_QUERY = `
@@ -73,7 +74,8 @@ export const TOUR_BY_SLUG_QUERY = `
   pricingTable{ p4,p5,p6,p7,p8,extraFrom9 },
   booking{ startingPriceEUR },
   isPopular,
-  orderRank
+  orderRank,
+  requirements{ requireTime, requireFlightNumber }
 }
 `
 

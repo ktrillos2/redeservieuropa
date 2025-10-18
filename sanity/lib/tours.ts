@@ -64,7 +64,7 @@ export type TourDoc = {
   pricing?: { pax: number; price: number }[]
   pricingP4?: { threeH?: number; twoH?: number; eiffelArco?: number }
   pricingP5?: { threeH?: number; twoH?: number; eiffelArco?: number }
-
+requirements?: { requireTime?: boolean; requireFlightNumber?: boolean }
   // --- SECCIONES ADICIONALES ---
   extraSections?: Array<{
     title?: string

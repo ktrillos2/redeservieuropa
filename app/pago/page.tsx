@@ -94,7 +94,10 @@ const truncate = (s: string, n = 30) => {
 }
 
 
-
+type Requirements = {
+  requireTime?: boolean
+  requireFlightNumber?: boolean
+}
 type SanityImageRef = { _type: 'image'; asset: { _ref?: string; _type?: 'reference' } }
 type TourData = {
   _id: string
@@ -122,6 +125,7 @@ type TourData = {
   slug: string
   title: string
   mainImageUrl?: string
+  requirements?: Requirements
 }
 
 type CommonBookingFields = {
@@ -217,6 +221,7 @@ export default function PaymentPage() {
     contactName: '',
     contactPhone: '',
     contactEmail: '',
+    flightDepartureTime: '',
   }))
   // Errores locales para el modal (validación por paso)
   const [modalFieldErrors, setModalFieldErrors] = useState<Record<string, string>>({})
@@ -292,6 +297,27 @@ useEffect(() => {
     else document.body.removeAttribute('data-quote-modal')
   }, [quoteModalOpen])
 
+  useEffect(() => {
+  if (!bookingData?.tourDoc) return
+  if (bookingData?.tourDoc?.requirements) return
+
+  try {
+    // intenta emparejar por slug o por título
+    const slug = bookingData.selectedTourSlug || bookingData.tourDoc.slug
+    const match = Array.isArray(toursList) && toursList.find(t =>
+      (slug && (t.slug === slug || t.title === slug)) ||
+      t.title === bookingData.tourDoc.title
+    )
+    if (match?.requirements) {
+      setBookingData((prev: any) => {
+        const next = { ...prev, tourDoc: { ...prev.tourDoc, requirements: match.requirements } }
+        try { localStorage.setItem('bookingData', JSON.stringify(next)) } catch {}
+        return next
+      })
+    }
+  } catch {}
+}, [toursList, bookingData?.tourDoc, bookingData?.selectedTourSlug])
+
   // Fallbacks y helpers para la sección copiada del hero
   const bookingForm: any = useMemo(() => ({
     dateField: { label: 'Fecha' },
@@ -361,6 +387,7 @@ useEffect(() => {
     contactName: bookingData?.contactName || '',
     contactPhone: bookingData?.contactPhone || '',
     contactEmail: bookingData?.contactEmail || '',
+    flightDepartureTime: '',
   })
   setModalEditingId(null)
   setModalStep(1)
@@ -394,6 +421,7 @@ useEffect(() => {
     luggage23kg: bookingData?.luggage23kg ?? 0,
     luggage10kg: bookingData?.luggage10kg ?? 0,
     specialRequests: bookingData?.specialRequests || '',
+    flightDepartureTime: bookingData?.flightDepartureTime || '',
   }
 
   setModalForm(invertedData)
@@ -423,6 +451,7 @@ useEffect(() => {
       contactName: item.contactName || '',
       contactPhone: item.contactPhone || '',
       contactEmail: item.contactEmail || '',
+      flightDepartureTime: item.flightDepartureTime || '',
     })
     setModalEditingId(item.id)
     setModalStep(1)
@@ -656,6 +685,8 @@ useEffect(() => {
     categoriaTour: modalForm.categoriaTour || '',
     subtipoTour: modalForm.subtipoTour || '',
     flightNumber: modalForm.flightNumber || '',
+  flightArrivalTime: modalForm.flightArrivalTime || '',
+  flightDepartureTime: modalForm.flightDepartureTime || '',
     luggage23kg: modalForm.luggage23kg ?? 0,
     luggage10kg: modalForm.luggage10kg ?? 0,
     specialRequests: modalForm.specialRequests || '',
@@ -663,6 +694,7 @@ useEffect(() => {
     contactName: modalForm.contactName || '',
     contactPhone: modalForm.contactPhone || '',
     contactEmail: modalForm.contactEmail || '',
+    
   }
 
   // Además, añadir la cotización ACTUAL si no existe (con labels primario/secundario)
@@ -761,6 +793,7 @@ useEffect(() => {
       contactName: modalForm.contactName || it.contactName,
       contactPhone: modalForm.contactPhone || it.contactPhone,
       contactEmail: modalForm.contactEmail || it.contactEmail,
+      flightDepartureTime: modalForm.flightDepartureTime || it.flightDepartureTime,
     } : it)
     persistCarrito(updated)
     // close modal and clear editing state
@@ -1047,6 +1080,27 @@ useEffect(() => {
       </div>
     )
   }
+  const requireFlight =
+    bookingData?.tourDoc?.requirements?.requireFlightNumber === true ||
+    bookingData?.tourData?.requirements?.requireFlightNumber === true ||
+    bookingData?.requireFlightInfo === true
+
+  // ¿Vuelo obligatorio dentro del MODAL?
+const requireFlightModal =
+  bookingData?.tourDoc?.requirements?.requireFlightNumber === true ||
+  bookingData?.tourData?.requirements?.requireFlightNumber === true ||
+  (() => {
+    try {
+      const sel = Array.isArray(toursList)
+        ? toursList.find(
+            t => (t.slug || t.title) === modalForm.selectedTourSlug || t.title === modalForm.selectedTourSlug
+          )
+        : null
+      return sel?.requirements?.requireFlightNumber === true
+    } catch { return false }
+  })()
+
+  console.log(bookingData)
 
   if (!bookingData) {
     return (
@@ -1106,16 +1160,13 @@ useEffect(() => {
   // Valida la cotización actual (sin carrito)
 const validateSingleBooking = (bd: any, paymentPickupAddress: string, paymentDropoffAddress: string): string[] => {
   const reasons: string[] = []
-
   if (!bd) return ['Faltan datos de la reserva.']
 
-  // Normalizaciones
   const passengers = Number(bd.passengers ?? bd.pasajeros ?? 0)
   const date = String(bd.date ?? bd.fecha ?? '')
   const time = String(bd.time ?? bd.hora ?? '')
   const needsAddresses = !bd.isEvent && !bd.isTourQuick && !bd.tourId
 
-  // Reglas base
   if (!(passengers > 0)) reasons.push('Indica la cantidad de pasajeros.')
   if (!date.trim()) reasons.push('Selecciona la fecha del servicio.')
   if (!time.trim()) reasons.push('Selecciona la hora del servicio.')
@@ -1136,11 +1187,23 @@ const validateSingleBooking = (bd: any, paymentPickupAddress: string, paymentDro
     if (!emailRegex.test(email)) reasons.push('El email no tiene un formato válido.')
   }
 
-  // Requerir datos de vuelo si aplica
-  const requireFlight = bd?.tourData?.requireFlightInfo === true || bd?.requireFlightInfo === true
-  if (requireFlight) {
+  // 🔴 REGLA NUEVA: si el tour requiere datos de vuelo → exige número + hora llegada + hora salida
+  const requireFlightByTour =
+    bd?.tourDoc?.requirements?.requireFlightNumber === true ||
+    bd?.tourData?.requirements?.requireFlightNumber === true
+
+  if (requireFlightByTour) {
     if (!String(bd.flightNumber || '').trim()) reasons.push('Indica el número de vuelo.')
     if (!String(bd.flightArrivalTime || '').trim()) reasons.push('Indica la hora de llegada del vuelo.')
+    if (!String(bd.flightDepartureTime || '').trim()) reasons.push('Indica la hora de salida del vuelo.')
+  }
+
+  // Si quieres además forzar hora del servicio por `requireTime` del tour:
+  const requireTimeByTour =
+    bd?.tourDoc?.requirements?.requireTime === true ||
+    bd?.tourData?.requirements?.requireTime === true
+  if (requireTimeByTour && !String(time).trim()) {
+    reasons.push('La hora del tour es obligatoria.')
   }
 
   return reasons
@@ -1598,31 +1661,48 @@ const serviceLabel = bookingData?.isEvent
   }}
 />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">Número de Vuelo {bookingData?.tourData.requireFlightInfo ? '(obligatorio)' : '(opcional)'}</label>
-                                <Input
-                                  placeholder="AF1234, BA456, etc."
-                                  className={fieldErrors.flightNumber ? 'border-destructive focus-visible:ring-destructive' : ''}
+                            <div className="grid grid-cols-3 gap-3">
+  <div className="space-y-2">
+    <label className="text-xs font-medium">
+      Número de Vuelo {bookingData?.tourDoc?.requirements?.requireFlightNumber ? '(obligatorio)' : '(opcional)'}
+    </label>
+    <Input
+      placeholder="AF1234, BA456, etc."
+      className={fieldErrors.flightNumber ? 'border-destructive focus-visible:ring-destructive' : ''}
+      value={(carritoState && carritoState.length > 0) ? '' : (bookingData.flightNumber || '')}
+      onChange={(e) => updateBookingField('flightNumber', e.target.value)}
+    />
+    {fieldErrors.flightNumber && <p className="text-xs text-destructive mt-1">{fieldErrors.flightNumber}</p>}
+  </div>
 
-                                  value={(carritoState && carritoState.length > 0) ? '' : (bookingData.flightNumber || '')}
-                                  onChange={(e) => updateBookingField('flightNumber', e.target.value)}
-                                />
-                                {fieldErrors.flightNumber && <p className="text-xs text-destructive mt-1">{fieldErrors.flightNumber}</p>}
+  <div className="space-y-2">
+    <label className="text-xs font-medium">
+      Hora de llegada {bookingData?.tourDoc?.requirements?.requireFlightNumber ? '(obligatorio)' : '(opcional)'}
+    </label>
+    <Input
+      type="time"
+      placeholder="HH:MM"
+      className={fieldErrors.flightArrivalTime ? 'border-destructive focus-visible:ring-destructive' : ''}
+      value={bookingData.flightArrivalTime || ''}
+      onChange={(e) => updateBookingField('flightArrivalTime', e.target.value)}
+    />
+    {fieldErrors.flightArrivalTime && <p className="text-xs text-destructive mt-1">{fieldErrors.flightArrivalTime}</p>}
+  </div>
 
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">Hora de llegada {bookingData?.tourData.requireFlightInfo ? '(obligatorio)' : '(opcional)'}</label>
-                                <Input
-                                  type="time"
-                                  placeholder="HH:MM"
-                                  className={fieldErrors.flightArrivalTime ? 'border-destructive focus-visible:ring-destructive' : ''}
-                                  value={bookingData.flightArrivalTime || ''}
-                                  onChange={(e) => updateBookingField('flightArrivalTime', e.target.value)}
-                                />
-                                {fieldErrors.flightArrivalTime && <p className="text-xs text-destructive mt-1">{fieldErrors.flightArrivalTime}</p>}
-                              </div>
-                            </div>
+  <div className="space-y-2">
+    <label className="text-xs font-medium">
+      Hora de salida {bookingData?.tourDoc?.requirements?.requireFlightNumber ? '(obligatorio)' : '(opcional)'}
+    </label>
+    <Input
+      type="time"
+      placeholder="HH:MM"
+      className={fieldErrors.flightDepartureTime ? 'border-destructive focus-visible:ring-destructive' : ''}
+      value={bookingData.flightDepartureTime || ''}
+      onChange={(e) => updateBookingField('flightDepartureTime', e.target.value)}
+    />
+    {fieldErrors.flightDepartureTime && <p className="text-xs text-destructive mt-1">{fieldErrors.flightDepartureTime}</p>}
+  </div>
+</div>
                           </div>
                         ) : (
                           <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
@@ -1668,25 +1748,57 @@ const serviceLabel = bookingData?.isEvent
                                 onChange={(e) => { setPaymentDropoffAddress(e.target.value); if (fieldErrors.dropoffAddress) setFieldErrors(f => { const c = { ...f }; delete c.dropoffAddress; return c }) }}
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">Número de Vuelo (opcional)</label>
-                                <Input
-                                  placeholder="AF1234, BA456, etc."
-                                  value={(carritoState && carritoState.length > 0) ? '' : (bookingData.flightNumber || '')}
-                                  onChange={(e) => updateBookingField('flightNumber', e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">Hora de llegada (opcional)</label>
-                                <Input
-                                  type="time"
-                                  placeholder="HH:MM"
-                                  value={bookingData.flightArrivalTime || ''}
-                                  onChange={(e) => updateBookingField('flightArrivalTime', e.target.value)}
-                                />
-                              </div>
-                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+      {/* Número de vuelo */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium">
+          Número de Vuelo {requireFlight ? '(obligatorio)' : '(opcional)'}
+        </label>
+        <Input
+          placeholder="AF1234, BA456, etc."
+          className={fieldErrors.flightNumber ? 'border-destructive focus-visible:ring-destructive' : ''}
+          value={(carritoState && carritoState.length > 0) ? '' : (bookingData.flightNumber || '')}
+          onChange={(e) => updateBookingField('flightNumber', e.target.value)}
+        />
+        {fieldErrors.flightNumber && (
+          <p className="text-xs text-destructive mt-1">{fieldErrors.flightNumber}</p>
+        )}
+      </div>
+
+      {/* Hora de llegada */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium">
+          Hora de llegada {requireFlight ? '(obligatorio)' : '(opcional)'}
+        </label>
+        <Input
+          type="time"
+          placeholder="HH:MM"
+          className={fieldErrors.flightArrivalTime ? 'border-destructive focus-visible:ring-destructive' : ''}
+          value={bookingData.flightArrivalTime || ''}
+          onChange={(e) => updateBookingField('flightArrivalTime', e.target.value)}
+        />
+        {fieldErrors.flightArrivalTime && (
+          <p className="text-xs text-destructive mt-1">{fieldErrors.flightArrivalTime}</p>
+        )}
+      </div>
+
+      {/* Hora de salida (NUEVO) */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium">
+          Hora de salida {requireFlight ? '(obligatorio)' : '(opcional)'}
+        </label>
+        <Input
+          type="time"
+          placeholder="HH:MM"
+          className={fieldErrors.flightDepartureTime ? 'border-destructive focus-visible:ring-destructive' : ''}
+          value={bookingData.flightDepartureTime || ''}
+          onChange={(e) => updateBookingField('flightDepartureTime', e.target.value)}
+        />
+        {fieldErrors.flightDepartureTime && (
+          <p className="text-xs text-destructive mt-1">{fieldErrors.flightDepartureTime}</p>
+        )}
+      </div>
+    </div>
                           </div>
                         )}
 
@@ -2499,6 +2611,12 @@ const serviceLabel = bookingData?.isEvent
         if (String(bookingData.contactPhone).replace(/\D/g, '').length < 6) errors.contactPhone = 'Teléfono inválido'
       }
 
+      if (bookingData?.tourDoc?.requirements?.requireFlightNumber || bookingData?.tourData?.requirements?.requireFlightNumber) {
+  if (!bookingData.flightNumber) errors.flightNumber = 'Requerido'
+  if (!bookingData.flightArrivalTime) errors.flightArrivalTime = 'Requerido'
+  if (!bookingData.flightDepartureTime) errors.flightDepartureTime = 'Requerido'
+}
+
       setFieldErrors(errors)
       requestAnimationFrame(() => {
         const first = Object.keys(errors)[0]
@@ -2511,7 +2629,10 @@ const serviceLabel = bookingData?.isEvent
           contactPhone: 'contactPhone',
           contactEmail: 'contactEmail',
           pickupAddress: 'pickupAddress',
-          dropoffAddress: 'dropoffAddress'
+          dropoffAddress: 'dropoffAddress',
+          flightNumber: 'flightNumber',              // 👈
+  flightArrivalTime: 'flightArrivalTime',    // 👈
+  flightDepartureTime: 'flightDepartureTime'
         }
         const selector = `[data-field="${fieldMap[first] || first}"]`
         const el = document.querySelector(selector) as HTMLElement | null
@@ -3204,16 +3325,59 @@ const doPay = async () => {
                     <Input data-modal-field="dropoffAddress" placeholder="Ubicación exacta" value={modalForm.dropoffAddress || ''} onChange={(e) => setModalForm((s: any) => ({ ...s, dropoffAddress: e.target.value }))} className={modalFieldErrors.dropoffAddress ? 'border-destructive' : ''} />
                     {modalFieldErrors.dropoffAddress && <p className="text-xs text-destructive mt-1">{modalFieldErrors.dropoffAddress}</p>}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs">Número de Vuelo (opcional)</label>
-                      <Input placeholder="AF1234, BA456" value={modalForm.flightNumber || ''} onChange={(e) => setModalForm((s: any) => ({ ...s, flightNumber: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs">Hora de llegada (opcional)</label>
-                      <Input data-modal-field="flightArrivalTime" type="time" value={modalForm.flightArrivalTime || ''} onChange={(e) => setModalForm((s: any) => ({ ...s, flightArrivalTime: e.target.value }))} />
-                    </div>
-                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+  {/* Número de vuelo */}
+  <div className="space-y-2">
+    <label className="text-xs font-medium">
+      Número de Vuelo {requireFlightModal ? '(obligatorio)' : '(opcional)'}
+    </label>
+    <Input
+      placeholder="AF1234, BA456, etc."
+      className={modalFieldErrors.flightNumber ? 'border-destructive focus-visible:ring-destructive' : ''}
+      value={modalForm.flightNumber || ''}
+      onChange={(e) => setModalForm((s: any) => ({ ...s, flightNumber: e.target.value }))}
+    />
+    {modalFieldErrors.flightNumber && (
+      <p className="text-xs text-destructive mt-1">{modalFieldErrors.flightNumber}</p>
+    )}
+  </div>
+
+  {/* Hora de llegada */}
+  <div className="space-y-2">
+    <label className="text-xs font-medium">
+      Hora de llegada {requireFlightModal ? '(obligatorio)' : '(opcional)'}
+    </label>
+    <Input
+      data-modal-field="flightArrivalTime"
+      type="time"
+      placeholder="HH:MM"
+      className={modalFieldErrors.flightArrivalTime ? 'border-destructive focus-visible:ring-destructive' : ''}
+      value={modalForm.flightArrivalTime || ''}
+      onChange={(e) => setModalForm((s: any) => ({ ...s, flightArrivalTime: e.target.value }))}
+    />
+    {modalFieldErrors.flightArrivalTime && (
+      <p className="text-xs text-destructive mt-1">{modalFieldErrors.flightArrivalTime}</p>
+    )}
+  </div>
+
+  {/* Hora de salida */}
+  <div className="space-y-2">
+    <label className="text-xs font-medium">
+      Hora de salida {requireFlightModal ? '(obligatorio)' : '(opcional)'}
+    </label>
+    <Input
+      data-modal-field="flightDepartureTime"
+      type="time"
+      placeholder="HH:MM"
+      className={modalFieldErrors.flightDepartureTime ? 'border-destructive focus-visible:ring-destructive' : ''}
+      value={modalForm.flightDepartureTime || ''}
+      onChange={(e) => setModalForm((s: any) => ({ ...s, flightDepartureTime: e.target.value }))}
+    />
+    {modalFieldErrors.flightDepartureTime && (
+      <p className="text-xs text-destructive mt-1">{modalFieldErrors.flightDepartureTime}</p>
+    )}
+  </div>
+</div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs"># Maletas 23kg</label>

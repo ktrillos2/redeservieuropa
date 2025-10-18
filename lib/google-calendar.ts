@@ -212,6 +212,8 @@ export async function getCalendarEventById(eventId: string) {
  * ============================================================ */
 // lib/google-calendar.ts (solo reemplazar esta función)
 
+// lib/google-calendar.ts (reemplaza SOLO esta función)
+
 export function buildOrderEventPayload(order: any) {
   const tz = process.env.GOOGLE_CALENDAR_TZ || 'Europe/Paris'
   const useDefaultTz = String(process.env.GOOGLE_CALENDAR_USE_DEFAULT_TZ || '').trim() === '1'
@@ -240,7 +242,7 @@ export function buildOrderEventPayload(order: any) {
   const date = order?.service?.date // YYYY-MM-DD
   let time = order?.service?.time || '00:00'
 
-  // normalizar hora
+  // normalizar hora HH:mm (acepta 12h con am/pm)
   try {
     const raw = String(time).trim()
     const m = raw.match(/^\s*(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?\s*$/)
@@ -256,15 +258,16 @@ export function buildOrderEventPayload(order: any) {
 
   const startLocal = `${date}T${time}:00`
   const hours = order?.service?.selectedPricingOption?.hours || (order?.service?.type === 'tour' ? 3 : 1.5)
+
   // calcular fin
   const [y, m, d] = (date || '1970-01-01').split('-').map((v: string) => parseInt(v, 10))
   const [hh, mm] = (time || '00:00').split(':').map((v: string) => parseInt(v, 10))
   const addMinutes = Math.round(Number(hours) * 60)
   let endMinutesTotal = hh * 60 + mm + addMinutes
-  let endDayOffset = Math.floor(endMinutesTotal / (24 * 60))
+  const endDayOffset = Math.floor(endMinutesTotal / (24 * 60))
   endMinutesTotal = endMinutesTotal % (24 * 60)
-  let endH = Math.floor(endMinutesTotal / 60)
-  let endM = endMinutesTotal % 60
+  const endH = Math.floor(endMinutesTotal / 60)
+  const endM = endMinutesTotal % 60
   const endDateObj = new Date(Date.UTC(y, (m || 1) - 1, d || 1))
   endDateObj.setUTCDate(endDateObj.getUTCDate() + endDayOffset)
   const endY = endDateObj.getUTCFullYear()
@@ -275,6 +278,7 @@ export function buildOrderEventPayload(order: any) {
   const total = Number(order?.service?.totalPrice || 0)
   const paidNow = Math.round(total * (depositPercent / 100) * 10) / 10 // 1 decimal
 
+  // 🔻 DETALLE DEL EVENTO (añadimos horas de vuelo + referral)
   const lines: string[] = []
   lines.push(`Tipo: ${type}`)
   lines.push(`Título: ${titleBase}`)
@@ -282,24 +286,33 @@ export function buildOrderEventPayload(order: any) {
   if (order?.service?.dropoffAddress) lines.push(`Destino: ${order.service.dropoffAddress}`)
   if (typeof order?.service?.passengers === 'number') lines.push(`Pasajeros: ${order.service.passengers}`)
   if (order?.service?.flightNumber) lines.push(`Vuelo: ${order.service.flightNumber}`)
+  if (order?.service?.flightArrivalTime) lines.push(`Hora llegada vuelo: ${order.service.flightArrivalTime}`)
+  if (order?.service?.flightDepartureTime) lines.push(`Hora salida vuelo: ${order.service.flightDepartureTime}`)
   if (order?.contact?.name) lines.push(`Cliente: ${order.contact.name}`)
   if (order?.contact?.phone) lines.push(`Teléfono: ${order.contact.phone}`)
   if (order?.contact?.email) lines.push(`Email: ${order.contact.email}`)
+  if (order?.contact?.referralSource || order?.service?.referralSource) {
+    const rs = order?.contact?.referralSource || order?.service?.referralSource
+    lines.push(`¿Cómo nos conoció?: ${capitalize(String(rs))}`)
+  }
   lines.push(`Total estimado: ${total.toFixed(2)} €`)
   lines.push(`${depositPercent === 100 ? 'Pago realizado' : 'Pago ahora'}: ${paidNow.toFixed(1)} € ${depositPercent === 100 ? '(100%)' : `(${depositPercent}%)`}`)
 
   const summary = `[${tag}] ${titleBase}`
   const description = lines.join('\n')
 
-  const attendees =
-    order?.contact?.email ? [{ email: order.contact.email, displayName: order.contact?.name || '' }] : undefined
+  // 👥 Invitados: cliente + (opcional) admin
+  const attendees = [
+    ...(order?.contact?.email ? [{ email: order.contact.email, displayName: order.contact?.name || '' }] : []),
+    ...(process.env.GOOGLE_CALENDAR_ADMIN_EMAIL ? [{ email: process.env.GOOGLE_CALENDAR_ADMIN_EMAIL }] : [])
+  ]
 
   if (useDefaultTz) {
     return {
       summary,
       description,
       start: { dateTime: startLocal, timeZone: undefined as unknown as string },
-      end: { dateTime: endStr, timeZone: undefined as unknown as string },
+      end:   { dateTime: endStr,   timeZone: undefined as unknown as string },
       location: order?.service?.pickupAddress
         ? `${order.service.pickupAddress}${order?.service?.dropoffAddress ? ` → ${order.service.dropoffAddress}` : ''}`
         : undefined,
@@ -311,7 +324,7 @@ export function buildOrderEventPayload(order: any) {
     summary,
     description,
     start: { dateTime: startLocal, timeZone: tz },
-    end: { dateTime: endStr, timeZone: tz },
+    end:   { dateTime: endStr,   timeZone: tz },
     location: order?.service?.pickupAddress
       ? `${order.service.pickupAddress}${order?.service?.dropoffAddress ? ` → ${order.service.dropoffAddress}` : ''}`
       : undefined,
@@ -319,8 +332,7 @@ export function buildOrderEventPayload(order: any) {
   }
 }
 
-
-
 function capitalize(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1)
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''
 }
+

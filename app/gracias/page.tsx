@@ -20,8 +20,16 @@ type Order = {
     requestedMethod?: string
     createdAt?: string
     paidAt?: string
+    // opcionales si tu backend los guarda:
+    payFullNow?: boolean
+    depositPercent?: number
   }
-  contact?: { name?: string; email?: string; phone?: string }
+  contact?: {
+    name?: string
+    email?: string
+    phone?: string
+    referralSource?: string // 👈 nuevo
+  }
   service?: {
     type?: string
     title?: string
@@ -31,6 +39,8 @@ type Order = {
     pickupAddress?: string
     dropoffAddress?: string
     flightNumber?: string
+    flightArrivalTime?: string   // 👈 nuevo
+    flightDepartureTime?: string // 👈 nuevo
     luggage23kg?: number
     luggage10kg?: number
     isNightTime?: boolean
@@ -38,6 +48,10 @@ type Order = {
     totalPrice?: number
     selectedPricingOption?: { label?: string; price?: number; hours?: number }
     notes?: string
+    // opcionales si los pasas desde el front al crear la orden:
+    payFullNow?: boolean
+    depositPercent?: number
+    referralSource?: string // por si lo guardaste en service en vez de en contact
   }
 }
 
@@ -71,6 +85,31 @@ export default function GraciasPage() {
       default: return m || '—'
     }
   }
+
+  const pctFromType = (type?: string) => {
+  const t = String(type || '').toLowerCase()
+  if (t === 'traslado') return 10
+  if (t === 'tour' || t === 'evento') return 20
+  return 20
+}
+
+const depositPercentForOrder = (o?: Order) => {
+  if (!o) return 20
+  // prioridad: payFullNow -> 100
+  if (o.service?.payFullNow || o.payment?.payFullNow) return 100
+  // si backend guardó un depositPercent explícito, úsalo
+  if (typeof o.service?.depositPercent === 'number') return o.service.depositPercent
+  if (typeof o.payment?.depositPercent === 'number') return o.payment.depositPercent
+  // sino, por tipo
+  return pctFromType(o.service?.type)
+}
+
+const sumPaidNow = (list: Order[] | null) =>
+  (list || []).reduce((acc, o) => {
+    const pct = depositPercentForOrder(o)
+    const total = Number(o.service?.totalPrice || 0)
+    return acc + (total * pct / 100)
+  }, 0)
 
   useEffect(() => {
     // 1) Intentar localStorage
@@ -135,7 +174,7 @@ export default function GraciasPage() {
     : 'Si cerraste el checkout o el pago aún está en proceso, te contactaremos para confirmar el estado.'
 
   const grandTotal = sumTotalServices(orders)
-  const paidTwenty = Number((grandTotal * 0.2).toFixed(1))
+const paidNowTotal = Number(sumPaidNow(orders).toFixed(1))
 
   return (
     <main className="min-h-screen">
@@ -168,13 +207,13 @@ export default function GraciasPage() {
                       <div><span className="text-muted-foreground">Proveedor:</span> {orders[0].payment?.provider || '—'}</div>
                       <div><span className="text-muted-foreground">Estado:</span> {orders[0].payment?.status || status || '—'}</div>
                       <div>
-                        <span className="text-muted-foreground">Importe pagado (20%):</span>{' '}
-                        {grandTotal > 0 ? `${fmt1(paidTwenty)} €` : '—'}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Importe total:</span>{' '}
-                        {grandTotal > 0 ? `${fmt1(grandTotal)} €` : '—'}
-                      </div>
+  <span className="text-muted-foreground">Importe pagado:</span>{' '}
+  {grandTotal > 0 ? `${fmt1(paidNowTotal)} €` : '—'}
+</div>
+<div>
+  <span className="text-muted-foreground">Importe total:</span>{' '}
+  {grandTotal > 0 ? `${fmt1(grandTotal)} €` : '—'}
+</div>
                       <div><span className="text-muted-foreground">Moneda:</span> {orders[0].payment?.currency || 'EUR'}</div>
                       <div><span className="text-muted-foreground">Método solicitado:</span> {labelRequested(orders[0].payment?.requestedMethod)}</div>
                       <div><span className="text-muted-foreground">Método final (Mollie):</span> {labelMollie(orders[0].payment?.method)}</div>
@@ -187,15 +226,19 @@ export default function GraciasPage() {
 
                 {/* Contacto */}
                 {orders && orders[0]?.contact && (
-                  <div className="rounded-lg border bg-white p-4 shadow-sm">
-                    <h2 className="text-xl font-semibold text-primary mb-2">Contacto</h2>
-                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">Nombre:</span> {orders[0].contact?.name || '—'}</div>
-                      <div><span className="text-muted-foreground">Teléfono:</span> {orders[0].contact?.phone || '—'}</div>
-                      <div className="sm:grid-cols-2"><span className="text-muted-foreground">Email:</span> {orders[0].contact?.email || '—'}</div>
-                    </div>
-                  </div>
-                )}
+  <div className="rounded-lg border bg-white p-4 shadow-sm">
+    <h2 className="text-xl font-semibold text-primary mb-2">Contacto</h2>
+    <div className="grid sm:grid-cols-2 gap-2 text-sm">
+      <div><span className="text-muted-foreground">Nombre:</span> {orders[0].contact?.name || '—'}</div>
+      <div><span className="text-muted-foreground">Teléfono:</span> {orders[0].contact?.phone || '—'}</div>
+      <div className="sm:grid-cols-2"><span className="text-muted-foreground">Email:</span> {orders[0].contact?.email || '—'}</div>
+      <div className="sm:grid-cols-2">
+        <span className="text-muted-foreground">¿Dónde nos conociste?</span>{' '}
+        {orders[0].contact?.referralSource || orders[0].service?.referralSource || '—'}
+      </div>
+    </div>
+  </div>
+)}
 
                 {/* Servicios */}
                 {orders && orders.length > 0 ? (
@@ -204,7 +247,8 @@ export default function GraciasPage() {
                       const service = ord.service
                       if (!service) return null
                       const total = Number(service.totalPrice || 0)
-                      const paid = Number((total * 0.2).toFixed(1))
+                      const pct = depositPercentForOrder(ord)
+const paid = Number((total * pct / 100).toFixed(1))
 
                       return (
                         <div key={ord._id} className="rounded-lg border bg-white p-4 shadow-sm">
@@ -225,6 +269,17 @@ export default function GraciasPage() {
                             {service.flightNumber && (
                               <div className="sm:col-span-2"><span className="text-muted-foreground">Vuelo:</span> {service.flightNumber}</div>
                             )}
+                            {service.flightArrivalTime && (
+                              <div className="sm:col-span-2">
+                                <span className="text-muted-foreground">Hora llegada vuelo:</span> {service.flightArrivalTime}
+                              </div>
+                            )}
+
+                            {service.flightDepartureTime && (
+                              <div className="sm:col-span-2">
+                                <span className="text-muted-foreground">Hora salida vuelo:</span> {service.flightDepartureTime}
+                              </div>
+                            )}
                             {service.selectedPricingOption?.label && (
                               <div className="sm:col-span-2"><span className="text-muted-foreground">Opción:</span> {service.selectedPricingOption.label}</div>
                             )}
@@ -232,7 +287,7 @@ export default function GraciasPage() {
                               <div className="sm:col-span-2"><span className="text-muted-foreground">Notas:</span> {service.notes}</div>
                             )}
                             <div><span className="text-muted-foreground">Total estimado:</span> {`${fmt1(total)} €`}</div>
-                            <div><span className="text-muted-foreground">Monto pagado (20%):</span> {`${fmt1(paid)} €`}</div>
+                           <div><span className="text-muted-foreground">Monto pagado:</span> {`${fmt1(paid)} €`} <span className="text-xs text-muted-foreground">({pct}%)</span></div>
                           </div>
                         </div>
                       )

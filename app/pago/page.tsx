@@ -304,7 +304,7 @@ useEffect(() => {
   try {
     // intenta emparejar por slug o por título
     const slug = bookingData.selectedTourSlug || bookingData.tourDoc.slug
-    const match = Array.isArray(toursList) && toursList.find(t =>
+    const match:any = Array.isArray(toursList) && toursList.find(t =>
       (slug && (t.slug === slug || t.title === slug)) ||
       t.title === bookingData.tourDoc.title
     )

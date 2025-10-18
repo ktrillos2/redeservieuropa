@@ -1,3 +1,4 @@
+// app/api/mollie/create/route.ts
 import { NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,19 +9,30 @@ function formatAmount(val: number): string {
   return (Math.round((val + Number.EPSILON) * 100) / 100).toFixed(2)
 }
 
+function makeOrderNumber() {
+  const t = new Date()
+  const y = String(t.getFullYear()).slice(-2)
+  const m = String(t.getMonth() + 1).padStart(2, '0')
+  const d = String(t.getDate()).padStart(2, '0')
+  const h = String(t.getHours()).padStart(2, '0')
+  const min = String(t.getMinutes()).padStart(2, '0')
+  const rand = Math.random().toString(36).slice(2,6).toUpperCase()
+  return `RSE-${y}${m}${d}-${h}${min}-${rand}`
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({})) as any
     const amountNumber = Number(body?.amount)
     const description: string = String(body?.description || 'Pago de reserva')
-    // Aceptamos "booking" fuera de metadata para no exceder límites de Mollie
     const booking: any = body?.booking || (body?.metadata?.booking ?? undefined)
-    // Solo enviamos metadata mínima a Mollie (<=1024 bytes)
+
     const metadata: any = {
       source: (body?.metadata && body.metadata.source) || 'web',
       short: true,
     }
-  const methodFromBody: string | undefined = typeof body?.method === 'string' ? body.method : undefined
+    const methodFromBody: string | undefined =
+      typeof body?.method === 'string' ? body.method : undefined
 
     if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
       return NextResponse.json({ error: 'Monto inválido' }, { status: 400 })
@@ -30,11 +42,13 @@ export async function POST(req: Request) {
     if (!siteUrl) {
       return NextResponse.json({ error: 'NEXT_PUBLIC_SITE_URL no configurado' }, { status: 500 })
     }
+
     const webhookUrlFromEnv = process.env.MOLLIE_WEBHOOK_URL
     const webhookToken = process.env.MOLLIE_WEBHOOK_TOKEN
 
     const mollie = getMollieClient()
 
+    // 1) Crear pago con redirect provisional
     const payment = await mollie.payments.create({
       amount: { currency: 'EUR', value: formatAmount(amountNumber) },
       description,
@@ -47,8 +61,17 @@ export async function POST(req: Request) {
         createdAt: new Date().toISOString(),
       },
     })
+
     if (!webhookUrlFromEnv && webhookToken) {
       console.log('[Mollie][create] Webhook interno activado:', `${siteUrl}/api/mollie/webhook?token=***`)
+    }
+
+    // 2) Actualizar redirect para incluir pid
+    const finalRedirect = `${siteUrl}/gracias?pid=${encodeURIComponent(payment.id)}`
+    try {
+      await mollie.payments.update(payment.id, { redirectUrl: finalRedirect })
+    } catch {
+      // Si falla el update por cualquier motivo, seguimos con el redirect provisional
     }
 
     const checkoutUrl = (payment as any)?._links?.checkout?.href
@@ -56,24 +79,55 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No se obtuvo checkoutUrl' }, { status: 500 })
     }
 
-    // Crear/guardar pedido(s) en Sanity con estado inicial
+    // 3) Crear/guardar orden(es) inicial(es) en Sanity
     try {
-      // Si se envió un carrito con varios items, crear una orden por cada item y también la reserva actual si existe
       const items: any[] = Array.isArray(body?.carrito) ? body.carrito : []
       const docsToCreate: any[] = []
 
       // Helper para construir doc desde un elemento (item o booking)
-      const buildDocFrom = (src: any) => {
-  // leer flags del front
+const buildDocFrom = (src: any) => {
+  // --- flags útiles enviados desde el front
   const payFullNow = Boolean(src?.payFullNow)
   const referralSource = src?.referralSource || src?.comoNosConocio || src?.heardFrom || null
-
-  // puedes guardar el % explícito si lo mandas desde el front; si no, que lo calcule el servidor/plantilla
   const depositPercent = typeof src?.depositPercent === 'number' ? src.depositPercent : null
+
+  // --- Generador de número de orden único (RSE-YYMMDD-HHMM-XXXX)
+  const makeOrderNumber = () => {
+    const t = new Date()
+    const y = String(t.getFullYear()).slice(-2)
+    const m = String(t.getMonth() + 1).padStart(2, '0')
+    const d = String(t.getDate()).padStart(2, '0')
+    const h = String(t.getHours()).padStart(2, '0')
+    const min = String(t.getMinutes()).padStart(2, '0')
+    const rand = Math.random().toString(36).slice(2, 6).toUpperCase()
+    return `RSE-${y}${m}${d}-${h}${min}-${rand}`
+  }
+
+  // --- detección robusta del tipo TOUR
+  const isTour =
+    !!src?.tourId ||
+    !!src?.tourDoc ||
+    !!src?.tourData ||
+    !!src?.selectedTourSlug ||
+    src?.quickType === 'tour' ||
+    src?.isTourQuick === true ||
+    src?.tipo === 'tour' ||
+    !!src?.categoriaTour
+
+  // --- elegir título correcto
+  const tourTitle =
+    src?.tourDoc?.title ||
+    src?.tourData?.title ||
+    src?.tourTitle ||
+    (typeof src?.selectedTourSlug === 'string' ? src.selectedTourSlug : undefined)
+
+  const trasladoTitle =
+    src?.serviceLabel ||
+    `${src?.pickupAddress || ''}${src?.pickupAddress && src?.dropoffAddress ? ' -> ' : ''}${src?.dropoffAddress || ''}`
 
   return {
     _type: 'order',
-    orderNumber: undefined,
+    orderNumber: makeOrderNumber(), // 👈 orden única
     status: 'pending',
     payment: {
       provider: 'mollie',
@@ -86,53 +140,59 @@ export async function POST(req: Request) {
       // persistimos banderas útiles para emails/calendar
       payFullNow,
       depositPercent,
-      raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links })
+      raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links }),
     },
-    contact: src ? {
-      name: src.contactName || src.name || booking?.contactName,
-      email: src.contactEmail || src.email || booking?.contactEmail,
-      phone: src.contactPhone || src.phone || booking?.contactPhone,
-      referralSource: referralSource || booking?.referralSource || null,
-    } : undefined,
-    service: src ? {
-      type: src.isEvent ? 'evento' : (src.tourId || src.tipo === 'tour' ? 'tour' : 'traslado'),
-      title: src.isEvent ? (src.eventTitle || 'Evento') : (src.tourId || src.serviceLabel || `${src.pickupAddress || ''} -> ${src.dropoffAddress || ''}`),
-      date: src.date || src.fecha || undefined,
-      time: src.time || src.hora || src.arrivalTime || undefined,
-      passengers: src.passengers ? Number(src.passengers) : (src.pasajeros ? Number(src.pasajeros) : undefined),
-      pickupAddress: src.pickupAddress || src.pickup || undefined,
-      dropoffAddress: src.dropoffAddress || src.dropoff || undefined,
-      flightNumber: src.flightNumber || src.numeroVuelo || undefined,
-      ninos: src.ninos ?? undefined,
-      ninosMenores9: src.ninosMenores9 ?? undefined,
-      luggage23kg: Object.prototype.hasOwnProperty.call(src, 'luggage23kg') ? Number(src.luggage23kg) : undefined,
-      luggage10kg: Object.prototype.hasOwnProperty.call(src, 'luggage10kg') ? Number(src.luggage10kg) : undefined,
-      isNightTime: Boolean(src.isNightTime),
-      extraLuggage: Boolean(src.extraLuggage),
-      totalPrice: Number(src.totalPrice || amountNumber) || amountNumber,
-      selectedPricingOption: src.selectedPricingOption || undefined,
-      notes: src.specialRequests || undefined,
-      // persistimos también en service por comodidad
-      payFullNow,
-      depositPercent,
-    } : undefined,
-    metadata: { source: 'web', createdAt: new Date().toISOString() }
+    contact: src
+      ? {
+          name: src.contactName || src.name || booking?.contactName,
+          email: src.contactEmail || src.email || booking?.contactEmail,
+          phone: src.contactPhone || src.phone || booking?.contactPhone,
+          referralSource: referralSource || booking?.referralSource || null,
+        }
+      : undefined,
+    service: src
+      ? {
+          type: src.isEvent ? 'evento' : isTour ? 'tour' : 'traslado',
+          title: src.isEvent
+            ? src.eventTitle || 'Evento'
+            : isTour
+            ? tourTitle || 'Tour'
+            : trasladoTitle || 'Traslado',
+          date: src.date || src.fecha || undefined,
+          time: src.time || src.hora || src.arrivalTime || undefined,
+          passengers: src.passengers
+            ? Number(src.passengers)
+            : src.pasajeros
+            ? Number(src.pasajeros)
+            : undefined,
+          pickupAddress: src.pickupAddress || src.pickup || undefined,
+          dropoffAddress: src.dropoffAddress || src.dropoff || undefined,
+          flightNumber: src.flightNumber || src.numeroVuelo || undefined,
+          ninos: src.ninos ?? undefined,
+          ninosMenores9: src.ninosMenores9 ?? undefined,
+          luggage23kg: Object.prototype.hasOwnProperty.call(src, 'luggage23kg')
+            ? Number(src.luggage23kg)
+            : undefined,
+          luggage10kg: Object.prototype.hasOwnProperty.call(src, 'luggage10kg')
+            ? Number(src.luggage10kg)
+            : undefined,
+          isNightTime: Boolean(src.isNightTime),
+          extraLuggage: Boolean(src.extraLuggage),
+          totalPrice: Number(src.totalPrice || amountNumber) || amountNumber,
+          selectedPricingOption: src.selectedPricingOption || undefined,
+          notes: src.specialRequests || undefined,
+          payFullNow,
+          depositPercent,
+        }
+      : undefined,
+    metadata: { source: 'web', createdAt: new Date().toISOString() },
   }
 }
 
-      // Crear docs desde carrito
       if (items.length > 0) {
-        for (const it of items) {
-          docsToCreate.push(buildDocFrom(it))
-        }
+        for (const it of items) docsToCreate.push(buildDocFrom(it))
       }
-
-      // Agregar la reserva/booking actual como orden aparte si viene en el body
-      if (booking) {
-        docsToCreate.push(buildDocFrom(booking))
-      }
-
-      // Si no hay nada específico, crear al menos una orden vacía a partir del booking/amount
+      if (booking) docsToCreate.push(buildDocFrom(booking))
       if (docsToCreate.length === 0) {
         docsToCreate.push(buildDocFrom(booking || { totalPrice: amountNumber }))
       }

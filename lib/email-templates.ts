@@ -9,6 +9,19 @@ const baseStyles = {
   accent: '#b68c5a',
 }
 
+function overallTag(services?: Array<{ type?: string }>) {
+  const list = services || []
+  const hasTour = list.some(s => (s?.type || '').toLowerCase() === 'tour')
+  const hasTras = list.some(s => (s?.type || '').toLowerCase() === 'traslado')
+  const hasEvt  = list.some(s => (s?.type || '').toLowerCase() === 'evento')
+  const kinds = [hasTour, hasTras, hasEvt].filter(Boolean).length
+  if (kinds > 1) return 'SERVICIOS' // mixto
+  if (hasTour) return 'TOUR'
+  if (hasTras) return 'TRASLADO'
+  if (hasEvt)  return 'EVENTO'
+  return 'SERVICIOS'
+}
+
 function absLogoUrl(): string {
   const site = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '')
   const envLogo = process.env.EMAIL_LOGO_URL && process.env.EMAIL_LOGO_URL.startsWith('http')
@@ -141,7 +154,7 @@ export function renderClientThanksEmailMulti(params: {
     const total = Number(s.totalPrice || 0)
     const percent = depositPercentFor(s.type, s.payFullNow, s.depositPercent ?? null)
     const paidNow = round1(total * (percent / 100))
-    const tag = tagServicio(s.type)
+    const tag = overallTag(services)
 
     return `
       <li>

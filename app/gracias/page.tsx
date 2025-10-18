@@ -1,4 +1,5 @@
-"use client"
+// app/gracias/page.tsx
+'use client'
 
 import Link from 'next/link'
 import { Header } from '@/components/header'
@@ -45,61 +46,14 @@ export default function GraciasPage() {
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<Order[] | null>(null)
-  const [booking, setBooking] = useState<any>(null)
 
-  // 👇 Evita doble sync en dev (React Strict Mode)
+  // Evita doble sync en dev (Strict Mode)
   const hasSyncedRef = useRef(false)
 
-  useEffect(() => {
-    const pid = localStorage.getItem('lastPaymentId')
-    const bd = localStorage.getItem('bookingData')
-    if (bd) {
-      try { setBooking(JSON.parse(bd)) } catch {}
-    }
-
-    if (!pid) {
-      setLoading(false)
-      return
-    }
-
-    setPaymentId(pid)
-
-    // Evita ejecutar el flujo dos veces en dev
-    if (hasSyncedRef.current) return
-    hasSyncedRef.current = true
-
-    fetch(`/api/mollie/status?id=${encodeURIComponent(pid)}`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(json => setStatus(json?.status || null))
-      .catch(() => setStatus(null))
-      .finally(async () => {
-        try {
-          // Forzar sync con Sanity (crea eventos y envía correos, pero es idempotente)
-          await fetch('/api/orders/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId: pid }),
-          })
-
-          // Cargar los pedidos actualizados
-          const resp = await fetch(`/api/orders/by-payment?id=${encodeURIComponent(pid)}`)
-          if (resp.ok) {
-            const j = await resp.json()
-            if (j.orders && Array.isArray(j.orders)) {
-              setOrders(j.orders)
-              if (j.orders[0]?.payment?.status) setStatus(j.orders[0].payment.status)
-            }
-          }
-        } catch {}
-        setLoading(false)
-      })
-  }, [])
-
-  const title = status === 'paid' ? '¡Pago confirmado!' : '¡Gracias!'
-  const desc = status === 'paid'
-    ? 'Hemos recibido tu pago correctamente. En breve recibirás un correo con los detalles de tu reserva.'
-    : 'Si cerraste el checkout o el pago aún está en proceso, te contactaremos para confirmar el estado.'
-
+  // Helpers UI
+  const fmt1 = (n: number) => n.toFixed(1)
+  const sumTotalServices = (list: Order[] | null) =>
+    (list || []).reduce((acc, o) => acc + (o.service?.totalPrice || 0), 0)
   const labelRequested = (m?: string | null) => {
     switch ((m || '').toLowerCase()) {
       case 'card': return 'Tarjeta'
@@ -108,7 +62,6 @@ export default function GraciasPage() {
       default: return m || '—'
     }
   }
-
   const labelMollie = (m?: string | null) => {
     switch ((m || '').toLowerCase()) {
       case 'creditcard': return 'Tarjeta (Mollie)'
@@ -119,15 +72,70 @@ export default function GraciasPage() {
     }
   }
 
-  // 👇 Utilidades para el 20%
-  const sumTotalServices = (list: Order[] | null) =>
-    (list || []).reduce((acc, o) => acc + (o.service?.totalPrice || 0), 0)
+  useEffect(() => {
+    // 1) Intentar localStorage
+    let pid: string | null = null
+    try { pid = localStorage.getItem('lastPaymentId') } catch {}
 
-  const fmt1 = (n: number) => n.toFixed(1)
+    // 2) Fallback: querystring ?pid=
+    if (!pid && typeof window !== 'undefined') {
+      const qs = new URLSearchParams(window.location.search)
+      const qpid = qs.get('pid')
+      if (qpid) {
+        pid = qpid
+        try { localStorage.setItem('lastPaymentId', qpid) } catch {}
+      }
+    }
 
-  // Totales globales (para el bloque de pago)
-  const grandTotal = sumTotalServices(orders) // suma de totalPrice de todos los servicios
-  const paidTwenty = Number((grandTotal * 0.2).toFixed(1)) // 20% con 1 decimal
+    if (!pid) {
+      console.warn('[Gracias] lastPaymentId no encontrado.')
+      setLoading(false)
+      return
+    }
+
+    setPaymentId(pid)
+
+    // Evitar doble ejecución en dev
+    if (hasSyncedRef.current) return
+    hasSyncedRef.current = true
+
+    // 3) Consultar estado en Mollie
+    fetch(`/api/mollie/status?id=${encodeURIComponent(pid)}`)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(json => setStatus(json?.status || null))
+      .catch(() => setStatus(null))
+      .finally(async () => {
+        try {
+          // 4) Forzar sync (crea/actualiza órdenes, envía correos si procede)
+          await fetch('/api/orders/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId: pid }),
+          })
+
+          // 5) Leer órdenes por payment
+          const resp = await fetch(`/api/orders/by-payment?id=${encodeURIComponent(pid)}`)
+          if (resp.ok) {
+            const j = await resp.json()
+            if (j.orders && Array.isArray(j.orders)) {
+              setOrders(j.orders)
+              if (j.orders[0]?.payment?.status) setStatus(j.orders[0].payment.status)
+            }
+          }
+        } catch (e) {
+          console.error('[Gracias] Error en sync/by-payment:', e)
+        }
+        setLoading(false)
+      })
+  }, [])
+
+  const title = status === 'paid' ? '¡Pago confirmado!' : '¡Gracias!'
+  const desc = status === 'paid'
+    ? 'Hemos recibido tu pago correctamente. En breve recibirás un correo con los detalles de tu reserva.'
+    : 'Si cerraste el checkout o el pago aún está en proceso, te contactaremos para confirmar el estado.'
+
+  const grandTotal = sumTotalServices(orders)
+  const paidTwenty = Number((grandTotal * 0.2).toFixed(1))
 
   return (
     <main className="min-h-screen">
@@ -143,7 +151,16 @@ export default function GraciasPage() {
               <div className="space-y-8">
                 <p className="text-lg text-muted-foreground">{desc}</p>
 
-                {/* Bloque de pago (usa 20% del total de todos los servicios) */}
+                {/* Aviso si no hubo pid */}
+                {!paymentId && (
+                  <div className="p-3 bg-amber-50 border rounded text-amber-800 text-sm">
+                    <b>No se encontró lastPaymentId en el navegador.</b> Si volviste
+                    directamente a esta página sin pasar por el checkout, no podremos
+                    recuperar el pedido.
+                  </div>
+                )}
+
+                {/* Pago */}
                 {orders && orders.length > 0 && orders[0]?.payment && (
                   <div className="rounded-lg border bg-white p-4 shadow-sm">
                     <h2 className="text-xl font-semibold text-primary mb-2">Pago</h2>
@@ -181,17 +198,19 @@ export default function GraciasPage() {
                 )}
 
                 {/* Servicios */}
-                {orders && orders.length > 0 && (
+                {orders && orders.length > 0 ? (
                   <div className="space-y-4">
                     {orders.map((ord) => {
                       const service = ord.service
                       if (!service) return null
                       const total = Number(service.totalPrice || 0)
-                      const paid = Number((total * 0.2).toFixed(1)) // 20% con 1 decimal
+                      const paid = Number((total * 0.2).toFixed(1))
 
                       return (
                         <div key={ord._id} className="rounded-lg border bg-white p-4 shadow-sm">
-                          <h2 className="text-xl font-semibold text-primary mb-2">{service.title || 'Servicio'}</h2>
+                          <h2 className="text-xl font-semibold text-primary mb-2">
+                            {service.title || 'Servicio'}
+                          </h2>
                           <div className="grid sm:grid-cols-2 gap-2 text-sm">
                             <div><span className="text-muted-foreground">Tipo:</span> {service.type || '—'}</div>
                             <div><span className="text-muted-foreground">Fecha:</span> {service.date || '—'}</div>
@@ -206,12 +225,23 @@ export default function GraciasPage() {
                             {service.flightNumber && (
                               <div className="sm:col-span-2"><span className="text-muted-foreground">Vuelo:</span> {service.flightNumber}</div>
                             )}
+                            {service.selectedPricingOption?.label && (
+                              <div className="sm:col-span-2"><span className="text-muted-foreground">Opción:</span> {service.selectedPricingOption.label}</div>
+                            )}
+                            {service.notes && (
+                              <div className="sm:col-span-2"><span className="text-muted-foreground">Notas:</span> {service.notes}</div>
+                            )}
                             <div><span className="text-muted-foreground">Total estimado:</span> {`${fmt1(total)} €`}</div>
                             <div><span className="text-muted-foreground">Monto pagado (20%):</span> {`${fmt1(paid)} €`}</div>
                           </div>
                         </div>
                       )
                     })}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 border rounded text-amber-800 text-sm">
+                    No se encontraron órdenes todavía para esta referencia. Si acabas de pagar,
+                    puede tardar unos segundos en sincronizarse.
                   </div>
                 )}
               </div>

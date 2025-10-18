@@ -2520,12 +2520,16 @@ const serviceLabel = bookingData?.isEvent
       return
     }
 
+    
     // Crear pago en backend (Mollie) y redirigir a checkout
-    const doPay = async () => {
+const doPay = async () => {
   try {
-    // 1) Detectar de forma robusta si el servicio ACTUAL es un TOUR
+    // Evita que /gracias use un paymentId viejo
+    try { localStorage.removeItem('lastPaymentId') } catch {}
+
+    // 1) Detectar si el servicio actual es un TOUR
     const isTourCurrent = Boolean(
-      bookingData?.isEvent ||                          // si manejas “eventos” como tours
+      bookingData?.isEvent ||
       bookingData?.quickType === 'tour' ||
       bookingData?.isTourQuick === true ||
       bookingData?.tipoReserva === 'tour' ||
@@ -2534,8 +2538,8 @@ const serviceLabel = bookingData?.isEvent
       bookingData?.selectedTourSlug
     )
 
-    // 2) Construir nombre legible
-    // 2a) Nombre del tour (si aplica)
+    // 2) Construir nombre legible del tour (si aplica)
+    const toTitle = (v?: string) => (v ? String(v).replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, m => m.toUpperCase()) : '')
     let tourName =
       bookingData?.tourData?.title ||
       (() => {
@@ -2551,29 +2555,28 @@ const serviceLabel = bookingData?.isEvent
       })() ||
       toTitle(bookingData?.tourId || bookingData?.selectedTourSlug)
 
-    // 2b) Origen/Destino legibles para traslado
+    // 3) Origen/Destino legibles para traslado
     const originPretty =
-      (bookingData?.origen && (labelMap as any)[bookingData.origen]) ||
+      (bookingData?.origen && (labelMap as any)?.[bookingData.origen]) ||
       bookingData?.pickupAddress ||
       bookingData?.origen ||
       ''
     const destPretty =
-      (bookingData?.destino && (labelMap as any)[bookingData.destino]) ||
+      (bookingData?.destino && (labelMap as any)?.[bookingData.destino]) ||
       bookingData?.dropoffAddress ||
       bookingData?.destino ||
       ''
 
-    // 3) Descripción unificada:
-    //    - Si es TOUR: "Reserva Tour [NombreDelTour]"
-    //    - Si es TRASLADO: "Reserva Traslado Origen → Destino"
+    // 4) Descripción
     const descriptionSingle = isTourCurrent
       ? `Reserva Tour ${tourName || `${originPretty}${originPretty && destPretty ? ' → ' : ''}${destPretty}`}`
       : `Reserva Traslado ${originPretty}${originPretty && destPretty ? ' → ' : ''}${destPretty}`
 
-    // 4) Importe a cobrar
+    // 5) ¿Pago combinado?
+    const cartActive = Array.isArray(carritoState) && carritoState.length > 0
     const amount = cartActive ? getCombinedAmountToCharge() : Number(amountNow || 0)
 
-    // 5) Carrito para backend (solo si hay 2 o más)
+    // 6) Carrito para enviar al backend (solo si hay ítems)
     const carritoForSubmit = cartActive
       ? (carritoState || []).map((it) => ({
           ...it,
@@ -2581,15 +2584,16 @@ const serviceLabel = bookingData?.isEvent
           contactPhone: bookingData.contactPhone,
           contactEmail: bookingData.contactEmail,
           referralSource: bookingData.referralSource || it.referralSource || '',
+          payFullNow, // por si el backend lo usa a nivel de servicio
         }))
       : []
 
-    // 6) Descripción final para Mollie
+    // 7) Descripción final para Mollie
     const description = cartActive
       ? `Pago combinado (${(carritoState?.length || 0) + 1} servicios)`
       : descriptionSingle
 
-    // 7) Crear pago Mollie
+    // 8) Crear pago
     const res = await fetch('/api/mollie/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2601,15 +2605,19 @@ const serviceLabel = bookingData?.isEvent
         referralSource: bookingData?.referralSource || '',
         payFullNow,
 
+        // Enviamos la reserva actual
         booking: {
           ...bookingData,
           referralSource: bookingData?.referralSource || '',
           paymentPickupAddress,
           paymentDropoffAddress,
+          payFullNow, // asegúrate de que quede reflejado dentro del servicio
         },
 
+        // Ítems añadidos (si aplica)
         carrito: carritoForSubmit,
 
+        // Contacto
         contact: {
           name: bookingData.contactName,
           phone: bookingData.contactPhone,
@@ -2617,6 +2625,7 @@ const serviceLabel = bookingData?.isEvent
           referralSource: bookingData.referralSource || '',
         },
 
+        // Metadatos útiles
         metadata: {
           source: 'web',
           combinedPayment: cartActive,
@@ -2627,6 +2636,10 @@ const serviceLabel = bookingData?.isEvent
 
     if (!res.ok) throw new Error(`Error creando pago: ${res.status}`)
     const json = await res.json()
+
+    // Guarda inmediatamente el paymentId para /gracias
+    try { if (json?.id) localStorage.setItem('lastPaymentId', String(json.id)) } catch {}
+
     const url = json?.checkoutUrl
     if (typeof url === 'string') {
       // Limpia carrito solo si era combinado
@@ -2639,6 +2652,7 @@ const serviceLabel = bookingData?.isEvent
       window.location.href = url
       return
     }
+
     throw new Error('checkoutUrl no recibido')
   } catch (e) {
     console.error('No se pudo iniciar el pago:', e)

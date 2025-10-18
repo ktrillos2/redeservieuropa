@@ -40,7 +40,6 @@ export function computePrice(pax: number, pricing: TourPricing): number {
   return 0
 }
 
-
 export default defineType({
   name: 'tour',
   title: 'Tour',
@@ -207,12 +206,12 @@ export default defineType({
     }),
 
     defineField({
-  name: 'isPopular',
-  title: 'Destacar como Popular',
-  type: 'boolean',
-  initialValue: false,
-  description: 'Activa para mostrar este tour como Popular en la web.',
-}),
+      name: 'isPopular',
+      title: 'Destacar como Popular',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Activa para mostrar este tour como Popular en la web.',
+    }),
 
     defineField({
       name: 'mainImage',
@@ -220,7 +219,32 @@ export default defineType({
       type: 'image',
       options: { hotspot: true },
     }),
+
     defineField({ name: 'orderRank', title: 'Orden de aparición', type: 'string' }),
+
+    // ✅ NUEVA SECCIÓN: Requerimientos de reserva
+    defineField({
+      name: 'requirements',
+      title: 'Requerimientos de reserva',
+      type: 'object',
+      description: 'Indica si este tour requiere datos obligatorios al reservar.',
+      fields: [
+        defineField({
+          name: 'requireTime',
+          title: 'Requiere hora obligatoria',
+          type: 'boolean',
+          initialValue: false,
+          description: 'Activa si el cliente debe seleccionar una hora para este tour.',
+        }),
+        defineField({
+          name: 'requireFlightNumber',
+          title: 'Requiere número de vuelo',
+          type: 'boolean',
+          initialValue: false,
+          description: 'Activa si el cliente debe ingresar su número de vuelo.',
+        }),
+      ],
+    }),
   ],
 
   preview: {

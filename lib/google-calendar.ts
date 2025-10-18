@@ -90,6 +90,8 @@ export async function createCalendarEvent(
     end: string | { dateTime: string; timeZone?: string };
     timezone?: string;
     calendarId?: string;
+    location?: string;
+    attendees?: Array<{ email: string; displayName?: string }>;
   },
   dedupeKey?: string
 ) {
@@ -117,6 +119,8 @@ export async function createCalendarEvent(
               description: payload.description,
               start,
               end,
+              location: payload.location,         
+    attendees: payload.attendees
             },
           });
           return patched.data;
@@ -140,6 +144,8 @@ export async function createCalendarEvent(
         description: payload.description,
         start,
         end,
+        location: payload.location,          // 👈 NEW
+    attendees: payload.attendees,
       },
     });
     return res.data;

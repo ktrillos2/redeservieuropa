@@ -66,13 +66,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, note: `ignored-status-${payment.status}` })
 
     const orders = await serverClient.fetch<Array<any>>(
-      `*[_type == "order" && payment.paymentId == $pid]{
-        _id, contact{name,email,phone},
-        service{type,title,date,time,totalPrice,pickupAddress,dropoffAddress,flightNumber,passengers},
-        calendar{eventId,htmlLink}, payment{currency}
-      }`,
-      { pid: paymentId }
-    )
+  `*[_type == "order" && payment.paymentId == $pid]{
+    _id,
+    contact{name,email,phone,referralSource},
+    service{
+      type,title,date,time,totalPrice,passengers,
+      pickupAddress,dropoffAddress,
+      flightNumber,flightArrivalTime,flightDepartureTime,
+      luggage23kg,luggage10kg,isNightTime,extraLuggage,
+      selectedPricingOption
+    },
+    calendar{eventId,htmlLink},
+    payment{currency,method,requestedMethod}
+  }`,
+  { pid: paymentId }
+)
 
     if (!orders?.length)
       return NextResponse.json({ ok: true, note: 'no-orders' })
@@ -106,12 +114,14 @@ export async function POST(req: Request) {
     const services = orders.map(o => o.service)
 
     const adminHtml = renderAdminNewServicesEmailMulti({
-      mollieId: paymentId,
-      amount: paidAmount,
-      currency: 'EUR',
-      contact,
-      services,
-    })
+  mollieId: paymentId,
+  amount: paidAmount,
+  currency: 'EUR',
+  method: orders[0]?.payment?.method,
+  requestedMethod: orders[0]?.payment?.requestedMethod,
+  contact,
+  services,
+})
     const clientHtml = contact
       ? renderClientThanksEmailMulti({
           mollieId: paymentId,

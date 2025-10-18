@@ -82,15 +82,21 @@ export async function POST(req: Request) {
     }
 
     const orders = await serverClient.fetch<Array<any>>(
-      `*[_type == "order" && payment.paymentId == $pid]{
-        _id, status,
-        payment{amount,paidAt,method,requestedMethod,currency,status},
-        contact{name,email,phone},
-        service{type,title,date,time,totalPrice,pickupAddress,dropoffAddress,flightNumber,passengers},
-        calendar{eventId,htmlLink}
-      }`,
-      { pid: paymentId }
-    )
+  `*[_type == "order" && payment.paymentId == $pid]{
+    _id,
+    calendar{eventId},
+    service{
+      type,title,date,time,totalPrice,passengers,
+      pickupAddress,dropoffAddress,
+      flightNumber,flightArrivalTime,flightDepartureTime,
+      luggage23kg,luggage10kg,isNightTime,extraLuggage,
+      selectedPricingOption
+    },
+    payment{method,requestedMethod,currency},
+    contact{name,email,phone,referralSource}
+  }`,
+  { pid: paymentId }
+)
 
     if (!orders?.length)
       return NextResponse.json({ ok: true, note: 'no-orders' })
@@ -204,9 +210,21 @@ export async function PUT(req: Request) {
     if (!paymentId) return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 })
 
     const orders = await serverClient.fetch<Array<any>>(
-      `*[_type == "order" && payment.paymentId == $pid]{_id, calendar{eventId}, service}`,
-      { pid: paymentId }
-    )
+  `*[_type == "order" && payment.paymentId == $pid]{
+    _id,
+    calendar{eventId},
+    service{
+      type,title,date,time,totalPrice,passengers,
+      pickupAddress,dropoffAddress,
+      flightNumber,flightArrivalTime,flightDepartureTime,
+      luggage23kg,luggage10kg,isNightTime,extraLuggage,
+      selectedPricingOption
+    },
+    payment{method,requestedMethod,currency},
+    contact{name,email,phone,referralSource}
+  }`,
+  { pid: paymentId }
+)
 
     const results: any[] = []
 

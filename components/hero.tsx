@@ -636,7 +636,7 @@ const goToPayment = () => {
                   <div className="space-y-4">
                     <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">{bookingForm?.title || 'Reserva tu Servicio'}</h3>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
+                      <label className="text-sm text-center font-medium flex justify-center items-center gap-2">
                         <Map className="w-4 h-4 text-accent" />
                         {bookingForm?.typePicker?.label || 'Tipo de reserva'}
                       </label>
@@ -883,6 +883,48 @@ const goToPayment = () => {
                         <>
                           {/* Tour y Tipo de tour en la misma fila */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Tipo de tour (Diurno, Nocturno o Escala) */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Plane className="w-4 h-4 text-accent" />
+                                Tipo de tour
+                              </label>
+                              <Select
+                                value={
+                                  bookingData.categoriaTour === "escala"
+                                    ? "escala"
+                                    : bookingData.subtipoTour || ""
+                                }
+                                onValueChange={(value) => {
+                                  if (value === "escala") {
+                                    setBookingData({
+                                      ...bookingData,
+                                      categoriaTour: "escala",
+                                      subtipoTour: "" as "diurno" | "nocturno" | "",
+                                      tipoTour: "escala",
+                                      selectedTourSlug: "",
+                                    })
+                                  } else {
+                                    setBookingData({
+                                      ...bookingData,
+                                      categoriaTour: "ciudad",
+                                      subtipoTour: value as "diurno" | "nocturno" | "",
+                                      tipoTour: value as "diurno" | "nocturno" | "",
+                                      selectedTourSlug: "",
+                                    })
+                                  }
+                                }}
+                              >
+                                <SelectTrigger data-field="categoriaTour" className={"cursor-pointer " + (fieldErrors.categoriaTour ? 'border-destructive focus-visible:ring-destructive' : '')}>
+                                  <SelectValue placeholder="Selecciona una opción" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="diurno">Tour diurno</SelectItem>
+                                  <SelectItem value="nocturno">Tour nocturno</SelectItem>
+                                  <SelectItem value="escala">Tour escala</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                             {/* Selector de tours disponibles */}
                             {Array.isArray(toursList) && toursList.length > 0 && (
                               <div className="space-y-2">
@@ -933,48 +975,7 @@ const goToPayment = () => {
 
                               </div>
                             )}
-                            {/* Tipo de tour (Diurno, Nocturno o Escala) */}
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium flex items-center gap-2">
-                                <Plane className="w-4 h-4 text-accent" />
-                                Tipo de tour
-                              </label>
-                              <Select
-                                value={
-                                  bookingData.categoriaTour === "escala"
-                                    ? "escala"
-                                    : bookingData.subtipoTour || ""
-                                }
-                                onValueChange={(value) => {
-                                  if (value === "escala") {
-                                    setBookingData({
-                                      ...bookingData,
-                                      categoriaTour: "escala",
-                                      subtipoTour: "" as "diurno" | "nocturno" | "",
-                                      tipoTour: "escala",
-                                      selectedTourSlug: "",
-                                    })
-                                  } else {
-                                    setBookingData({
-                                      ...bookingData,
-                                      categoriaTour: "ciudad",
-                                      subtipoTour: value as "diurno" | "nocturno" | "",
-                                      tipoTour: value as "diurno" | "nocturno" | "",
-                                      selectedTourSlug: "",
-                                    })
-                                  }
-                                }}
-                              >
-                                <SelectTrigger data-field="categoriaTour" className={"cursor-pointer " + (fieldErrors.categoriaTour ? 'border-destructive focus-visible:ring-destructive' : '')}>
-                                  <SelectValue placeholder="Selecciona una opción" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="diurno">Tour diurno</SelectItem>
-                                  <SelectItem value="nocturno">Tour nocturno</SelectItem>
-                                  <SelectItem value="escala">Tour escala</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                            
                           </div>
                           {/* Fecha, hora, pasajeros, vehículo */}
                           <div className="grid grid-cols-2 gap-4">

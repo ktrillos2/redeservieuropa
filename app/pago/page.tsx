@@ -176,6 +176,25 @@ function computeFromTourDoc(pax: number, tourDoc: any) {
   return Number(tourDoc?.booking?.startingPriceEUR ?? 0) || 0;
 }
 
+function computeFromTransferDoc(pax: number, doc: any) {
+  const n = Math.max(1, Math.floor(Number(pax) || 1));
+  const p4 = Number(doc?.priceP4 || 0);
+  const p5 = Number(doc?.priceP5 || p4);
+  const p6 = Number(doc?.priceP6 || p5);
+  const p7 = Number(doc?.priceP7 || p6);
+  const p8 = Number(doc?.priceP8 || p7);
+
+  if (n <= 4) return p4;
+  if (n === 5) return p5;
+  if (n === 6) return p6;
+  if (n === 7) return p7;
+  if (n === 8) return p8;
+
+  // Regla 9+: precio de 8 + 20€/pax extra (misma regla que usaste)
+  const extra = Math.max(0, n - 8) * 20;
+  return p8 + extra;
+}
+
 const truncate = (s: string, n = 30) => {
   if (!s) return "";
   const str = String(s);
@@ -417,6 +436,7 @@ export default function PaymentPage() {
 
   // Cuando bookingData se carga, guardar origen/destino en variables separadas
   useEffect(() => {
+    console.log(bookingData)
     if (!bookingData) return;
     // detectar distintos nombres de campo que pueden contener origen/destino
     const o =
@@ -464,6 +484,49 @@ export default function PaymentPage() {
     bookingData?.isNightTime, // cambia horario (nocturno)
     bookingData?.luggage23kg, // cambia equipaje
   ]);
+
+  // === /pago: recalcular total cuando el booking es TRASLADO con transferDoc ===
+useEffect(() => {
+  if (!bookingData?.transferDoc) return;
+
+  const pax = Number(bookingData.passengers || 1);
+
+  // 1) base según doc del traslado
+  let base = computeFromTransferDoc(pax, bookingData.transferDoc);
+
+  // 2) extras (idénticos a tu lógica actual)
+  const isNight = (() => {
+    const t = bookingData.time || bookingData.hora;
+    if (!t) return false;
+    const [hh] = String(t).split(":").map(Number);
+    return (hh || 0) >= 21 || (hh || 0) < 6;
+  })();
+
+  const extraLuggage = Number(bookingData.luggage23kg || 0) > 3;
+  const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
+
+  const total = Number((base + extrasSum).toFixed(2));
+
+  if (total !== Number(bookingData.totalPrice || 0) || base !== Number(bookingData.basePrice || 0)) {
+    setBookingData((prev: any) => {
+      const next = {
+        ...prev,
+        basePrice: base,
+        isNightTime: isNight,
+        extraLuggage,
+        totalPrice: total,
+      };
+      try { localStorage.setItem("bookingData", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+}, [
+  bookingData?.transferDoc,
+  bookingData?.passengers,
+  bookingData?.time,
+  bookingData?.hora,
+  bookingData?.luggage23kg,
+]);
 
   // Exponer en el body un atributo cuando el modal de cotización esté abierto
   useEffect(() => {
@@ -1365,231 +1428,23 @@ export default function PaymentPage() {
   }, [bookingData?.passengers, bookingData?.pasajeros, bookingData?.ninos]);
 
   const updateBookingField = (key: string, value: any) => {
-    setBookingData((prev: any) => {
-      const next: any = { ...prev, [key]: value };
+  setBookingData((prev: any) => {
+    const next: any = { ...prev, [key]: value };
 
-      // 🔧 Normalizar campos numéricos (SIN límite 9)
-      next.passengers = Math.max(1, Math.min(56, Number(next.passengers || 1)));
-      next.luggage23kg = Math.max(0, Number(next.luggage23kg ?? 0));
-      next.luggage10kg = Math.max(0, Number(next.luggage10kg ?? 0));
+    // 🔧 Normalizar campos numéricos (SIN límite 9)
+    next.passengers = Math.max(1, Math.min(56, Number(next.passengers || 1)));
+    next.luggage23kg = Math.max(0, Number(next.luggage23kg ?? 0));
+    next.luggage10kg = Math.max(0, Number(next.luggage10kg ?? 0));
 
-      // 🎫 Eventos: total = precio por persona * cupos
-      if (next.isEvent && typeof next.pricePerPerson === "number") {
-        const total =
-          Number(next.pricePerPerson) * Number(next.passengers || 1);
-        next.totalPrice = Number(total.toFixed(2));
-        try {
-          localStorage.setItem("bookingData", JSON.stringify(next));
-        } catch {}
-        // limpieza de errores
-        setFieldErrors((prevErr) => {
-          if (!prevErr[key]) return prevErr;
-          if (typeof value === "string" && value.trim() === "") return prevErr;
-          if (key === "contactEmail") {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-            if (!emailRegex.test(String(value))) return prevErr;
-          }
-          if (key === "contactPhone") {
-            if (String(value).replace(/\D/g, "").length < 6) return prevErr;
-          }
-          const passengers = next.passengers ?? next.pasajeros;
-          const date = next.date ?? next.fecha;
-          const time = next.time ?? next.hora;
-          const contactName = next.contactName;
-          const contactPhone = next.contactPhone;
-          const contactEmail = next.contactEmail;
-          const pickupAddress = next.pickupAddress;
-          const dropoffAddress = next.dropoffAddress;
-          const needsAddresses =
-            !next.isEvent && !next.isTourQuick && !next.tourId;
-          const allValid =
-            passengers &&
-            Number(passengers) > 0 &&
-            date &&
-            String(date).trim() !== "" &&
-            time &&
-            String(time).trim() !== "" &&
-            contactName &&
-            String(contactName).trim() !== "" &&
-            contactPhone &&
-            String(contactPhone).trim() !== "" &&
-            contactEmail &&
-            String(contactEmail).trim() !== "" &&
-            (!needsAddresses ||
-              (pickupAddress &&
-                String(pickupAddress).trim() !== "" &&
-                dropoffAddress &&
-                String(dropoffAddress).trim() !== ""));
-          if (allValid) return {};
-          const clone = { ...prevErr };
-          delete clone[key];
-          return clone;
-        });
-        return next;
-      }
-
-      // 🧮 Si hay tourDoc, delegar el total a la lógica de 9+ (precio de 8 + extra por pax)
-      if (next.tourDoc) {
-        const n = Number(next.passengers || 1);
-        let total = computeFromTourDoc(n, next.tourDoc);
-        if (next.isNightTime) total += 5;
-        if (Number(next.luggage23kg || 0) > 3) total += 10;
-        next.totalPrice = Number(total.toFixed(2));
-        try {
-          localStorage.setItem("bookingData", JSON.stringify(next));
-        } catch {}
-
-        // limpieza de errores (igual que antes)
-        setFieldErrors((prevErr) => {
-          if (!prevErr[key]) return prevErr;
-          if (typeof value === "string" && value.trim() === "") return prevErr;
-          if (key === "contactEmail") {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-            if (!emailRegex.test(String(value))) return prevErr;
-          }
-          if (key === "contactPhone") {
-            if (String(value).replace(/\D/g, "").length < 6) return prevErr;
-          }
-          const passengers = next.passengers ?? next.pasajeros;
-          const date = next.date ?? next.fecha;
-          const time = next.time ?? next.hora;
-          const contactName = next.contactName;
-          const contactPhone = next.contactPhone;
-          const contactEmail = next.contactEmail;
-          const pickupAddress = next.pickupAddress;
-          const dropoffAddress = next.dropoffAddress;
-          const needsAddresses =
-            !next.isEvent && !next.isTourQuick && !next.tourId;
-          const allValid =
-            passengers &&
-            Number(passengers) > 0 &&
-            date &&
-            String(date).trim() !== "" &&
-            time &&
-            String(time).trim() !== "" &&
-            contactName &&
-            String(contactName).trim() !== "" &&
-            contactPhone &&
-            String(contactPhone).trim() !== "" &&
-            contactEmail &&
-            String(contactEmail).trim() !== "" &&
-            (!needsAddresses ||
-              (pickupAddress &&
-                String(pickupAddress).trim() !== "" &&
-                dropoffAddress &&
-                String(dropoffAddress).trim() !== ""));
-          if (allValid) return {};
-          const clone = { ...prevErr };
-          delete clone[key];
-          return clone;
-        });
-        return next;
-      }
-
-      // 🚗 Traslados: calcular base por ruta y pax (sin límite de 9)
-      if (next.pickupAddress && next.dropoffAddress) {
-        const from = (next.pickupAddress || "").toLowerCase().includes("cdg")
-          ? "cdg"
-          : (next.pickupAddress || "").toLowerCase().includes("orly")
-            ? "orly"
-            : (next.pickupAddress || "").toLowerCase().includes("beauvais")
-              ? "beauvais"
-              : (next.pickupAddress || "").toLowerCase().includes("disney")
-                ? "disneyland"
-                : (next.pickupAddress || "").toLowerCase().includes("parís") ||
-                    (next.pickupAddress || "").toLowerCase().includes("paris")
-                  ? "paris"
-                  : undefined;
-        const to = (next.dropoffAddress || "").toLowerCase().includes("cdg")
-          ? "cdg"
-          : (next.dropoffAddress || "").toLowerCase().includes("orly")
-            ? "orly"
-            : (next.dropoffAddress || "").toLowerCase().includes("beauvais")
-              ? "beauvais"
-              : (next.dropoffAddress || "").toLowerCase().includes("disney")
-                ? "disneyland"
-                : (next.dropoffAddress || "").toLowerCase().includes("parís") ||
-                    (next.dropoffAddress || "").toLowerCase().includes("paris")
-                  ? "paris"
-                  : undefined;
-
-        const pax = Math.max(1, Number(next.passengers || 1));
-        const baseCalc = calcBaseTransferPrice(from, to, pax);
-        const base =
-          typeof baseCalc === "number" ? baseCalc : Number(next.basePrice || 0);
-
-        const isNight = (() => {
-          if (!next.time) return false;
-          const [hh] = String(next.time).split(":").map(Number);
-          const h = hh || 0;
-          return h >= 21 || h < 6;
-        })();
-        const extraLuggage = Number(next.luggage23kg ?? 0) > 3;
-        const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
-
-        next.isNightTime = isNight;
-        next.extraLuggage = extraLuggage;
-        next.luggageCount =
-          Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0);
-        next.totalPrice = Number((base + extrasSum).toFixed(2));
-        next.basePrice = base;
-
-        try {
-          localStorage.setItem("bookingData", JSON.stringify(next));
-        } catch {}
-
-        // limpieza de errores
-        setFieldErrors((prevErr) => {
-          if (!prevErr[key]) return prevErr;
-          if (typeof value === "string" && value.trim() === "") return prevErr;
-          if (key === "contactEmail") {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-            if (!emailRegex.test(String(value))) return prevErr;
-          }
-          if (key === "contactPhone") {
-            if (String(value).replace(/\D/g, "").length < 6) return prevErr;
-          }
-          const passengers = next.passengers ?? next.pasajeros;
-          const date = next.date ?? next.fecha;
-          const time = next.time ?? next.hora;
-          const contactName = next.contactName;
-          const contactPhone = next.contactPhone;
-          const contactEmail = next.contactEmail;
-          const pickupAddress = next.pickupAddress;
-          const dropoffAddress = next.dropoffAddress;
-          const needsAddresses =
-            !next.isEvent && !next.isTourQuick && !next.tourId;
-          const allValid =
-            passengers &&
-            Number(passengers) > 0 &&
-            date &&
-            String(date).trim() !== "" &&
-            time &&
-            String(time).trim() !== "" &&
-            contactName &&
-            String(contactName).trim() !== "" &&
-            contactPhone &&
-            String(contactPhone).trim() !== "" &&
-            contactEmail &&
-            String(contactEmail).trim() !== "" &&
-            (!needsAddresses ||
-              (pickupAddress &&
-                String(pickupAddress).trim() !== "" &&
-                dropoffAddress &&
-                String(dropoffAddress).trim() !== ""));
-          if (allValid) return {};
-          const clone = { ...prevErr };
-          delete clone[key];
-          return clone;
-        });
-
-        return next;
-      }
-
-      // 🧩 Por defecto: persistir y limpiar error del campo
+    // 🎫 Eventos: total = precio por persona * cupos
+    if (next.isEvent && typeof next.pricePerPerson === "number") {
+      const total =
+        Number(next.pricePerPerson) * Number(next.passengers || 1);
+      next.totalPrice = Number(total.toFixed(2));
       try {
         localStorage.setItem("bookingData", JSON.stringify(next));
       } catch {}
+      // limpieza de errores
       setFieldErrors((prevErr) => {
         if (!prevErr[key]) return prevErr;
         if (typeof value === "string" && value.trim() === "") return prevErr;
@@ -1600,13 +1455,302 @@ export default function PaymentPage() {
         if (key === "contactPhone") {
           if (String(value).replace(/\D/g, "").length < 6) return prevErr;
         }
+        const passengers = next.passengers ?? next.pasajeros;
+        const date = next.date ?? next.fecha;
+        const time = next.time ?? next.hora;
+        const contactName = next.contactName;
+        const contactPhone = next.contactPhone;
+        const contactEmail = next.contactEmail;
+        const pickupAddress = next.pickupAddress;
+        const dropoffAddress = next.dropoffAddress;
+        const needsAddresses =
+          !next.isEvent && !next.isTourQuick && !next.tourId;
+        const allValid =
+          passengers &&
+          Number(passengers) > 0 &&
+          date &&
+          String(date).trim() !== "" &&
+          time &&
+          String(time).trim() !== "" &&
+          contactName &&
+          String(contactName).trim() !== "" &&
+          contactPhone &&
+          String(contactPhone).trim() !== "" &&
+          contactEmail &&
+          String(contactEmail).trim() !== "" &&
+          (!needsAddresses ||
+            (pickupAddress &&
+              String(pickupAddress).trim() !== "" &&
+              dropoffAddress &&
+              String(dropoffAddress).trim() !== ""));
+        if (allValid) return {};
         const clone = { ...prevErr };
         delete clone[key];
         return clone;
       });
       return next;
+    }
+
+    // 🧮 TOURS: delega el total a computeFromTourDoc (precio escala por pax)
+    if (next.tourDoc) {
+      const n = Number(next.passengers || 1);
+      let total = computeFromTourDoc(n, next.tourDoc);
+      // Si aplicas recargos globales a tours, déjalos aquí
+      if (next.isNightTime) total += 5;
+      if (Number(next.luggage23kg || 0) > 3) total += 10;
+
+      next.totalPrice = Number(total.toFixed(2));
+      try {
+        localStorage.setItem("bookingData", JSON.stringify(next));
+      } catch {}
+
+      // limpieza de errores
+      setFieldErrors((prevErr) => {
+        if (!prevErr[key]) return prevErr;
+        if (typeof value === "string" && value.trim() === "") return prevErr;
+        if (key === "contactEmail") {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+          if (!emailRegex.test(String(value))) return prevErr;
+        }
+        if (key === "contactPhone") {
+          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+        }
+        const passengers = next.passengers ?? next.pasajeros;
+        const date = next.date ?? next.fecha;
+        const time = next.time ?? next.hora;
+        const contactName = next.contactName;
+        const contactPhone = next.contactPhone;
+        const contactEmail = next.contactEmail;
+        const pickupAddress = next.pickupAddress;
+        const dropoffAddress = next.dropoffAddress;
+        const needsAddresses =
+          !next.isEvent && !next.isTourQuick && !next.tourId;
+        const allValid =
+          passengers &&
+          Number(passengers) > 0 &&
+          date &&
+          String(date).trim() !== "" &&
+          time &&
+          String(time).trim() !== "" &&
+          contactName &&
+          String(contactName).trim() !== "" &&
+          contactPhone &&
+          String(contactPhone).trim() !== "" &&
+          contactEmail &&
+          String(contactEmail).trim() !== "" &&
+          (!needsAddresses ||
+            (pickupAddress &&
+              String(pickupAddress).trim() !== "" &&
+              dropoffAddress &&
+              String(dropoffAddress).trim() !== ""));
+        if (allValid) return {};
+        const clone = { ...prevErr };
+        delete clone[key];
+        return clone;
+      });
+      return next;
+    }
+
+    // 🚗 TRASLADOS con transferDoc: calcula base con priceP4..P8 y extras
+    if (next.transferDoc) {
+      const pax = Math.max(1, Number(next.passengers || 1));
+      const base = computeFromTransferDoc(pax, next.transferDoc);
+
+      const isNight = (() => {
+        const t = next.time || next.hora;
+        if (!t) return false;
+        const [hh] = String(t).split(":").map(Number);
+        const h = hh || 0;
+        return h >= 21 || h < 6;
+      })();
+      const extraLuggage = Number(next.luggage23kg ?? 0) > 3;
+      const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
+
+      next.basePrice = base;
+      next.isNightTime = isNight;
+      next.extraLuggage = extraLuggage;
+      next.luggageCount =
+        Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0);
+      next.totalPrice = Number((base + extrasSum).toFixed(2));
+
+      try {
+        localStorage.setItem("bookingData", JSON.stringify(next));
+      } catch {}
+
+      // limpieza de errores
+      setFieldErrors((prevErr) => {
+        if (!prevErr[key]) return prevErr;
+        if (typeof value === "string" && value.trim() === "") return prevErr;
+        if (key === "contactEmail") {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+          if (!emailRegex.test(String(value))) return prevErr;
+        }
+        if (key === "contactPhone") {
+          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+        }
+        const passengers = next.passengers ?? next.pasajeros;
+        const date = next.date ?? next.fecha;
+        const time = next.time ?? next.hora;
+        const contactName = next.contactName;
+        const contactPhone = next.contactPhone;
+        const contactEmail = next.contactEmail;
+        const pickupAddress = next.pickupAddress;
+        const dropoffAddress = next.dropoffAddress;
+        const needsAddresses =
+          !next.isEvent && !next.isTourQuick && !next.tourId;
+        const allValid =
+          passengers &&
+          Number(passengers) > 0 &&
+          date &&
+          String(date).trim() !== "" &&
+          time &&
+          String(time).trim() !== "" &&
+          contactName &&
+          String(contactName).trim() !== "" &&
+          contactPhone &&
+          String(contactPhone).trim() !== "" &&
+          contactEmail &&
+          String(contactEmail).trim() !== "" &&
+          (!needsAddresses ||
+            (pickupAddress &&
+              String(pickupAddress).trim() !== "" &&
+              dropoffAddress &&
+              String(dropoffAddress).trim() !== ""));
+        if (allValid) return {};
+        const clone = { ...prevErr };
+        delete clone[key];
+        return clone;
+      });
+
+      return next;
+    }
+
+    // 🚗 TRASLADOS SIN transferDoc: calcula base por direcciones (fallback)
+    if (next.pickupAddress && next.dropoffAddress) {
+      const from = (next.pickupAddress || "").toLowerCase().includes("cdg")
+        ? "cdg"
+        : (next.pickupAddress || "").toLowerCase().includes("orly")
+          ? "orly"
+          : (next.pickupAddress || "").toLowerCase().includes("beauvais")
+            ? "beauvais"
+            : (next.pickupAddress || "").toLowerCase().includes("disney")
+              ? "disneyland"
+              : (next.pickupAddress || "").toLowerCase().includes("parís") ||
+                  (next.pickupAddress || "").toLowerCase().includes("paris")
+                ? "paris"
+                : undefined;
+
+      const to = (next.dropoffAddress || "").toLowerCase().includes("cdg")
+        ? "cdg"
+        : (next.dropoffAddress || "").toLowerCase().includes("orly")
+          ? "orly"
+          : (next.dropoffAddress || "").toLowerCase().includes("beauvais")
+            ? "beauvais"
+            : (next.dropoffAddress || "").toLowerCase().includes("disney")
+              ? "disneyland"
+              : (next.dropoffAddress || "")
+                    .toLowerCase()
+                    .includes("parís") ||
+                (next.dropoffAddress || "").toLowerCase().includes("paris")
+                ? "paris"
+                : undefined;
+
+      const pax = Math.max(1, Number(next.passengers || 1));
+      const baseCalc = calcBaseTransferPrice(from, to, pax);
+      const base =
+        typeof baseCalc === "number" ? baseCalc : Number(next.basePrice || 0);
+
+      const isNight = (() => {
+        if (!next.time) return false;
+        const [hh] = String(next.time).split(":").map(Number);
+        const h = hh || 0;
+        return h >= 21 || h < 6;
+      })();
+      const extraLuggage = Number(next.luggage23kg ?? 0) > 3;
+      const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
+
+      next.isNightTime = isNight;
+      next.extraLuggage = extraLuggage;
+      next.luggageCount =
+        Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0);
+      next.totalPrice = Number((base + extrasSum).toFixed(2));
+      next.basePrice = base;
+
+      try {
+        localStorage.setItem("bookingData", JSON.stringify(next));
+      } catch {}
+
+      // limpieza de errores
+      setFieldErrors((prevErr) => {
+        if (!prevErr[key]) return prevErr;
+        if (typeof value === "string" && value.trim() === "") return prevErr;
+        if (key === "contactEmail") {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+          if (!emailRegex.test(String(value))) return prevErr;
+        }
+        if (key === "contactPhone") {
+          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+        }
+        const passengers = next.passengers ?? next.pasajeros;
+        const date = next.date ?? next.fecha;
+        const time = next.time ?? next.hora;
+        const contactName = next.contactName;
+        const contactPhone = next.contactPhone;
+        const contactEmail = next.contactEmail;
+        const pickupAddress = next.pickupAddress;
+        const dropoffAddress = next.dropoffAddress;
+        const needsAddresses =
+          !next.isEvent && !next.isTourQuick && !next.tourId;
+        const allValid =
+          passengers &&
+          Number(passengers) > 0 &&
+          date &&
+          String(date).trim() !== "" &&
+          time &&
+          String(time).trim() !== "" &&
+          contactName &&
+          String(contactName).trim() !== "" &&
+          contactPhone &&
+          String(contactPhone).trim() !== "" &&
+          contactEmail &&
+          String(contactEmail).trim() !== "" &&
+          (!needsAddresses ||
+            (pickupAddress &&
+              String(pickupAddress).trim() !== "" &&
+              dropoffAddress &&
+              String(dropoffAddress).trim() !== ""));
+        if (allValid) return {};
+        const clone = { ...prevErr };
+        delete clone[key];
+        return clone;
+      });
+
+      return next;
+    }
+
+    // 🧩 Por defecto: solo persistir y limpiar error del campo
+    try {
+      localStorage.setItem("bookingData", JSON.stringify(next));
+    } catch {}
+
+    setFieldErrors((prevErr) => {
+      if (!prevErr[key]) return prevErr;
+      if (typeof value === "string" && value.trim() === "") return prevErr;
+      if (key === "contactEmail") {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        if (!emailRegex.test(String(value))) return prevErr;
+      }
+      if (key === "contactPhone") {
+        if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+      }
+      const clone = { ...prevErr };
+      delete clone[key];
+      return clone;
     });
-  };
+
+    return next;
+  });
+};
 
   // Validar email en blur y actualizar errores de campo
   const validateAndSetEmail = (value: string) => {

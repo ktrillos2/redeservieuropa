@@ -80,40 +80,56 @@ export const TOUR_BY_SLUG_QUERY = `
 `
 
 export const TRANSFERS_LIST_QUERY = `
-*[_type == "transfers"] | order(coalesce(order, 999) asc, _createdAt asc){
+*[_type == "transfers"] | order(coalesce(order, 999) asc, _createdAt asc) {
   _id,
   slug,
   from,
   to,
-  price,
+  briefInfo,
   description,
   duration,
   popular,
-  icon,
-  isSpecial,
-  subtitle,
-  notes,
-  order
+  order,
+
+  // === Requerimientos de vuelo ===
+  requireFlightInfo,
+  requireFlightNumber,
+  requireFlightTimes,
+
+  // === Precios ===
+  priceP4,
+  priceP5,
+  priceP6,
+  priceP7,
+  priceP8
 }
-`
+`;
 
 export const TRANSFER_BY_SLUG_QUERY = `
-*[_type == "transfers" && slug.current == $slug][0]{
+*[_type == "transfers" && slug.current == $slug][0] {
   _id,
   slug,
   from,
   to,
-  price,
+  briefInfo,
   description,
   duration,
   popular,
-  icon,
-  isSpecial,
-  subtitle,
-  notes,
-  order
+  order,
+
+  // === Requerimientos de vuelo ===
+  requireFlightInfo,
+  requireFlightNumber,
+  requireFlightTimes,
+
+  // === Precios ===
+  priceP4,
+  priceP5,
+  priceP6,
+  priceP7,
+  priceP8
 }
-`
+`;
 
 export const TRANSFERS_SECTION_CONTENT_QUERY = `
 *[_type == "transfersSectionContent" && _id == "transfersSectionContent"][0]{

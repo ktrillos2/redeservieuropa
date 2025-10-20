@@ -2,12 +2,24 @@ import { ensureAndGetHero } from '@/sanity/lib/hero'
 import { urlFor } from '@/sanity/lib/image'
 import { getActiveEventsForHero } from '@/sanity/lib/events'
 import { getToursList } from '@/sanity/lib/tours'
+import { getTransfersList } from '@/sanity/lib/transfers'   // ⬅️ Nuevo import
 import { Hero } from './hero'
+
 export default async function HeroServer() {
-  const hero = await ensureAndGetHero()
-  const events = await getActiveEventsForHero()
-  const tours = await getToursList()
-  const bgUrl = hero?.backgroundImage ? urlFor(hero.backgroundImage).width(2000).url() : undefined
+  // === Fetch principal ===
+  const [hero, events, tours, transfers] = await Promise.all([
+    ensureAndGetHero(),
+    getActiveEventsForHero(),
+    getToursList(),
+    getTransfersList(),  // ⬅️ Nuevo: lista de traslados desde Sanity
+  ])
+
+  // === Imagen de fondo ===
+  const bgUrl = hero?.backgroundImage
+    ? urlFor(hero.backgroundImage).width(2000).url()
+    : undefined
+
+  // === Eventos del slider (map simplificado) ===
   const mappedEvents = (events || []).map((e) => ({
     id: e._id,
     title: e.title,
@@ -23,7 +35,16 @@ export default async function HeroServer() {
           .map((img) => (img ? urlFor(img).width(1600).url() : undefined))
           .filter((u): u is string => typeof u === 'string')
       : undefined,
-  }));
+  }))
+
+  // === Tours normalizados ===
+  const mappedTours = (tours || []).map((t) => ({
+    ...t,
+    slug: t.slug?.current || '',
+    mainImageUrl: t.mainImage ? urlFor(t.mainImage).width(1200).url() : undefined,
+  }))
+
+  // === Render ===
   return (
     <Hero
       title={hero?.title}
@@ -34,11 +55,8 @@ export default async function HeroServer() {
       secondaryCtaLabel={hero?.secondaryCta?.label}
       bookingForm={hero?.bookingForm as any}
       events={mappedEvents}
-      toursList={tours?.map(t => ({
-  ...t,
-  slug: t.slug?.current, // Normaliza el slug para fácil acceso
-  mainImageUrl: t.mainImage ? urlFor(t.mainImage).width(1200).url() : undefined,
-}))}
+      toursList={mappedTours}
+      transfersList={transfers}   // ⬅️ Nuevo: pasamos los traslados al Hero
     />
   )
 }

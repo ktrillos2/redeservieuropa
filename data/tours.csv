@@ -1,0 +1,14 @@
+origin,circuit,destination,p4
+"Disneyland","París (Tour Eiffel y Arco del Triunfo)","Disneyland",211
+"Disneyland","París Tour (3 horas)","Aeropuerto CDG u ORLY",301
+"Disneyland","París Tour (2 horas)","Aeropuerto CDG u ORLY",256
+"Disneyland","París (Tour Eiffel y Arco del Triunfo)","Aeropuerto CDG u ORLY",201
+"Aeropuerto CDG u ORLY","París Tour (3 horas)","Disneyland",301
+"Aeropuerto CDG u ORLY","París Tour (2 horas)","Disneyland",256
+"Aeropuerto CDG u ORLY","París (Tour Eiffel y Arco del Triunfo)","Disneyland",201
+"Hotel París","París Tour (3 horas)","Aeropuerto CDG u ORLY",210
+"Hotel París","París Tour (2 horas)","Aeropuerto CDG u ORLY",160
+"Aeropuerto CDG u ORLY","París Tour (3 horas)","Hotel París",210
+"Aeropuerto CDG u ORLY","París Tour (2 horas)","Hotel París",160
+"Hotel París","París Tour (3 horas)","Hotel París o centro de París",165
+"Hotel París","París Tour (2 horas)","Hotel París o centro de París",120

@@ -21,7 +21,8 @@
     "seed:sanity:footer-section": "tsx scripts/seed-footer-section.ts",
     "seed:sanity:orders": "tsx scripts/seed-orders.ts",
     "hash:pwd": "tsx scripts/gen-bcrypt-hash.ts",
-    "import:transfers": "tsx scripts/import-transfers.ts"
+    "import:transfers": "tsx scripts/import-transfers.ts",
+    "import:tours": "tsx scripts/import-tours.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

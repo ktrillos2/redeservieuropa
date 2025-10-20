@@ -14,6 +14,20 @@ export type TransferPricingTable = {
   // En este modelo 9+ toma el mismo precio de p8, así que no es obligatorio extraFrom9
 }
 
+export async function getTransferDocByRoute(from: string, to: string) {
+  try {
+    const transfers = await serverClient.fetch(TRANSFERS_LIST_QUERY);
+    const match = transfers.find(
+      (t: any) =>
+        t.from.toLowerCase() === from.toLowerCase() &&
+        t.to.toLowerCase() === to.toLowerCase()
+    );
+    return match || null;
+  } catch {
+    return null;
+  }
+}
+
 export type TransferDoc = {
   _id: string
   slug?: { current: string }

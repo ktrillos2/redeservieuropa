@@ -63,6 +63,7 @@ import {
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PhoneInputIntl } from "@/components/ui/phone-input";
 import { EmailAutocomplete } from "@/components/ui/email-autocomplete";
+import { getTransferDocByRoute, TransferDoc } from "@/sanity/lib/transfers";
 
 // Helper: formato con máximo 2 decimales (sin forzar ceros)
 const fmtMoney = (n: number | string | undefined | null) => {
@@ -119,6 +120,7 @@ type CartItem = {
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;
+  transferDoc?: TransferDoc;
 };
 
 type PricingItem = { _key?: string; pax: number; price: number };
@@ -200,6 +202,8 @@ const truncate = (s: string, n = 30) => {
   const str = String(s);
   return str.length <= n ? str : str.slice(0, n - 1) + "…";
 };
+
+
 
 type Requirements = {
   requireTime?: boolean;
@@ -384,6 +388,7 @@ export default function PaymentPage() {
     time: bd?.time || bd?.hora || "",
     passengers: Number(bd?.passengers || bd?.pasajeros || 1),
     ninos: Number(bd?.ninos || 0),
+    transferDoc: bd?.transferDoc,
 
     selectedTourSlug: bd?.selectedTourSlug || "",
     flightNumber: bd?.flightNumber || "",
@@ -772,61 +777,64 @@ useEffect(() => {
     setQuoteModalOpen(true);
   };
 
-  const openEditModal = (item: any) => {
-  const fallback = bookingData || {};
-  const tipo =
+  const openEditModal = async (item: any) => {
+  const tipo: "tour" | "traslado" =
     item?.tipo ||
-    fallback?.quickType ||
-    (fallback?.tourId ? "tour" : "traslado");
+    (item?.tourId || item?.tourDoc || item?.selectedTourSlug ? "tour" : "traslado");
 
-  const tourDoc =
-    item?.tourDoc ||
-    fallback?.tourDoc ||
-    (fallback?.tourData ? { ...fallback.tourData, slug: fallback.tourData.slug } : undefined);
-
-  const resolvedTourSlug =
-    item?.selectedTourSlug ||
-    fallback?.selectedTourSlug ||
-    tourDoc?.slug ||
-    tourDoc?.title ||
-    item?.serviceSubLabel ||
-    "";
+  // ——— Traslado: resolvemos transferDoc por la ruta actual del ítem ———
+  let transferDoc = item?.transferDoc;
+  if (tipo === "traslado") {
+    const from = item?.origen || "";
+    const to   = item?.destino || "";
+    try {
+      const fetched = (from && to) ? await getTransferDocByRoute(from, to) : null;
+      if (fetched) transferDoc = fetched;
+    } catch {}
+  }
 
   setModalForm({
-    tipo: tipo || "traslado",
-    origen: item?.origen ?? fallback?.origen ?? "",
-    destino: item?.destino ?? fallback?.destino ?? "",
-    pickupAddress: item?.pickupAddress ?? fallback?.pickupAddress ?? "",
-    dropoffAddress: item?.dropoffAddress ?? fallback?.dropoffAddress ?? "",
-    date: item?.date ?? fallback?.date ?? "",
-    time: item?.time ?? fallback?.time ?? "",
-    passengers: String(item?.passengers ?? fallback?.passengers ?? 1),
-    ninos: item?.ninos ?? fallback?.ninos ?? 0,
-
-    // 👇 lee también vehiculo/vehicleType
-    vehicle: item?.vehicle ?? fallback?.vehicle ?? fallback?.vehiculo ?? fallback?.vehicleType ?? "coche",
-
-    // 👇 acepta categoriaTour/tourCategory y subtipoTour/tourSubtype
-    categoriaTour: item?.categoriaTour ?? fallback?.categoriaTour ?? fallback?.tourCategory ?? "",
-    subtipoTour: item?.subtipoTour ?? fallback?.subtipoTour ?? fallback?.tourSubtype ?? "",
-
-    selectedTourSlug: resolvedTourSlug,
-    tourDoc,
-
-    flightNumber: item?.flightNumber ?? fallback?.flightNumber ?? "",
-    flightArrivalTime: item?.flightArrivalTime ?? fallback?.flightArrivalTime ?? "",
-    flightDepartureTime: item?.flightDepartureTime ?? fallback?.flightDepartureTime ?? "",
-    luggage23kg: Number(item?.luggage23kg ?? fallback?.luggage23kg ?? 0),
-    luggage10kg: Number(item?.luggage10kg ?? fallback?.luggage10kg ?? 0),
-    specialRequests: item?.specialRequests ?? fallback?.specialRequests ?? "",
-    totalPrice: Number(item?.totalPrice ?? fallback?.totalPrice ?? 0),
+    // identidad del ítem
     id: item?.id,
-    contactName: item?.contactName ?? fallback?.contactName ?? "",
-    contactPhone: item?.contactPhone ?? fallback?.contactPhone ?? "",
-    contactEmail: item?.contactEmail ?? fallback?.contactEmail ?? "",
+    tipo,
+
+    // traslado/tour
+    origen: item?.origen || "",
+    destino: item?.destino || "",
+    pickupAddress: item?.pickupAddress || "",
+    dropoffAddress: item?.dropoffAddress || "",
+    selectedTourSlug: item?.selectedTourSlug || "",
+    tourDoc: item?.tourDoc,               // si es tour
+    transferDoc,                          // si es traslado
+
+    // flags de vuelo (prioriza los del transferDoc)
+    requireFlightInfo:  !!(transferDoc?.requireFlightInfo ?? item?.requireFlightInfo),
+    requireFlightNumber:!!(transferDoc?.requireFlightNumber ?? item?.requireFlightNumber),
+    requireFlightTimes: !!(transferDoc?.requireFlightTimes ?? item?.requireFlightTimes),
+
+    // resto de campos
+    date: item?.date || "",
+    time: item?.time || "",
+    passengers: String(item?.passengers ?? 1),
+    ninos: Number(item?.ninos ?? 0),
+    vehicle: item?.vehicle || "coche",
+
+    flightNumber: item?.flightNumber || "",
+    flightArrivalTime: item?.flightArrivalTime || "",
+    flightDepartureTime: item?.flightDepartureTime || "",
+
+    luggage23kg: Number(item?.luggage23kg ?? 0),
+    luggage10kg: Number(item?.luggage10kg ?? 0),
+    specialRequests: item?.specialRequests || "",
+
+    totalPrice: Number(item?.totalPrice ?? 0),
+    contactName: item?.contactName || "",
+    contactPhone: item?.contactPhone || "",
+    contactEmail: item?.contactEmail || "",
   });
 
-  setModalEditingId(item?.id ?? -1);
+  // marca que estamos editando un ítem del carrito (no la reserva -1)
+  setModalEditingId(item?.id);
   setModalStep(2);
   setQuoteModalOpen(true);
 };
@@ -915,6 +923,31 @@ useEffect(() => {
       return mf.totalPrice || 0;
     }
   };
+
+  useEffect(() => {
+  if (modalEditingId === null) return;          // solo en modo edición
+  if (modalForm?.tipo !== "traslado") return;
+  const from = modalForm?.origen?.trim();
+  const to   = modalForm?.destino?.trim();
+  if (!from || !to) return;
+
+  let cancelled = false;
+  const t = setTimeout(async () => {
+    try {
+      const doc = await getTransferDocByRoute(from, to);
+      if (cancelled) return;
+      setModalForm((s: any) => ({
+        ...s,
+        transferDoc: doc || undefined,
+        requireFlightInfo:  !!(doc?.requireFlightInfo),
+        requireFlightNumber:!!(doc?.requireFlightNumber),
+        requireFlightTimes: !!(doc?.requireFlightTimes),
+      }));
+    } catch {}
+  }, 250); // debounce
+
+  return () => { cancelled = true; clearTimeout(t); };
+}, [modalForm?.origen, modalForm?.destino, modalEditingId]);
 
   // Mantener total calculado cuando cambian campos relevantes
   useEffect(() => {
@@ -1077,6 +1110,7 @@ useEffect(() => {
 };
 
   const handleModalSave = (isEdit = false) => {
+    console.warn("Guardando modal...", modalForm);
   const errs = validateModalForSave({ ...modalForm });
   if (modalRequiresFlight(modalForm, toursList)) {
     if (!modalForm.flightNumber?.trim()) errs.flightNumber = "Requerido";
@@ -1131,7 +1165,12 @@ useEffect(() => {
     id: existingId ?? mf.id ?? Date.now(),
     tipo: mf.tipo || "traslado",
     // Mantén serviceLabel y serviceSubLabel coherentes y simples
-    serviceLabel: mf.tipo === "tour" ? "Tour" : "Traslado",
+    serviceLabel:
+  mf.tipo === "tour"
+    ? "Tour"
+    : (mf.transferDoc?.title ||
+       `${labelMap[mf.origen as keyof typeof labelMap] || mf.origen} → ${labelMap[mf.destino as keyof typeof labelMap] || mf.destino}` ||
+       "Traslado"),
     serviceSubLabel:
       mf.tipo === "tour"
         ? toursList.find(
@@ -1173,10 +1212,16 @@ useEffect(() => {
     contactName: mf.contactName || "",
     contactPhone: mf.contactPhone || "",
     contactEmail: mf.contactEmail || "",
+    // preserva doc/flags de traslado si existen
+    transferDoc: mf.transferDoc,
+    requireFlightInfo: mf.requireFlightInfo === true,
+    requireFlightNumber: mf.requireFlightNumber === true,
+    requireFlightTimes: mf.requireFlightTimes === true,
   });
 
   const validateModalForSave = (mf: any): Record<string, string> => {
     const errs: Record<string, string> = {};
+    
 
     // comunes
     if (!mf.passengers || Number(mf.passengers) <= 0)
@@ -1187,11 +1232,10 @@ useEffect(() => {
       if (!mf.pickupAddress?.trim()) errs.pickupAddress = "Requerido";
       if (!mf.dropoffAddress?.trim()) errs.dropoffAddress = "Requerido";
     }
-    if (mf.tipo === "tour" && modalTourRequiresFlight(mf, toursList)) {
+    if (modalRequiresFlight(mf, toursList)) {
       if (!mf.flightNumber?.trim()) errs.flightNumber = "Requerido";
       if (!mf.flightArrivalTime?.trim()) errs.flightArrivalTime = "Requerido";
-      if (!mf.flightDepartureTime?.trim())
-        errs.flightDepartureTime = "Requerido";
+      if (!mf.flightDepartureTime?.trim()) errs.flightDepartureTime = "Requerido";
     }
     // si es tour, forzar selección de tour
     if (
@@ -1207,43 +1251,42 @@ useEffect(() => {
 
   // Helper centralizado
   const modalTourRequiresFlight = (mf: any, tours: TourData[]): boolean => {
-    // 1) si el form trae un tourDoc/tourData con requirements, úsalo
-    if (mf?.tourDoc?.requirements?.requireFlightNumber) return true;
-    if (mf?.tourData?.requirements?.requireFlightNumber) return true;
-    if (mf?.requireFlightNumber) return true;
+  if (mf?.tipo !== "tour") return false; // 👈 evita falsos positivos en traslados
 
-    // 2) si hay selectedTourSlug, busca en toursList por slug o title
-    try {
-      const sel = Array.isArray(tours)
-        ? tours.find(
-            (t) =>
-              (t.slug || t.title) === mf.selectedTourSlug ||
-              t.title === mf.selectedTourSlug
-          )
-        : null;
-      return sel?.requirements?.requireFlightNumber === true;
-    } catch {
-      return false;
-    }
-  };
+  if (mf?.tourDoc?.requirements?.requireFlightNumber) return true;
+  if (mf?.tourData?.requirements?.requireFlightNumber) return true;
+  if (mf?.requireFlightNumber) return true;
+
+  try {
+    const sel = Array.isArray(tours)
+      ? tours.find(
+          (t) =>
+            (t.slug || t.title) === mf.selectedTourSlug ||
+            t.title === mf.selectedTourSlug
+        )
+      : null;
+    return sel?.requirements?.requireFlightNumber === true;
+  } catch {
+    return false;
+  }
+};
 
   const modalRequiresFlight = (mf: any, tours: TourData[]): boolean => {
-    // tours que exigen vuelo
+    // 1) Tours: respeta requirements del tour (único caso donde puede ser obligatorio)
     if (modalTourRequiresFlight(mf, tours)) return true;
 
-    // traslados desde/hacia aeropuertos
+    // 2) Traslados: SOLO si hay flags explícitos en el ítem o en su transferDoc.
     if (mf?.tipo === "traslado") {
-      const isAirport = (v?: string) => {
-        const key = getLocationKeyFromValue(v);
-        return key === "cdg" || key === "orly" || key === "beauvais";
-      };
-      return (
-        isAirport(mf.origen) ||
-        isAirport(mf.destino) ||
-        isAirport(mf.pickupAddress) ||
-        isAirport(mf.dropoffAddress)
-      );
+      const explicit =
+        mf?.requireFlightInfo === true ||
+        mf?.requireFlightNumber === true ||
+        mf?.requireFlightTimes === true ||
+        mf?.transferDoc?.requireFlightInfo === true ||
+        mf?.transferDoc?.requireFlightNumber === true ||
+        mf?.transferDoc?.requireFlightTimes === true;
+      return explicit === true;
     }
+
     return false;
   };
 
@@ -1399,7 +1442,7 @@ useEffect(() => {
       const hour = now.getHours();
       const isNight = hour >= 21 || hour < 6;
       // Sólo aplicar automáticamente si el registro aún no tenía isNightTime true y NO es un tour (los tours ya incorporan lógica propia)
-      if (isNight && !bookingData.isNightTime && !bookingData.tourId) {
+      if (isNight && !bookingData.isNightTime && !bookingData.tourId && !bookingData.time) {
         setBookingData((prev: any) => {
           if (!prev) return prev;
           const next = {
@@ -2038,25 +2081,38 @@ useEffect(() => {
     } catch {}
     return undefined;
   })();
+
+  // === NUEVO: label de traslado desde Sanity (title/name) o desde from/to ===
+const transferLabel =
+  bookingData?.transferDoc?.title ||
+  bookingData?.transferData?.title ||
+  bookingData?.transferDoc?.name ||
+  bookingData?.transferData?.name ||
+  (bookingData?.transferDoc?.from && bookingData?.transferDoc?.to
+    ? `${labelMap[bookingData.transferDoc.from as keyof typeof labelMap] || bookingData.transferDoc.from} → ${labelMap[bookingData.transferDoc.to as keyof typeof labelMap] || bookingData.transferDoc.to}`
+    : "");
   const tourName =
     bookingData?.tourDoc?.title ||
     selectedTourTitleFromList ||
     (bookingData?.tourId ? toTitle(bookingData.tourId) : "");
 
   // ===== REEMPLAZA tu serviceLabel por este =====
-  const serviceLabel = bookingData?.isEvent
+  const serviceLabel =
+  bookingData?.isEvent
     ? bookingData?.eventTitle || "Evento especial"
     : isQuick
       ? bookingData?.quickType === "traslado"
-        ? bookingData?.origen && bookingData?.destino
-          ? `${labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen} → ${labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino}`
-          : "Traslado"
-        : tourName || "Tour" // 👈 aquí muestra el nombre del tour
+        ? transferLabel || // 👈 PRIORIDAD al nombre del traslado
+          (bookingData?.origen && bookingData?.destino
+            ? `${labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen} → ${labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino}`
+            : "Traslado")
+        : tourName || "Tour"
       : isTour
-        ? tourName || "Tour" // 👈 y aquí también
-        : bookingData?.origen && bookingData?.destino
-          ? `${labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen} → ${labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino}`
-          : "Servicio";
+        ? tourName || "Tour"
+        : transferLabel || // 👈 PRIORIDAD al nombre del traslado
+          (bookingData?.origen && bookingData?.destino
+            ? `${labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen} → ${labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino}`
+            : "Traslado");
   // Enviar a WhatsApp cuando el método es efectivo
   const sendWhatsApp = () => {
     try {
@@ -2184,7 +2240,11 @@ useEffect(() => {
       const isTourType = bookingData.isEvent
         ? true
         : Boolean(bookingData.tourId);
-      const primaryLabel = isTourType ? "Tour" : "Traslado";
+      const primaryLabel = isTourType
+  ? "Tour"
+  : (bookingData?.transferDoc?.title ||
+     bookingData?.transferData?.title ||
+     "Traslado");
       let secondaryLabel = "";
       if (isTourType) {
         const name =
@@ -2271,6 +2331,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
       alert("No se pudo agregar al carrito. Intenta nuevamente.");
     }
   };
+  
 
   return (
     <main className="min-h-screen">
@@ -3983,29 +4044,44 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                                   </div>
 
                                   {it.tipo === "tour" ? (
-                                    <div className="text-xs text-muted-foreground">
-                                      {truncate(
-                                        it.serviceSubLabel ||
-                                          toursList?.find(
-                                            (t) =>
-                                              t.slug === it.selectedTourSlug ||
-                                              t.title === it.selectedTourSlug
-                                          )?.title ||
-                                          toTitle(it.selectedTourSlug) ||
-                                          "Tour",
-                                        30
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-muted-foreground">
-                                      {it.pickupAddress || it.origen || ""}
-                                      {(it.pickupAddress || it.origen) &&
-                                      (it.dropoffAddress || it.destino)
-                                        ? " → "
-                                        : ""}
-                                      {it.dropoffAddress || it.destino || ""}
-                                    </div>
-                                  )}
+  <div className="text-xs text-muted-foreground">
+    {truncate(
+      it.serviceSubLabel ||
+        toursList?.find(
+          (t) => t.slug === it.selectedTourSlug || t.title === it.selectedTourSlug
+        )?.title ||
+        toTitle(it.selectedTourSlug) ||
+        "Tour",
+      30
+    )}
+  </div>
+) : (
+  <div className="text-xs text-muted-foreground">
+    {/* Preferimos siempre lo que viene del transferDoc */}
+    {(it.transferDoc?.from ||
+      (it.origen && labelMap[it.origen as keyof typeof labelMap]) ||
+      it.origen ||
+      it.pickupAddress ||
+      "")}
+
+    {(
+      (it.transferDoc?.from ||
+        it.origen ||
+        it.pickupAddress) &&
+      (it.transferDoc?.to ||
+        it.destino ||
+        it.dropoffAddress)
+    )
+      ? " → "
+      : ""}
+
+    {(it.transferDoc?.to ||
+      (it.destino && labelMap[it.destino as keyof typeof labelMap]) ||
+      it.destino ||
+      it.dropoffAddress ||
+      "")}
+  </div>
+)}
 
                                   <div className="text-xs text-muted-foreground">
                                     {it.date} {it.time} • {it.passengers} pax

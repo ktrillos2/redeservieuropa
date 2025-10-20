@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plane, MapPin, Clock, Users, Luggage, Euro } from "lucide-react"
+import { Plane, MapPin, Clock, Euro } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AnimatedSection } from "@/components/animated-section"
 import Link from "next/link"
@@ -12,80 +12,28 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { client } from "@/sanity/lib/client"
 import { TRANSFERS_LIST_QUERY, TRANSFERS_SECTION_CONTENT_QUERY } from "@/sanity/lib/queries"
 
-const localTransferRoutes = [
-  {
-    id: 1,
-    from: "CDG",
-    to: "París",
-    price: "65€",
-    icon: <Plane className="w-6 h-6" />,
-    description: "Aeropuerto Charles de Gaulle",
-    duration: "45-60 min",
-    popular: true,
-  },
-  {
-    id: 2,
-    from: "Orly",
-    to: "París",
-    price: "60€",
-    icon: <Plane className="w-6 h-6" />,
-    description: "Aeropuerto de Orly",
-    duration: "30-45 min",
-    popular: false,
-  },
-  {
-    id: 3,
-    from: "Beauvais",
-    to: "París",
-    price: "125€",
-    icon: <Plane className="w-6 h-6" />,
-    description: "Aeropuerto Beauvais",
-    duration: "75-90 min",
-    popular: false,
-  },
-  {
-    id: 4,
-    from: "París",
-    to: "Disneyland",
-    price: "70€",
-    icon: <MapPin className="w-6 h-6" />,
-    description: "Centro de París a Disneyland",
-    duration: "45-60 min",
-    popular: true,
-  },
-  {
-    id: 5,
-    from: "Orly",
-    to: "Disneyland",
-    price: "73€",
-    icon: <Plane className="w-6 h-6" />,
-    description: "Aeropuerto Orly a Disneyland",
-    duration: "60-75 min",
-    popular: false,
-  },
-  {
-    id: 6,
-    from: "Tour",
-    to: "Nocturno",
-    price: "65€/h",
-    icon: <Clock className="w-6 h-6" />,
-    description: "Tour nocturno por París (mín. 2h)",
-    duration: "2+ horas",
-    popular: true,
-  },
-]
+type Route = {
+  from: string
+  to: string
+  price: string           // Sanity: string como "65€" o "65 €/trayecto"
+  description?: string
+  duration?: string
+  popular?: boolean
+  slug?: { current: string }
+  icon?: string           // opcional en Sanity (ej. "plane" | "map")
+  priceP4?: number
+  priceP5?: number
+  priceP6?: number
+  priceP7?: number
+  priceP8?: number
+}
 
-const localAdditionalCharges = [
-  { icon: <Clock className="w-5 h-5" />, text: "Recargo nocturno (después 21h)", price: "+5€" },
-  { icon: <Luggage className="w-5 h-5" />, text: "Equipaje voluminoso (+3 maletas 23kg)", price: "+10€" },
-  { icon: <Users className="w-5 h-5" />, text: "Pasajero adicional", price: "+20€" },
-]
+type Charge = { icon?: string; text: string; price: string } // solo si lo traes desde Sanity
 
 export function TransfersSection() {
   const router = useRouter()
-  // Captura mínima: la información detallada se pedirá en la página de pago
   const [loading, setLoading] = useState(true)
-  const [list, setList] = useState<any[] | null>(null)
+  const [list, setList] = useState<Route[] | null>(null)
   const [content, setContent] = useState<any | null>(null)
 
   useEffect(() => {
@@ -94,75 +42,102 @@ export function TransfersSection() {
       try {
         const [listRes, contentRes] = await Promise.all([
           client.fetch(TRANSFERS_LIST_QUERY),
-          client.fetch(TRANSFERS_SECTION_CONTENT_QUERY)
+          client.fetch(TRANSFERS_SECTION_CONTENT_QUERY),
         ])
         if (!mounted) return
-        setList(listRes)
-        setContent(contentRes)
+        console.warn("[TransfersSection] Datos cargados desde Sanity:", { listRes, contentRes } )
+        setList(listRes || [])
+        setContent(contentRes || null)
       } catch (e) {
-        console.warn('[TransfersSection] No se pudo cargar transfers desde Sanity, usaré fallback local.', e)
+        console.warn("[TransfersSection] Error cargando desde Sanity:", e)
+        setList([])
+        setContent(null)
       } finally {
         if (mounted) setLoading(false)
       }
     })()
-    return () => {
-      mounted = false
-    }
+    return () => { mounted = false }
   }, [])
 
-  const parseBasePrice = (price: string) => {
-    const m = price.match(/\d+/)
-    return m ? Number(m[0]) : 0
+  const parseBasePrice = (price: string): number => {
+    const m = String(price || "").match(/\d+([.,]\d+)?/)
+    if (!m) return 0
+    return Number(m[0].replace(",", "."))
   }
 
-  const defaultPassengers = 1
+  const pickIcon = (r: Route) => {
+    const key = (r.icon || "").toLowerCase()
+    if (key === "plane" || /cdg|orly|beauvais|aeropuerto|airport/i.test(`${r.from} ${r.to} ${r.description}`)) {
+      return <Plane className="w-6 h-6" />
+    }
+    return <MapPin className="w-6 h-6" />
+  }
 
-  type Route = { from: string; to: string; price: string; description?: string; duration?: string; popular?: boolean; slug?: { current: string } }
-  type Charge = { icon?: string; text: string; price: string }
-  type Special = { title: string; subtitle?: string; price: string; icon?: string; notes?: string }
+  const routes: Route[] = useMemo(() => {
+  if (Array.isArray(list)) {
+    return list.map((t: any) => ({
+      from: t.from,
+      to: t.to,
+      description: t.briefInfo || t.description,
+      duration: t.duration,
+      popular: t.popular,
+      slug: t.slug,
+      icon: t.icon,
+
+      // ⬇️ trae precios numéricos
+      priceP4: t.priceP4,
+      priceP5: t.priceP5,
+      priceP6: t.priceP6,
+      priceP7: t.priceP7,
+      priceP8: t.priceP8,
+    }))
+  }
+  return []
+}, [list])
+  const charges: Charge[] = useMemo(
+    () => (content?.extraCharges && Array.isArray(content.extraCharges)) ? content.extraCharges : [],
+    [content]
+  )
+
+  const sectionTitle = content?.title || "Nuestros Traslados"
+  const sectionSubtitle = content?.subtitle || "Tarifas transparentes para todos nuestros servicios de transporte premium en París."
+  const footnote = content?.footnote || ""
+
   const handleReserve = (route: Route) => {
-    const passengers = defaultPassengers
-    const base = parseBasePrice(route.price)
-    const isHourly = /\/h/.test(route.price) || route.from === "Tour"
-    if (isHourly) return
-    const total = base
+  const base = Number(route.priceP4 || 0)   // ⬅️ usa priceP4
 
-    const bookingData = {
-      isEvent: false,
-      tourId: `${route.from}-${route.to}`,
-      passengers,
-      date: "",
-      time: "",
-      pickupAddress: route.from,
-      dropoffAddress: route.to,
-      flightNumber: "",
-      luggageCount: 0,
-      luggage23kg: 0,
-      luggage10kg: 0,
-      extraLuggage: false,
-      isNightTime: false,
-      specialRequests: "",
-      contactName: "",
-      contactPhone: "",
-      contactEmail: "",
-      basePrice: base,
-      totalPrice: total,
-    }
-
-    try {
-      localStorage.setItem("bookingData", JSON.stringify(bookingData))
-      router.push("/pago")
-    } catch (e) {
-      console.error("No se pudo iniciar la reserva:", e)
-    }
+  const bookingData = {
+    tipoReserva: "traslado",
+    quickType: "traslado",
+    origen: route.from,
+    destino: route.to,
+    pickupAddress: route.from,
+    dropoffAddress: route.to,
+    passengers: 1,
+    date: "",
+    time: "",
+    flightNumber: "",
+    luggage23kg: 0,
+    luggage10kg: 0,
+    extraLuggage: false,
+    isNightTime: false,
+    contactName: "",
+    contactPhone: "",
+    contactEmail: "",
+    basePrice: base,
+    totalPrice: base,        // ⬅️ el total real lo recalculas en /pago
   }
 
-  // Autoplay básico para el carrusel de traslados
+  localStorage.setItem("bookingData", JSON.stringify(bookingData))
+  router.push("/pago")
+}
+
+  // Autoplay básico del carrusel
   const transfersCarouselRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-    const container = transfersCarouselRef.current
-    if (!container) return
-    const region = container.querySelector('[role="region"][aria-roledescription="carousel"]') as HTMLElement | null
+    const region = transfersCarouselRef.current?.querySelector(
+      '[role="region"][aria-roledescription="carousel"]'
+    ) as HTMLElement | null
     if (!region) return
 
     let timer: number | undefined
@@ -170,206 +145,155 @@ export function TransfersSection() {
       stop()
       timer = window.setInterval(() => {
         const nextBtn = region.querySelector('[data-slot="carousel-next"]') as HTMLButtonElement | null
-        if (nextBtn && !nextBtn.disabled) {
-          nextBtn.click()
-        } else {
-          const prevBtn = region.querySelector('[data-slot="carousel-previous"]') as HTMLButtonElement | null
-          prevBtn?.click()
-        }
+        if (nextBtn && !nextBtn.disabled) nextBtn.click()
+        else region.querySelector<HTMLButtonElement>('[data-slot="carousel-previous"]')?.click()
       }, 4000)
     }
-    const stop = () => {
-      if (timer) window.clearInterval(timer)
-      timer = undefined
-    }
+    const stop = () => { if (timer) window.clearInterval(timer); timer = undefined }
     const onMouseEnter = () => stop()
     const onMouseLeave = () => start()
 
-    region.addEventListener('mouseenter', onMouseEnter)
-    region.addEventListener('mouseleave', onMouseLeave)
+    region.addEventListener("mouseenter", onMouseEnter)
+    region.addEventListener("mouseleave", onMouseLeave)
     start()
-
-    return () => {
-      region.removeEventListener('mouseenter', onMouseEnter)
-      region.removeEventListener('mouseleave', onMouseLeave)
-      stop()
-    }
+    return () => { region.removeEventListener("mouseenter", onMouseEnter); region.removeEventListener("mouseleave", onMouseLeave); stop() }
   }, [])
 
-  const routes: Route[] = useMemo(() => {
-    if (Array.isArray(list)) {
-      return list.filter((t:any) => !t.isSpecial).map(t => ({
-        from: t.from,
-        to: t.to,
-        price: t.price,
-        description: t.description,
-        duration: t.duration,
-        popular: t.popular,
-        slug: t.slug
-      }))
-    }
-    return localTransferRoutes
-  }, [list])
-
-  const specials: Special[] = useMemo(() => {
-    if (Array.isArray(list)) {
-      return list.filter((t:any) => t.isSpecial).map(t => ({
-        title: `${t.from} → ${t.to}`,
-        subtitle: t.subtitle,
-        price: t.price,
-        icon: t.icon,
-        notes: t.notes,
-      }))
-    }
-    return [
-      { title: 'Versailles', subtitle: 'Desde París. Hasta 4 pax', price: '65€', icon: 'map-pin', notes: '+10€ por pasajero adicional (Versailles)' },
-      { title: 'Parque Asterix', subtitle: 'Desde París u Orly', price: '70€', icon: 'plane', notes: '+20€ por persona adicional (Asterix)' },
-      { title: 'Casa de Monet (Giverny)', subtitle: 'Desde París · hasta 4 pax', price: '100€', icon: 'map-pin', notes: 'Persona adicional 12€ (Giverny)' },
-    ]
-  }, [list])
-
-  const charges: Charge[] = useMemo(() => {
-    if (content?.extraCharges && Array.isArray(content.extraCharges)) return content.extraCharges
-    return localAdditionalCharges
-  }, [content])
-
-  const sectionTitle = content?.title || 'Nuestros Traslados'
-  const sectionSubtitle = content?.subtitle || 'Tarifas transparentes para todos nuestros servicios de transporte premium en París.'
-  const footnote = content?.footnote || 'Nota: Para grupos de 5+ pasajeros, se combina la tarifa base + tarifa de vehículo adicional. Ejemplo: 9 pasajeros = Tarifa de 5 + Tarifa de 4 adicionales.'
+  if (loading) {
+    return (
+      <section id="traslados" className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <p className="text-center text-muted-foreground">Cargando traslados…</p>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section id="traslados" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
-  <AnimatedSection animation="fade-up" className="text-center mb-16">
+        <AnimatedSection animation="fade-up" className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">{sectionTitle}</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">{sectionSubtitle}</p>
         </AnimatedSection>
 
-        {/* Transfer Routes Carousel */}
-        <div className="mb-12" ref={transfersCarouselRef}>
-          <Carousel opts={{ align: "start", loop: true }}>
-            <CarouselContent className="py-6">
-              {routes.map((route: Route, index: number) => (
-                <CarouselItem key={`${route.slug?.current || route.from+'-'+route.to}-${index}`} className="basis-full sm:basis-1/2 lg:basis-1/3">
-                  <AnimatedSection animation="zoom-in" delay={index * 100}>
-                    <Card
-                      className={`relative bg-card border-border hover-lift hover-glow h-full flex flex-col ${
-                        route.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : ""
-                      }`}
+        {/* Transfer Routes Carousel (solo Sanity) */}
+        {routes.length > 0 && (
+          <div className="mb-12" ref={transfersCarouselRef}>
+            <Carousel opts={{ align: "start", loop: true }}>
+              <CarouselContent className="py-6">
+                {routes.map((route, index) => {
+                  const basePrice = parseBasePrice(route.price)
+                  return (
+                    <CarouselItem
+                      key={`${route.slug?.current || route.from + "-" + route.to}-${index}`}
+                      className="basis-full sm:basis-1/2 lg:basis-1/3"
                     >
-                      {route.popular && (
-                        <Badge className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-accent text-white z-10 font-medium">
-                          Popular
-                        </Badge>
-                      )}
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-accent/10 rounded-lg text-accent soft-fade-in animation-delay-200">
-                              {/* icono opcional por ahora ignorado para mantener UI */}
-                              <Plane className="w-6 h-6" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg soft-fade-in animation-delay-300">
-                                {route.from} → {route.to}
-                              </CardTitle>
-                              <p className="text-sm text-muted-foreground soft-fade-in animation-delay-400">
-                                {route.description}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-primary">{route.price}</div>
-                            <p className="text-xs text-muted-foreground">Hasta 4 pasajeros</p>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="flex-1" />
+                      <AnimatedSection animation="zoom-in" delay={index * 100}>
+                        <Card
+                          className={`relative bg-card border-border hover-lift hover-glow h-full flex flex-col ${
+                            route.popular ? "border-2 border-accent shadow-lg shadow-accent/20" : ""
+                          }`}
+                        >
+                          {route.popular && (
+                            <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-white z-10 font-medium">
+                              Popular
+                            </Badge>
+                          )}
 
-                      {/* Footer fijo abajo con botón */}
-                      <div className="mt-auto p-4 pt-0 space-y-3">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                          <Clock className="w-4 h-4" />
-                          <span>{route.duration}</span>
-                        </div>
-                        {/\/h/.test(route.price) || route.from === "Tour" ? (
-                          <Link href="/tour/tour-nocturno" className="block">
-                            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md">
-                              Ver detalles y reservar
+                          {/* HEADER: icono arriba izq; título+desc debajo; precio arriba der */}
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between gap-3">
+                              {/* Izquierda: icono + textos */}
+                              <div className="flex items-start gap-3">
+                                <div className="p-2 bg-accent/10 rounded-lg text-accent soft-fade-in">
+                                  {pickIcon(route)}
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg soft-fade-in">
+                                    {route.from} → {route.to}
+                                  </CardTitle>
+                                  {route.description && (
+                                    <p className="text-sm text-muted-foreground soft-fade-in">
+                                      {route.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Derecha: precio “Desde X €” */}
+                              <div className="text-right leading-tight">
+  <div className="text-xs text-muted-foreground">Desde</div>
+  <div className="text-2xl font-extrabold text-primary text-nowrap">
+    {typeof route.priceP4 === "number" ? `${route.priceP4} €` : "—"}
+  </div>
+</div>
+                            </div>
+                          </CardHeader>
+
+                          <CardContent className="flex-1" />
+
+                          {/* Footer fijo con duración + botón reservar */}
+                          <div className="mt-auto p-4 pt-0 space-y-3">
+                            {route.duration && (
+                              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                                <Clock className="w-4 h-4" />
+                                <span>{route.duration}</span>
+                              </div>
+                            )}
+
+                            {/* Si tuvieras rutas por hora, podrías enviarlas a una página de tour;
+                                aquí los tratamos como traslados normales */}
+                            <Button
+                              onClick={() => handleReserve(route)}
+                              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
+                            >
+                              Reservar
                             </Button>
-                          </Link>
-                        ) : (
-                          <Button
-                            onClick={() => handleReserve(route)}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
-                          >
-                            Reservar
-                          </Button>
-                        )}
-                      </div>
-                    </Card>
-                  </AnimatedSection>
-                </CarouselItem>) )}
-            </CarouselContent>
-            <CarouselPrevious className="-left-6" />
-            <CarouselNext className="-right-6" />
-          </Carousel>
-        </div>
+                          </div>
+                        </Card>
+                      </AnimatedSection>
+                    </CarouselItem>
+                  )
+                })}
+              </CarouselContent>
+              <CarouselPrevious className="-left-6" />
+              <CarouselNext className="-right-6" />
+            </Carousel>
+          </div>
+        )}
 
-        {/* Additional Charges */}
-        <Card className="bg-card border-border hover-lift">
-          <CardHeader>
-            <AnimatedSection animation="fade-up">
-              <CardTitle className="text-center text-primary font-display">Cargos Adicionales</CardTitle>
-            </AnimatedSection>
-          </CardHeader>
-          <CardContent>
-            <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
-              {charges.map((charge: Charge, index: number) => (
-                <div key={index} className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
-                  <div className="text-accent animate-pulse"><Euro className="w-5 h-5" /></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{charge.text}</p>
+        {/* Cargos Adicionales (solo si vienen de Sanity) */}
+        {Array.isArray(charges) && charges.length > 0 && (
+          <Card className="bg-card border-border hover-lift">
+            <CardHeader>
+              <AnimatedSection animation="fade-up">
+                <CardTitle className="text-center text-primary font-display">Cargos Adicionales</CardTitle>
+              </AnimatedSection>
+            </CardHeader>
+            <CardContent>
+              <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
+                {charges.map((charge, index) => (
+                  <div key={index} className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
+                    <div className="text-accent animate-pulse"><Euro className="w-5 h-5" /></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{charge.text}</p>
+                    </div>
+                    <div className="text-accent font-bold">{charge.price}</div>
                   </div>
-                  <div className="text-accent font-bold">{charge.price}</div>
-                </div>
-              ))}
-            </AnimatedSection>
-            <div className="mt-6 p-4 bg-primary rounded-lg">
-              <p className="text-sm text-center text-white">
-                <strong>Nota:</strong> {footnote}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </AnimatedSection>
 
-        {/* Traslados Especiales */}
-        <Card className="bg-card border-border hover-lift mt-10">
-          <CardHeader>
-            <AnimatedSection animation="fade-up">
-              <CardTitle className="text-center text-primary font-display">Traslados Especiales</CardTitle>
-            </AnimatedSection>
-          </CardHeader>
-          <CardContent>
-            <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
-              {specials.map((sp: Special, idx: number) => (
-                <div key={idx} className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
-                  <div className="text-accent"><MapPin className="w-5 h-5" /></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{sp.title}</p>
-                    <p className="text-xs text-muted-foreground">{sp.subtitle}</p>
-                  </div>
-                  <div className="text-accent font-bold">{sp.price}</div>
+              {footnote && (
+                <div className="mt-6 p-4 bg-primary rounded-lg">
+                  <p className="text-sm text-center text-white">
+                    <strong>Nota:</strong> {footnote}
+                  </p>
                 </div>
-              ))}
-            </AnimatedSection>
-            <div className="grid md:grid-cols-3 gap-4 mt-3 text-xs text-muted-foreground">
-              {specials.map((sp: Special, idx: number) => (
-                <div key={idx} className="text-center">{sp.notes}</div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </section>
   )

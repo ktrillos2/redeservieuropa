@@ -22,10 +22,8 @@ function getCalendar() {
 }
 
 /* ============================================================
- *  🧩 HELPERS INTERNOS
+ *  🧩 HELPERS
  * ============================================================ */
-
-// Normaliza fecha/hora
 function normalizeDateTime(
   input: string | { dateTime: string; timeZone?: string },
   fallbackTz?: string
@@ -39,7 +37,6 @@ function normalizeDateTime(
   };
 }
 
-// Genera un ID determinista seguro para evitar duplicados
 function makeDeterministicId(key: string) {
   const digest = createHash("sha1").update(String(key)).digest();
   const alphabet = "0123456789abcdefghijklmnopqrstuv";
@@ -56,10 +53,9 @@ function makeDeterministicId(key: string) {
     }
   }
   if (bits > 0) out += alphabet[(buffer << (5 - bits)) & 31];
-  return `e${out}`; // Google permite IDs alfanuméricos base32
+  return `e${out}`;
 }
 
-// Compara si las fechas de dos eventos difieren
 function timesDiffer(existing: any, payload: { start: any; end: any }) {
   const aStart = existing?.start?.dateTime || existing?.start?.date;
   const aEnd = existing?.end?.dateTime || existing?.end?.date;
@@ -80,7 +76,7 @@ function timesDiffer(existing: any, payload: { start: any; end: any }) {
 }
 
 /* ============================================================
- *  📅 CREAR O ACTUALIZAR UN EVENTO (IDEMPOTENTE)
+ *  📅 CREAR / ACTUALIZAR (sin attendees si hay 403)
  * ============================================================ */
 export async function createCalendarEvent(
   payload: {
@@ -100,32 +96,34 @@ export async function createCalendarEvent(
 
   const start = normalizeDateTime(payload.start, payload.timezone);
   const end = normalizeDateTime(payload.end, payload.timezone);
-
   let eventId: string | undefined = dedupeKey ? makeDeterministicId(dedupeKey) : undefined;
 
-  // 1️⃣ Si hay eventId, intentar obtenerlo primero (idempotencia)
+  // Cuerpo base (con attendees opcionalmente)
+  const makeBody = (includeAttendees: boolean) => ({
+    summary: payload.summary,
+    description: payload.description,
+    start,
+    end,
+    location: payload.location,
+    ...(includeAttendees && payload.attendees ? { attendees: payload.attendees } : {}),
+  });
+
+  // 1) Si hay eventId, intenta GET y PATCH si cambia
   if (eventId) {
     try {
       const got = await calendar.events.get({ calendarId, eventId });
       const existing = got.data;
       if (existing?.id) {
-        // Si difieren horarios → patch
         if (timesDiffer(existing, { start, end })) {
+          // PATCH (sin enviar emails)
           const patched = await calendar.events.patch({
             calendarId,
             eventId,
-            requestBody: {
-              summary: payload.summary,
-              description: payload.description,
-              start,
-              end,
-              location: payload.location,         
-    attendees: payload.attendees
-            },
+            requestBody: makeBody(false), // <-- no attendees (evita 403 con service account)
+            sendUpdates: "none",
           });
           return patched.data;
         }
-        // Si es igual → retornar existente
         return existing;
       }
     } catch (err: any) {
@@ -134,40 +132,46 @@ export async function createCalendarEvent(
     }
   }
 
-  // 2️⃣ Crear nuevo evento
+  // 2) INSERT: primero intenta sin attendees; si quieres gatear por env, cambia a true.
   try {
     const res = await calendar.events.insert({
       calendarId,
       requestBody: {
         id: eventId,
-        summary: payload.summary,
-        description: payload.description,
-        start,
-        end,
-        location: payload.location,          // 👈 NEW
-    attendees: payload.attendees,
+        ...makeBody(false), // <-- sin attendees
       },
+      sendUpdates: "none",
     });
     return res.data;
   } catch (err: any) {
     const code = Number(err?.code || err?.response?.status);
 
-    // 409 = ya existe ese ID → obtener existente
+    // 409 → existe, devuélvelo
     if (eventId && code === 409) {
       const got = await calendar.events.get({ calendarId, eventId });
       return got.data;
     }
 
-    // 400 = ID inválido → reintentar sin id (Google genera uno nuevo)
+    // 400 → id inválido, reintenta sin id
     if (eventId && code === 400) {
       const retry = await calendar.events.insert({
         calendarId,
+        requestBody: makeBody(false),
+        sendUpdates: "none",
+      });
+      return retry.data;
+    }
+
+    // 403 por attendees (por si en algún momento los activas)
+    const msg = err?.message || err?.response?.data?.error?.message || "";
+    if (code === 403 && /Service accounts .* invite attendees/i.test(msg)) {
+      const retry = await calendar.events.insert({
+        calendarId,
         requestBody: {
-          summary: payload.summary,
-          description: payload.description,
-          start,
-          end,
+          id: eventId,
+          ...makeBody(false),
         },
+        sendUpdates: "none",
       });
       return retry.data;
     }
@@ -177,7 +181,7 @@ export async function createCalendarEvent(
 }
 
 /* ============================================================
- *  📅 CREAR VARIOS EVENTOS (batch simple)
+ *  📅 BATCH SIMPLE
  * ============================================================ */
 export async function createMultipleCalendarEvents(
   items: Array<{
@@ -197,9 +201,6 @@ export async function createMultipleCalendarEvents(
   return results;
 }
 
-/* ============================================================
- *  🔍 OBTENER EVENTO POR ID
- * ============================================================ */
 export async function getCalendarEventById(eventId: string) {
   const calendar = getCalendar();
   const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
@@ -212,13 +213,6 @@ export async function getCalendarEventById(eventId: string) {
     throw err;
   }
 }
-
-/* ============================================================
- *  🧱 CONSTRUIR PAYLOAD DESDE ORDEN
- * ============================================================ */
-// lib/google-calendar.ts (solo reemplazar esta función)
-
-// lib/google-calendar.ts (reemplaza SOLO esta función)
 
 export function buildOrderEventPayload(order: any) {
   const tz = process.env.GOOGLE_CALENDAR_TZ || 'Europe/Paris'
@@ -245,10 +239,9 @@ export function buildOrderEventPayload(order: any) {
     return 20
   })()
 
-  const date = order?.service?.date // YYYY-MM-DD
+  const date = order?.service?.date
   let time = order?.service?.time || '00:00'
 
-  // normalizar hora HH:mm (acepta 12h con am/pm)
   try {
     const raw = String(time).trim()
     const m = raw.match(/^\s*(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?\s*$/)
@@ -265,7 +258,6 @@ export function buildOrderEventPayload(order: any) {
   const startLocal = `${date}T${time}:00`
   const hours = order?.service?.selectedPricingOption?.hours || (order?.service?.type === 'tour' ? 3 : 1.5)
 
-  // calcular fin
   const [y, m, d] = (date || '1970-01-01').split('-').map((v: string) => parseInt(v, 10))
   const [hh, mm] = (time || '00:00').split(':').map((v: string) => parseInt(v, 10))
   const addMinutes = Math.round(Number(hours) * 60)
@@ -282,9 +274,8 @@ export function buildOrderEventPayload(order: any) {
   const endStr = `${endY}-${endMo}-${endD}T${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`
 
   const total = Number(order?.service?.totalPrice || 0)
-  const paidNow = Math.round(total * (depositPercent / 100) * 10) / 10 // 1 decimal
+  const paidNow = Math.round(total * (depositPercent / 100) * 10) / 10
 
-  // 🔻 DETALLE DEL EVENTO (añadimos horas de vuelo + referral)
   const lines: string[] = []
   lines.push(`Tipo: ${type}`)
   lines.push(`Título: ${titleBase}`)
@@ -304,14 +295,8 @@ export function buildOrderEventPayload(order: any) {
   lines.push(`Total estimado: ${total.toFixed(2)} €`)
   lines.push(`${depositPercent === 100 ? 'Pago realizado' : 'Pago ahora'}: ${paidNow.toFixed(1)} € ${depositPercent === 100 ? '(100%)' : `(${depositPercent}%)`}`)
 
-  const summary = `[${tag}] ${titleBase}`
+  const summary = `[${String(tag)}] ${titleBase}`
   const description = lines.join('\n')
-
-  // 👥 Invitados: cliente + (opcional) admin
-  const attendees = [
-    ...(order?.contact?.email ? [{ email: order.contact.email, displayName: order.contact?.name || '' }] : []),
-    ...(process.env.GOOGLE_CALENDAR_ADMIN_EMAIL ? [{ email: process.env.GOOGLE_CALENDAR_ADMIN_EMAIL }] : [])
-  ]
 
   if (useDefaultTz) {
     return {
@@ -322,7 +307,7 @@ export function buildOrderEventPayload(order: any) {
       location: order?.service?.pickupAddress
         ? `${order.service.pickupAddress}${order?.service?.dropoffAddress ? ` → ${order.service.dropoffAddress}` : ''}`
         : undefined,
-      attendees,
+      // sin attendees
     } as any
   }
 
@@ -334,11 +319,10 @@ export function buildOrderEventPayload(order: any) {
     location: order?.service?.pickupAddress
       ? `${order.service.pickupAddress}${order?.service?.dropoffAddress ? ` → ${order.service.dropoffAddress}` : ''}`
       : undefined,
-    attendees,
+    // sin attendees
   }
 }
 
 function capitalize(str: string) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''
 }
-

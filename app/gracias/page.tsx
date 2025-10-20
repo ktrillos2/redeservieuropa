@@ -1,4 +1,3 @@
-// app/gracias/page.tsx
 'use client'
 
 import Link from 'next/link'
@@ -20,7 +19,6 @@ type Order = {
     requestedMethod?: string
     createdAt?: string
     paidAt?: string
-    // opcionales si tu backend los guarda:
     payFullNow?: boolean
     depositPercent?: number
   }
@@ -28,7 +26,7 @@ type Order = {
     name?: string
     email?: string
     phone?: string
-    referralSource?: string // 👈 nuevo
+    referralSource?: string
   }
   service?: {
     type?: string
@@ -39,8 +37,8 @@ type Order = {
     pickupAddress?: string
     dropoffAddress?: string
     flightNumber?: string
-    flightArrivalTime?: string   // 👈 nuevo
-    flightDepartureTime?: string // 👈 nuevo
+    flightArrivalTime?: string
+    flightDepartureTime?: string
     luggage23kg?: number
     luggage10kg?: number
     isNightTime?: boolean
@@ -48,10 +46,9 @@ type Order = {
     totalPrice?: number
     selectedPricingOption?: { label?: string; price?: number; hours?: number }
     notes?: string
-    // opcionales si los pasas desde el front al crear la orden:
     payFullNow?: boolean
     depositPercent?: number
-    referralSource?: string // por si lo guardaste en service en vez de en contact
+    referralSource?: string
   }
 }
 
@@ -61,13 +58,17 @@ export default function GraciasPage() {
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<Order[] | null>(null)
 
+  // Fallback local si aún no llegaron órdenes del backend
+  const [bundleFallback, setBundleFallback] = useState<any | null>(null)
+
   // Evita doble sync en dev (Strict Mode)
   const hasSyncedRef = useRef(false)
 
-  // Helpers UI
+  // ===== Helpers UI / cálculo =====
   const fmt1 = (n: number) => n.toFixed(1)
   const sumTotalServices = (list: Order[] | null) =>
-    (list || []).reduce((acc, o) => acc + (o.service?.totalPrice || 0), 0)
+    (list || []).reduce((acc, o) => acc + (Number(o.service?.totalPrice || 0)), 0)
+
   const labelRequested = (m?: string | null) => {
     switch ((m || '').toLowerCase()) {
       case 'card': return 'Tarjeta'
@@ -87,30 +88,87 @@ export default function GraciasPage() {
   }
 
   const pctFromType = (type?: string) => {
-  const t = String(type || '').toLowerCase()
-  if (t === 'traslado') return 10
-  if (t === 'tour' || t === 'evento') return 20
-  return 20
-}
+    const t = String(type || '').toLowerCase()
+    if (t === 'traslado') return 10
+    if (t === 'tour' || t === 'evento') return 20
+    return 20
+  }
 
-const depositPercentForOrder = (o?: Order) => {
-  if (!o) return 20
-  // prioridad: payFullNow -> 100
-  if (o.service?.payFullNow || o.payment?.payFullNow) return 100
-  // si backend guardó un depositPercent explícito, úsalo
-  if (typeof o.service?.depositPercent === 'number') return o.service.depositPercent
-  if (typeof o.payment?.depositPercent === 'number') return o.payment.depositPercent
-  // sino, por tipo
-  return pctFromType(o.service?.type)
-}
+  const depositPercentForOrder = (o?: Order) => {
+    if (!o) return 20
+    if (o.service?.payFullNow || o.payment?.payFullNow) return 100
+    if (typeof o.service?.depositPercent === 'number') return o.service.depositPercent
+    if (typeof o.payment?.depositPercent === 'number') return o.payment.depositPercent
+    return pctFromType(o.service?.type)
+  }
 
-const sumPaidNow = (list: Order[] | null) =>
-  (list || []).reduce((acc, o) => {
-    const pct = depositPercentForOrder(o)
-    const total = Number(o.service?.totalPrice || 0)
-    return acc + (total * pct / 100)
-  }, 0)
+  const sumPaidNow = (list: Order[] | null) =>
+    (list || []).reduce((acc, o) => {
+      const pct = depositPercentForOrder(o)
+      const total = Number(o.service?.totalPrice || 0)
+      return acc + (total * pct / 100)
+    }, 0)
 
+  // ===== Adapter: bundle (localStorage.lastCheckoutPayload) -> Order[] =====
+  // Estructura esperada del bundle (guardada en doPay):
+  // {
+  //   amountNow, paymentMethod, payFullNow, contact: {...},
+  //   items: [ { tipo, totalPrice, date, time, passengers, pickupAddress, dropoffAddress, flightNumber, flightArrivalTime, flightDepartureTime, luggage23kg, luggage10kg, specialRequests, ... }, ... ]
+  // }
+  const ordersFromBundle = (b: any): Order[] => {
+    if (!b || !Array.isArray(b.items)) return []
+    return b.items.map((it: any, idx: number) => ({
+      _id: `local-${idx}`,
+      status: b?.payFullNow ? 'paid' : 'open',
+      payment: {
+        provider: 'mollie',
+        paymentId: undefined,
+        status: b?.payFullNow ? 'paid' : 'open',
+        amount: b?.amountNow ?? undefined,
+        currency: 'EUR',
+        method: b?.paymentMethod,
+        requestedMethod: b?.paymentMethod,
+        payFullNow: !!b?.payFullNow,
+        depositPercent: b?.payFullNow ? 100 : undefined,
+      },
+      contact: {
+        name: b?.contact?.name,
+        email: b?.contact?.email,
+        phone: b?.contact?.phone,
+        referralSource: b?.contact?.referralSource,
+      },
+      service: {
+        type: it?.tipo === 'tour' ? 'tour' : 'traslado',
+        title:
+          it?.label ||
+          it?.serviceLabel ||
+          it?.serviceSubLabel ||
+          (it?.tipo === 'tour' ? 'Tour' : 'Traslado'),
+        date: it?.date,
+        time: it?.time,
+        passengers: Number(it?.passengers ?? 0),
+        pickupAddress: it?.pickupAddress,
+        dropoffAddress: it?.dropoffAddress,
+        flightNumber: it?.flightNumber,
+        flightArrivalTime: it?.flightArrivalTime,
+        flightDepartureTime: it?.flightDepartureTime,
+        luggage23kg: Number(it?.luggage23kg ?? 0),
+        luggage10kg: Number(it?.luggage10kg ?? 0),
+        isNightTime: !!it?.isNightTime,
+        extraLuggage: !!it?.extraLuggage,
+        totalPrice: Number(it?.totalPrice || 0),
+        payFullNow: !!b?.payFullNow,
+        depositPercent: b?.payFullNow
+          ? 100
+          : (it?.tipo === 'tour' ? 20 : 10),
+        notes: it?.specialRequests,
+        referralSource: b?.contact?.referralSource,
+      },
+    }))
+  }
+
+  // ===== Efecto principal: lee pid, consulta estado, sincroniza, trae órdenes,
+  //       y si no hay órdenes usa fallback local del bundle =====
   useEffect(() => {
     // 1) Intentar localStorage
     let pid: string | null = null
@@ -128,6 +186,11 @@ const sumPaidNow = (list: Order[] | null) =>
 
     if (!pid) {
       console.warn('[Gracias] lastPaymentId no encontrado.')
+      // Aun así, intentamos pintar con lastCheckoutPayload si existe
+      try {
+        const raw = localStorage.getItem('lastCheckoutPayload')
+        if (raw) setBundleFallback(JSON.parse(raw))
+      } catch {}
       setLoading(false)
       return
     }
@@ -138,14 +201,14 @@ const sumPaidNow = (list: Order[] | null) =>
     if (hasSyncedRef.current) return
     hasSyncedRef.current = true
 
-    // 3) Consultar estado en Mollie
+    // 3) Consultar estado y luego sincronizar/leer órdenes
     fetch(`/api/mollie/status?id=${encodeURIComponent(pid)}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(json => setStatus(json?.status || null))
       .catch(() => setStatus(null))
       .finally(async () => {
         try {
-          // 4) Forzar sync (crea/actualiza órdenes, envía correos si procede)
+          // 4) Forzar sync
           await fetch('/api/orders/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -156,25 +219,48 @@ const sumPaidNow = (list: Order[] | null) =>
           const resp = await fetch(`/api/orders/by-payment?id=${encodeURIComponent(pid)}`)
           if (resp.ok) {
             const j = await resp.json()
-            if (j.orders && Array.isArray(j.orders)) {
+            if (j.orders && Array.isArray(j.orders) && j.orders.length > 0) {
               setOrders(j.orders)
               if (j.orders[0]?.payment?.status) setStatus(j.orders[0].payment.status)
+            } else {
+              // Si todavía no hay órdenes, intenta fallback local
+              try {
+                const raw = localStorage.getItem('lastCheckoutPayload')
+                if (raw) setBundleFallback(JSON.parse(raw))
+              } catch {}
             }
+          } else {
+            // Si el endpoint falla, intenta fallback local
+            try {
+              const raw = localStorage.getItem('lastCheckoutPayload')
+              if (raw) setBundleFallback(JSON.parse(raw))
+            } catch {}
           }
         } catch (e) {
           console.error('[Gracias] Error en sync/by-payment:', e)
+          // Si hubo error, intenta fallback local
+          try {
+            const raw = localStorage.getItem('lastCheckoutPayload')
+            if (raw) setBundleFallback(JSON.parse(raw))
+          } catch {}
         }
         setLoading(false)
       })
   }, [])
+
+  // Usa órdenes reales si existen; si no, convierte el bundle local a “orders”
+  const effectiveOrders: Order[] | null =
+    (orders && orders.length > 0)
+      ? orders
+      : (bundleFallback ? ordersFromBundle(bundleFallback) : null)
 
   const title = status === 'paid' ? '¡Pago confirmado!' : '¡Gracias!'
   const desc = status === 'paid'
     ? 'Hemos recibido tu pago correctamente. En breve recibirás un correo con los detalles de tu reserva.'
     : 'Si cerraste el checkout o el pago aún está en proceso, te contactaremos para confirmar el estado.'
 
-  const grandTotal = sumTotalServices(orders)
-const paidNowTotal = Number(sumPaidNow(orders).toFixed(1))
+  const grandTotal = sumTotalServices(effectiveOrders)
+  const paidNowTotal = Number(sumPaidNow(effectiveOrders).toFixed(1))
 
   return (
     <main className="min-h-screen">
@@ -200,55 +286,55 @@ const paidNowTotal = Number(sumPaidNow(orders).toFixed(1))
                 )}
 
                 {/* Pago */}
-                {orders && orders.length > 0 && orders[0]?.payment && (
+                {effectiveOrders && effectiveOrders.length > 0 && effectiveOrders[0]?.payment && (
                   <div className="rounded-lg border bg-white p-4 shadow-sm">
                     <h2 className="text-xl font-semibold text-primary mb-2">Pago</h2>
                     <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">Proveedor:</span> {orders[0].payment?.provider || '—'}</div>
-                      <div><span className="text-muted-foreground">Estado:</span> {orders[0].payment?.status || status || '—'}</div>
+                      <div><span className="text-muted-foreground">Proveedor:</span> {effectiveOrders[0].payment?.provider || '—'}</div>
+                      <div><span className="text-muted-foreground">Estado:</span> {effectiveOrders[0].payment?.status || status || '—'}</div>
                       <div>
-  <span className="text-muted-foreground">Importe pagado:</span>{' '}
-  {grandTotal > 0 ? `${fmt1(paidNowTotal)} €` : '—'}
-</div>
-<div>
-  <span className="text-muted-foreground">Importe total:</span>{' '}
-  {grandTotal > 0 ? `${fmt1(grandTotal)} €` : '—'}
-</div>
-                      <div><span className="text-muted-foreground">Moneda:</span> {orders[0].payment?.currency || 'EUR'}</div>
-                      <div><span className="text-muted-foreground">Método solicitado:</span> {labelRequested(orders[0].payment?.requestedMethod)}</div>
-                      <div><span className="text-muted-foreground">Método final (Mollie):</span> {labelMollie(orders[0].payment?.method)}</div>
-                      {orders[0].payment?.paymentId && (
-                        <div className="sm:col-span-2"><span className="text-muted-foreground">Referencia:</span> {orders[0].payment.paymentId}</div>
+                        <span className="text-muted-foreground">Importe pagado:</span>{' '}
+                        {grandTotal > 0 ? `${fmt1(paidNowTotal)} €` : '—'}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Importe total:</span>{' '}
+                        {grandTotal > 0 ? `${fmt1(grandTotal)} €` : '—'}
+                      </div>
+                      <div><span className="text-muted-foreground">Moneda:</span> {effectiveOrders[0].payment?.currency || 'EUR'}</div>
+                      <div><span className="text-muted-foreground">Método solicitado:</span> {labelRequested(effectiveOrders[0].payment?.requestedMethod)}</div>
+                      <div><span className="text-muted-foreground">Método final (Mollie):</span> {labelMollie(effectiveOrders[0].payment?.method)}</div>
+                      {effectiveOrders[0].payment?.paymentId && (
+                        <div className="sm:col-span-2"><span className="text-muted-foreground">Referencia:</span> {effectiveOrders[0].payment?.paymentId}</div>
                       )}
                     </div>
                   </div>
                 )}
 
                 {/* Contacto */}
-                {orders && orders[0]?.contact && (
-  <div className="rounded-lg border bg-white p-4 shadow-sm">
-    <h2 className="text-xl font-semibold text-primary mb-2">Contacto</h2>
-    <div className="grid sm:grid-cols-2 gap-2 text-sm">
-      <div><span className="text-muted-foreground">Nombre:</span> {orders[0].contact?.name || '—'}</div>
-      <div><span className="text-muted-foreground">Teléfono:</span> {orders[0].contact?.phone || '—'}</div>
-      <div className="sm:grid-cols-2"><span className="text-muted-foreground">Email:</span> {orders[0].contact?.email || '—'}</div>
-      <div className="sm:grid-cols-2">
-        <span className="text-muted-foreground">¿Dónde nos conociste?</span>{' '}
-        {orders[0].contact?.referralSource || orders[0].service?.referralSource || '—'}
-      </div>
-    </div>
-  </div>
-)}
+                {effectiveOrders && effectiveOrders[0]?.contact && (
+                  <div className="rounded-lg border bg-white p-4 shadow-sm">
+                    <h2 className="text-xl font-semibold text-primary mb-2">Contacto</h2>
+                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-muted-foreground">Nombre:</span> {effectiveOrders[0].contact?.name || '—'}</div>
+                      <div><span className="text-muted-foreground">Teléfono:</span> {effectiveOrders[0].contact?.phone || '—'}</div>
+                      <div className="sm:grid-cols-2"><span className="text-muted-foreground">Email:</span> {effectiveOrders[0].contact?.email || '—'}</div>
+                      <div className="sm:grid-cols-2">
+                        <span className="text-muted-foreground">¿Dónde nos conociste?</span>{' '}
+                        {effectiveOrders[0].contact?.referralSource || effectiveOrders[0].service?.referralSource || '—'}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Servicios */}
-                {orders && orders.length > 0 ? (
+                {effectiveOrders && effectiveOrders.length > 0 ? (
                   <div className="space-y-4">
-                    {orders.map((ord) => {
+                    {effectiveOrders.map((ord) => {
                       const service = ord.service
                       if (!service) return null
                       const total = Number(service.totalPrice || 0)
                       const pct = depositPercentForOrder(ord)
-const paid = Number((total * pct / 100).toFixed(1))
+                      const paid = Number((total * pct / 100).toFixed(1))
 
                       return (
                         <div key={ord._id} className="rounded-lg border bg-white p-4 shadow-sm">
@@ -260,6 +346,7 @@ const paid = Number((total * pct / 100).toFixed(1))
                             <div><span className="text-muted-foreground">Fecha:</span> {service.date || '—'}</div>
                             <div><span className="text-muted-foreground">Hora:</span> {service.time || '—'}</div>
                             <div><span className="text-muted-foreground">Pasajeros:</span> {service.passengers ?? '—'}</div>
+
                             {service.pickupAddress && (
                               <div className="sm:col-span-2"><span className="text-muted-foreground">Recogida:</span> {service.pickupAddress}</div>
                             )}
@@ -274,7 +361,6 @@ const paid = Number((total * pct / 100).toFixed(1))
                                 <span className="text-muted-foreground">Hora llegada vuelo:</span> {service.flightArrivalTime}
                               </div>
                             )}
-
                             {service.flightDepartureTime && (
                               <div className="sm:col-span-2">
                                 <span className="text-muted-foreground">Hora salida vuelo:</span> {service.flightDepartureTime}
@@ -286,8 +372,12 @@ const paid = Number((total * pct / 100).toFixed(1))
                             {service.notes && (
                               <div className="sm:col-span-2"><span className="text-muted-foreground">Notas:</span> {service.notes}</div>
                             )}
+
                             <div><span className="text-muted-foreground">Total estimado:</span> {`${fmt1(total)} €`}</div>
-                           <div><span className="text-muted-foreground">Monto pagado:</span> {`${fmt1(paid)} €`} <span className="text-xs text-muted-foreground">({pct}%)</span></div>
+                            <div>
+                              <span className="text-muted-foreground">Monto pagado:</span> {`${fmt1(paid)} €`}{' '}
+                              <span className="text-xs text-muted-foreground">({pct}%)</span>
+                            </div>
                           </div>
                         </div>
                       )

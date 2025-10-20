@@ -1919,9 +1919,18 @@ useEffect(() => {
     if (typeof baseCalc === "number") computedBase = baseCalc;
   } catch {}
   const total = Number(bookingData?.totalPrice || computedBase || 0);
-  const depositPercent = isEvent ? 0.2 : isTourBooking ? 0.2 : 0.1;
-  const depositPercentInt = Math.round(depositPercent * 100);
-  const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
+  const isSingleTour =
+  !cartActive &&
+  (
+    bookingData?.isEvent ||                       // evento cuenta como tour para % depósito
+    bookingData?.tourId ||                        // tour con id
+    bookingData?.tourDoc ||                       // tour con doc cargado
+    bookingData?.selectedTourSlug                 // tour elegido por slug
+  );
+
+const depositPercent = isSingleTour ? 0.2 : 0.1;
+const depositPercentInt = Math.round(depositPercent * 100);
+const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)));
   // const amountNow = payFullNow ? total : deposit
   const clientHour = (() => {
@@ -2031,33 +2040,78 @@ useEffect(() => {
   };
 
   // Razones por las que no se puede pagar todavía (si el botón está desactivado)
-  const getDepositDisabledReasons = (): string[] => {
-    const reasons: string[] = [];
-    const cartLen = carritoState?.length ?? 0;
+ const getDepositDisabledReasons = (): string[] => {
+  const reasons: string[] = [];
+  const cartLen = carritoState?.length ?? 0;
 
-    // 1) Si hay 2+ cotizaciones, valida el carrito
-    if (cartLen >= 2) {
-      reasons.push(...validateCartItems(carritoState));
+  // 1) Si hay 2+ cotizaciones, valida el carrito
+  if (cartLen >= 2) {
+    reasons.push(...validateCartItems(carritoState));
+  }
+
+  // 2) Valida siempre la cotización actual (la “larga”)
+  reasons.push(
+    ...validateSingleBooking(
+      bookingData,
+      paymentPickupAddress,
+      paymentDropoffAddress
+    )
+  );
+
+  // ➕ Regla extra SOLO para TRASLADOS que requieran datos de vuelo
+  try {
+    const b = bookingData || {};
+    const type =
+      String(b?.tipo || b?.tipoReserva || b?.quickType || "").toLowerCase();
+    const isTransfer = type === "traslado";
+
+    if (isTransfer) {
+      const doc = b.transferDoc || {};
+      const requireFlightInfo =
+        !!b.requireFlightInfo ||
+        !!doc.requireFlightInfo ||
+        !!doc.requiredFlightInfo ||
+        !!doc.requireFlight;
+
+      const requireFlightNumber =
+        !!b.requireFlightNumber ||
+        !!doc.requireFlightNumber ||
+        !!doc.requiredFlightNumber ||
+        !!doc.requireFlight;
+
+      const requireFlightTimes =
+        !!b.requireFlightTimes ||
+        !!doc.requireFlightTimes ||
+        !!doc.requiredFlightTimes ||
+        requireFlightInfo; // si se pide info de vuelo, pedimos horas
+
+      const has = (v: any) =>
+        typeof v === "number" ? true : Boolean(String(v ?? "").trim());
+
+      if (requireFlightInfo || requireFlightNumber) {
+        if (!has(b.flightNumber)) reasons.push("Ingresa el número de vuelo.");
+      }
+      if (requireFlightInfo || requireFlightTimes) {
+        if (!has(b.flightArrivalTime))
+          reasons.push("Ingresa la hora de llegada del vuelo.");
+        if (!has(b.flightDepartureTime))
+          reasons.push("Ingresa la hora de salida del vuelo.");
+      }
     }
+  } catch {
+    // no romper UI por errores de lectura
+  }
 
-    // 2) Valida siempre la cotización actual (la “larga”)
-    reasons.push(
-      ...validateSingleBooking(
-        bookingData,
-        paymentPickupAddress,
-        paymentDropoffAddress
-      )
-    );
+  // 3) Incluye errores de campos actuales (si existieran)
+  for (const v of Object.values(fieldErrors || {})) {
+    const msg = String(v || "").trim();
+    if (msg) reasons.push(msg);
+  }
 
-    // 3) Incluye errores de campos actuales (si existieran)
-    for (const v of Object.values(fieldErrors || {})) {
-      const msg = String(v || "").trim();
-      if (msg) reasons.push(msg);
-    }
+  // Dedup y salida ordenada
+  return Array.from(new Set(reasons)).filter(Boolean);
+};
 
-    // Dedup y salida ordenada
-    return Array.from(new Set(reasons)).filter(Boolean);
-  };
 
   // === Estado listo para pagar
   const isDepositReady = (): boolean => {

@@ -12,12 +12,14 @@ export default defineType({
       to: [{ type: 'whatsappTemplate' }],
       description: 'Selecciona una plantilla para generar un enlace rápido de WhatsApp.'
     }),
+
     defineField({
       name: 'orderNumber',
       title: 'Número de pedido',
       type: 'string',
       description: 'Identificador legible del pedido (ej: ORD-2025-0001)'
     }),
+
     defineField({
       name: 'status',
       title: 'Estado',
@@ -36,6 +38,7 @@ export default defineType({
       },
       initialValue: 'new'
     }),
+
     defineField({
       name: 'payment',
       title: 'Pago',
@@ -47,13 +50,35 @@ export default defineType({
         defineField({ name: 'status', title: 'Estado de pago', type: 'string' }),
         defineField({ name: 'amount', title: 'Importe', type: 'number' }),
         defineField({ name: 'currency', title: 'Moneda', type: 'string', initialValue: 'EUR' }),
-        defineField({ name: 'requestedMethod', title: 'Método solicitado (web)', type: 'string', description: 'Preferencia elegida en la web (no forzada en Mollie).' }),
+        defineField({
+          name: 'requestedMethod',
+          title: 'Método solicitado (web)',
+          type: 'string',
+          description: 'Preferencia elegida en la web (no forzada en Mollie).'
+        }),
         defineField({ name: 'method', title: 'Método', type: 'string' }),
         defineField({ name: 'createdAt', title: 'Creado en', type: 'datetime' }),
         defineField({ name: 'paidAt', title: 'Pagado en', type: 'datetime' }),
-  defineField({ name: 'raw', title: 'Datos sin procesar (JSON)', type: 'text', rows: 6 }),
+
+        // 👇 NUEVOS (para depósitos/pago total)
+        defineField({
+          name: 'payFullNow',
+          title: 'Pago completo ahora',
+          type: 'boolean',
+          description: 'Si el cliente pagó el 100% en lugar de depósito.'
+        }),
+        defineField({
+          name: 'depositPercent',
+          title: 'Porcentaje de depósito',
+          type: 'number',
+          description: 'Porcentaje cobrado ahora (ej: 10 para traslado, 20 para tour).',
+          validation: (r) => r.min(0).max(100)
+        }),
+
+        defineField({ name: 'raw', title: 'Datos sin procesar (JSON)', type: 'text', rows: 6 }),
       ]
     }),
+
     {
       name: 'calendar',
       title: 'Google Calendar',
@@ -65,6 +90,7 @@ export default defineType({
         { name: 'createdAt', type: 'datetime', title: 'Creado en' },
       ],
     },
+
     defineField({
       name: 'contact',
       title: 'Contacto',
@@ -77,6 +103,7 @@ export default defineType({
         defineField({ name: 'referralSource', title: '¿Dónde nos conociste?', type: 'string' }),
       ]
     }),
+
     defineField({
       name: 'service',
       title: 'Servicio',
@@ -88,14 +115,40 @@ export default defineType({
         defineField({ name: 'date', title: 'Fecha', type: 'date' }),
         defineField({ name: 'time', title: 'Hora', type: 'string' }),
         defineField({ name: 'passengers', title: 'Pasajeros / Cupos', type: 'number' }),
+
         defineField({ name: 'pickupAddress', title: 'Dirección de recogida', type: 'string' }),
         defineField({ name: 'dropoffAddress', title: 'Dirección de destino', type: 'string' }),
+
         defineField({ name: 'flightNumber', title: 'Número de vuelo', type: 'string' }),
+        // 👇 NUEVOS (tiempos de vuelo)
+        defineField({
+          name: 'flightArrivalTime',
+          title: 'Hora de llegada vuelo',
+          type: 'string',
+          description: 'HH:mm'
+        }),
+        defineField({
+          name: 'flightDepartureTime',
+          title: 'Hora de salida vuelo',
+          type: 'string',
+          description: 'HH:mm'
+        }),
+
         defineField({ name: 'luggage23kg', title: 'Maletas 23kg', type: 'number' }),
         defineField({ name: 'luggage10kg', title: 'Maletas 10kg', type: 'number' }),
+
+        // 👇 NUEVO (niños)
+        defineField({
+          name: 'ninos',
+          title: 'Niños (0-12)',
+          type: 'number',
+          validation: (r) => r.min(0)
+        }),
+
         defineField({ name: 'isNightTime', title: 'Recargo nocturno', type: 'boolean' }),
         defineField({ name: 'extraLuggage', title: 'Equipaje extra', type: 'boolean' }),
         defineField({ name: 'totalPrice', title: 'Total calculado', type: 'number' }),
+
         defineField({
           name: 'selectedPricingOption',
           title: 'Opción de precio',
@@ -107,9 +160,26 @@ export default defineType({
             defineField({ name: 'hours', title: 'Horas', type: 'number' }),
           ]
         }),
+
+        // 👇 NUEVOS (depósito/pago completo a nivel servicio)
+        defineField({
+          name: 'payFullNow',
+          title: 'Pago completo ahora (servicio)',
+          type: 'boolean',
+          description: 'Si este servicio se pagó al 100% en vez de depósito.'
+        }),
+        defineField({
+          name: 'depositPercent',
+          title: 'Porcentaje de depósito (servicio)',
+          type: 'number',
+          description: 'Porcentaje cobrado ahora para este servicio.',
+          validation: (r) => r.min(0).max(100)
+        }),
+
         defineField({ name: 'notes', title: 'Notas del cliente', type: 'text' }),
       ]
     }),
+
     defineField({
       name: 'metadata',
       title: 'Metadatos',
@@ -124,6 +194,7 @@ export default defineType({
       ]
     }),
   ],
+
   preview: {
     select: {
       title: 'orderNumber',

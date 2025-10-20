@@ -1676,20 +1676,20 @@ export default function PaymentPage() {
   // Derivados para depósito/remaining y método de pago
   const paymentMethod = bookingData?.paymentMethod || "card"; // card | paypal | cash
   const isQuick = bookingData?.quickDeposit === true;
+  const isTour = Boolean(
+    bookingData?.isEvent ||
+      bookingData?.tourHours !== undefined ||
+      bookingData?.routeOption !== undefined ||
+      (bookingData?.tourId && typeof bookingData.tourId === "string")
+  );
   const isEvent = Boolean(bookingData?.isEvent);
   const isTourBooking =
-  !isEvent && (
-    !!bookingData?.tourDoc ||
-    !!bookingData?.tourData ||
-    !!bookingData?.tourId ||
-    !!bookingData?.selectedTourSlug ||
-    bookingData?.quickType === "tour" ||
-    bookingData?.isTourQuick === true ||
-    !!bookingData?.categoriaTour ||
-    bookingData?.tourHours !== undefined ||
-    bookingData?.routeOption !== undefined
-  );
-  const isTour = isEvent ? false : isTourBooking;
+    !isEvent &&
+    Boolean(
+      bookingData?.tourHours !== undefined ||
+        bookingData?.routeOption !== undefined ||
+        (bookingData?.tourId && typeof bookingData.tourId === "string")
+    );
   // Si tenemos una ruta y pasajeros, recalcular base con la nueva lógica
   let computedBase = Number(bookingData?.basePrice || 0);
   try {
@@ -2186,14 +2186,14 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                         </span>
                         <div className="flex items-center gap-2 relative">
                           {isTour ? (
-  <Badge className="bg-accent text-accent-foreground">
-    {tourName || "Tour"}
-  </Badge>
-) : (
-  <Badge className="bg-accent text-accent-foreground">
-    {serviceLabel}
-  </Badge>
-)}
+                            <Badge className="bg-accent text-accent-foreground">
+                              {bookingData.tourData.title || "Tour"}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-accent text-accent-foreground">
+                              {serviceLabel}
+                            </Badge>
+                          )}
                           {/* Tooltip info breve */}
                           {(isTour
                             ? bookingData.tourData?.briefInfo

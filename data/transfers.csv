@@ -1,0 +1,15 @@
+from,to,p4,p5,p6,p7,p8
+"Aeropuerto Charles de Gaulle (CDG)","París",65,85,103,109,113
+"París","Aeropuerto Charles de Gaulle (CDG)",65,85,103,109,113
+"Aeropuerto ORLY","París",60,80,95,104,108
+"París","Aeropuerto ORLY",60,80,95,104,108
+"Aeropuerto Beauvais","París",125,145,160,180,190
+"París","Aeropuerto Beauvais",125,145,160,180,190
+"Aeropuerto Charles de Gaulle (CDG)","Parc Disneyland París",70,82,98,112,128
+"Parc Disneyland París","Aeropuerto Charles de Gaulle (CDG)",70,82,98,112,128
+"Aeropuerto ORLY","Parc Disneyland París",73,90,106,118,134
+"Parc Disneyland París","Aeropuerto ORLY",73,90,106,118,134
+"Aeropuerto Beauvais","Parc Disneyland París",145,155,175,185,195
+"Parc Disneyland París","Aeropuerto Beauvais",145,155,175,185,195
+"París","Parc Disneyland París",70,90,106,118,134
+"Parc Disneyland París","París",70,90,106,118,134

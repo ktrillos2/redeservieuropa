@@ -183,6 +183,24 @@ export function computeTransferPrice(
 }
 
 /**
+ * Normaliza un texto (origen/destino) a la clave de índice usada en buildTransfersIndexes.
+ * - minúsculas
+ * - sin acentos/diacríticos
+ * - no alfanumérico -> "-"
+ * - sin guiones al inicio/fin
+ */
+export function toIndexKey(s?: string): string {
+  if (!s) return ''
+  return s
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/**
  * Helpers de label (por si los necesitas en UI).
  */
 export function getOriginLabel(indexes: TransfersIndexes, origin?: string): string {

@@ -54,7 +54,7 @@ import {
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PhoneInputIntl } from "@/components/ui/phone-input";
 import { EmailAutocomplete } from "@/components/ui/email-autocomplete";
-import { buildTransfersIndexes, getTransferDocByRoute, TransferDoc } from "@/sanity/lib/transfers";
+import { buildTransfersIndexes, getTransferDocByRoute, toIndexKey, TransferDoc } from "@/sanity/lib/transfers";
 
 // Helper: formato con máximo 2 decimales (sin forzar ceros)
 const fmtMoney = (n: number | string | undefined | null) => {
@@ -759,66 +759,65 @@ useEffect(() => {
   };
 
   const openEditModal = async (item: any) => {
-  const tipo: "tour" | "traslado" =
-    item?.tipo ||
-    (item?.tourId || item?.tourDoc || item?.selectedTourSlug ? "tour" : "traslado");
+    console.warn(item)
+    const tipo: "tour" | "traslado" =
+      item?.tipo ||
+      (item?.tourId || item?.tourDoc || item?.selectedTourSlug ? "tour" : "traslado");
 
-  // ——— Traslado: resolvemos transferDoc por la ruta actual del ítem ———
-  let transferDoc = item?.transferDoc;
-  if (tipo === "traslado") {
-    const from = item?.origen || "";
-    const to   = item?.destino || "";
-    try {
-      const fetched = (from && to) ? await getTransferDocByRoute(from, to) : null;
-      if (fetched) transferDoc = fetched;
-    } catch {}
-  }
+    // ——— Traslado: resolvemos transferDoc por la ruta actual del ítem ———
+    let transferDoc = item?.transferDoc;
 
-  setModalForm({
-    // identidad del ítem
-    id: item?.id,
-    tipo,
+    
 
-    // traslado/tour
-    origen: item?.origen || "",
-    destino: item?.destino || "",
-    pickupAddress: item?.pickupAddress || "",
-    dropoffAddress: item?.dropoffAddress || "",
-    selectedTourSlug: item?.selectedTourSlug || "",
-    tourDoc: item?.tourDoc,               // si es tour
-    transferDoc,                          // si es traslado
+    setModalForm({
+      // identidad del ítem
+      id: item?.id,
+      tipo,
 
-    // flags de vuelo (prioriza los del transferDoc)
-    requireFlightInfo:  !!(transferDoc?.requireFlightInfo ?? item?.requireFlightInfo),
-    requireFlightNumber:!!(transferDoc?.requireFlightNumber ?? item?.requireFlightNumber),
-    requireFlightTimes: !!(transferDoc?.requireFlightTimes ?? item?.requireFlightTimes),
+      // --- RUTA ORIGINAL (hidratar ambos pares) ---
+      // Prioriza las claves 'origen'/'destino' guardadas en el item;
+      // si no existen, cae a pickup/dropoff, y viceversa para mantener ambos campos visibles.
+      origen: toIndexKey(transferDoc.from)|| "",
+      destino: toIndexKey(transferDoc.to)|| "",
+      pickupAddress: item?.pickupAddress ?? item?.origen ?? "",
+      dropoffAddress: item?.dropoffAddress ?? item?.destino ?? "",
 
-    // resto de campos
-    date: item?.date || "",
-    time: item?.time || "",
-    passengers: String(item?.passengers ?? 1),
-    ninos: Number(item?.ninos ?? 0),
-    vehicle: item?.vehicle || "coche",
+      // tour/transfer docs
+      selectedTourSlug: item?.selectedTourSlug || "",
+      tourDoc: item?.tourDoc,               // si es tour
+      transferDoc,                          // si es traslado
 
-    flightNumber: item?.flightNumber || "",
-    flightArrivalTime: item?.flightArrivalTime || "",
-    flightDepartureTime: item?.flightDepartureTime || "",
+      // flags de vuelo (prioriza los del transferDoc)
+      requireFlightInfo:  !!(transferDoc?.requireFlightInfo ?? item?.requireFlightInfo),
+      requireFlightNumber:!!(transferDoc?.requireFlightNumber ?? item?.requireFlightNumber),
+      requireFlightTimes: !!(transferDoc?.requireFlightTimes ?? item?.requireFlightTimes),
 
-    luggage23kg: Number(item?.luggage23kg ?? 0),
-    luggage10kg: Number(item?.luggage10kg ?? 0),
-    specialRequests: item?.specialRequests || "",
+      // resto de campos
+      date: item?.date || "",
+      time: item?.time || "",
+      passengers: String(item?.passengers ?? 1),
+      ninos: Number(item?.ninos ?? 0),
+      vehicle: item?.vehicle || "coche",
 
-    totalPrice: Number(item?.totalPrice ?? 0),
-    contactName: item?.contactName || "",
-    contactPhone: item?.contactPhone || "",
-    contactEmail: item?.contactEmail || "",
-  });
+      flightNumber: item?.flightNumber || "",
+      flightArrivalTime: item?.flightArrivalTime || "",
+      flightDepartureTime: item?.flightDepartureTime || "",
 
-  // marca que estamos editando un ítem del carrito (no la reserva -1)
-  setModalEditingId(item?.id);
-  setModalStep(2);
-  setQuoteModalOpen(true);
-};
+      luggage23kg: Number(item?.luggage23kg ?? 0),
+      luggage10kg: Number(item?.luggage10kg ?? 0),
+      specialRequests: item?.specialRequests || "",
+
+      totalPrice: Number(item?.totalPrice ?? 0),
+      contactName: item?.contactName || "",
+      contactPhone: item?.contactPhone || "",
+      contactEmail: item?.contactEmail || "",
+    });
+
+    // marca que estamos editando un ítem del carrito (no la reserva -1)
+    setModalEditingId(item?.id);
+    setModalStep(2);
+    setQuoteModalOpen(true);
+  };
 
   // Calcular precio automático para traslados dentro del modal cuando cambian campos relevantes
   const computeModalPrice = (mf: any) => {
@@ -1023,7 +1022,6 @@ useEffect(() => {
 
     return { valid: true, errors: {} };
   };
-  console.log(bookingData);
   const handleModalPrev = () => setModalStep((s) => Math.max(1, s - 1));
 
   const handleModalNext = () => {
@@ -1056,16 +1054,18 @@ useEffect(() => {
     const getOriginLabel = (k?: string) =>
       (k && transfersIdx.byOrigin?.[k]?.label) || k || "";
   const destinationKeys = useMemo(() => {
-    if (!bookingData?.origen) return [];
-    return Object.keys(
-      transfersIdx.byOrigin?.[bookingData.origen]?.destinations || {}
-    );
+    if (!bookingData?.transferDoc.from) return [];
+    return Object.keys(transfersIdx.byOrigin || {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingData?.origen, transfersIdx]);
   const getDestinationLabel = (k?: string) => {
-    if (!k || !bookingData?.origen) return k || "";
+    const originKey =
+      (bookingData as any)?.originKey || (modalForm as any)?.origen || "";
+    if (!k || !originKey) return k || "";
+    // Si el destino es igual al origen, no devolver etiqueta
+    if (k === originKey) return "";
     return (
-      transfersIdx.byOrigin?.[bookingData.origen]?.destinations?.[k]?.label || k
+      transfersIdx.byOrigin?.[originKey]?.destinations?.[k]?.label || k
     );
   };
 
@@ -1794,7 +1794,6 @@ useEffect(() => {
       }
     })();
 
-  console.log(bookingData);
 
   if (!bookingData) {
     return (
@@ -4716,7 +4715,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-accent" />
-                          {`Origen${modalForm.origen ? ` ${ modalForm.origen}` : ""}`}
+                          {`Origen`}
                         </label>
                         <Select
                           value={modalForm.origen}
@@ -4737,7 +4736,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                                 : "")
                             }
                           >
-                            <SelectValue placeholder="Seleccionar origen" />
+                            <SelectValue placeholder={modalForm.origen ? "" : (modalForm.pickupAddress || "Seleccionar origen")} />
                           </SelectTrigger>
                           <SelectContent>
                              {originKeys.map((k) => (
@@ -4751,7 +4750,8 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-accent" />
-                          {`Destino${modalForm.destino ? ` ${ modalForm.destino}` : ""}`}
+                          
+                          {`Destino`}
                         </label>
                         <Select
                           value={modalForm.destino}
@@ -4772,8 +4772,8 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             <SelectValue
                               placeholder={
                                 modalForm.origen
-                                  ? "Seleccionar destino"
-                                  : "Selecciona el origen primero"
+                                  ? (modalForm.destino ? "" : (modalForm.dropoffAddress || "Seleccionar destino"))
+                                  : (modalForm.dropoffAddress || "Selecciona el origen primero")
                               }
                             />
                           </SelectTrigger>

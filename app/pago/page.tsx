@@ -132,7 +132,8 @@ const INC_5 = 34,
 function computeFromTourDoc(pax: number, tourDoc: any) {
   const n = Math.max(1, Math.floor(pax || 0));
   const mode = tourDoc?.pricingMode;
-
+ 
+  
   // MODO "rules": base hasta 4; 5→+34; 6→+32; 7→+28; 8→+26
   // NUEVO: 9+ = (precio de 8) + INC_8 * (n - 8)
   if (mode === "rules" && tourDoc?.pricingRules?.baseUpTo4EUR != null) {
@@ -146,7 +147,7 @@ function computeFromTourDoc(pax: number, tourDoc: any) {
     const priceAt8 = base + INC_5 + INC_6 + INC_7 + INC_8;
     return priceAt8 + INC_8 * (n - 8);
   }
-
+  
   // MODO "table": 4..8 explícitos + extraFrom9 por cada pasajero > 8 (ya contemplaba 9+ sin tope)
   if (mode === "table" && tourDoc?.pricingTable) {
     const {
@@ -164,7 +165,7 @@ function computeFromTourDoc(pax: number, tourDoc: any) {
     if (n === 8) return p8;
     return p8 + extraFrom9 * (n - 8);
   }
-
+  
   // Fallback si no hay modo ni tabla
   return Number(tourDoc?.booking?.startingPriceEUR ?? 0) || 0;
 }
@@ -950,6 +951,9 @@ useEffect(() => {
     modalForm.passengers,
     modalForm.luggage23kg,
     modalForm.luggage10kg,
+    modalForm.selectedTourSlug,
+  modalForm.categoriaTour,
+  modalForm.subtipoTour,
   ]);
 
   // Validación por paso del modal
@@ -1054,21 +1058,76 @@ useEffect(() => {
     const getOriginLabel = (k?: string) =>
       (k && transfersIdx.byOrigin?.[k]?.label) || k || "";
   const destinationKeys = useMemo(() => {
-    if (!bookingData?.transferDoc.from) return [];
-    return Object.keys(transfersIdx.byOrigin || {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingData?.origen, transfersIdx]);
-  const getDestinationLabel = (k?: string) => {
-    const originKey =
-      (bookingData as any)?.originKey || (modalForm as any)?.origen || "";
-    if (!k || !originKey) return k || "";
-    // Si el destino es igual al origen, no devolver etiqueta
-    if (k === originKey) return "";
-    return (
-      transfersIdx.byOrigin?.[originKey]?.destinations?.[k]?.label || k
-    );
-  };
+  const originKey = (modalForm as any)?.origen || "";
+  if (!originKey) return [];
+  return Object.keys(
+    transfersIdx.byOrigin?.[originKey]?.destinations || {}
+  );
+}, [modalForm?.origen, transfersIdx]);
 
+// Devuelve la etiqueta del destino considerando el origen ACTUAL del modal.
+// Si k === origen, no retorna nada (cadena vacía). Hace fallback buscando en todos los orígenes.
+const getDestinationLabel = (k?: string) => {
+  const originKey = (modalForm as any)?.origen || (bookingData as any)?.originKey || "";
+  if (!k) return "";
+  if (originKey && k === originKey) return "";
+
+  // 1) Primero intenta con el origen actual del modal
+  const fromCurrent =
+    originKey &&
+    transfersIdx.byOrigin?.[originKey]?.destinations?.[k]?.label;
+  if (fromCurrent) return fromCurrent;
+
+  // 2) Fallback: busca ese destino por todas las entradas
+  for (const ok of Object.keys(transfersIdx.byOrigin || {})) {
+    const lbl = transfersIdx.byOrigin?.[ok]?.destinations?.[k]?.label;
+    if (lbl) return lbl;
+  }
+
+  // 3) Si no encuentra, devuelve la key
+  return k;
+};
+const getCartItemPrice = (it: any): number => {
+  try {
+    // Tours/Eventos: usa el total ya calculado o la función de tours si existiera doc
+    if (it?.tipo === "tour") {
+      if (it?.tourDoc) {
+        const pax = Math.max(1, Number(it.passengers || 1));
+        return Number(computeFromTourDoc(pax, it.tourDoc) || 0);
+      }
+      return Number(it?.totalPrice || 0);
+    }
+
+    // Traslado con transferDoc: usa p4..p8 y 9+ = p8 + 20€/pax extra
+    if (it?.tipo === "traslado" && it?.transferDoc) {
+      const pax = Math.max(1, Number(it.passengers || 1));
+      return Number(computeFromTransferDoc(pax, it.transferDoc) || 0);
+    }
+
+    // Fallback traslado sin doc: intenta por origen/destino conocidos
+    if (it?.tipo === "traslado") {
+      const normalize = (v?: string) => {
+        if (!v) return undefined;
+        const s = String(v).toLowerCase();
+        if (s.includes("cdg")) return "cdg";
+        if (s.includes("orly")) return "orly";
+        if (s.includes("beauvais") || s.includes("bva")) return "beauvais";
+        if (s.includes("disney")) return "disneyland";
+        if (s.includes("parís") || s.includes("paris")) return "paris";
+        return undefined;
+      };
+      const pax = Math.max(1, Number(it.passengers || 1));
+      const from = normalize(it.origen) || normalize(it.pickupAddress);
+      const to = normalize(it.destino) || normalize(it.dropoffAddress);
+      const base = calcBaseTransferPrice(from, to, pax);
+      return typeof base === "number" ? base : Number(it?.totalPrice || 0);
+    }
+
+    return Number(it?.totalPrice || 0);
+  } catch {
+    return Number(it?.totalPrice || 0);
+  }
+};
 
   const updateCurrentBookingFromModal = () => {
   const mf = modalForm;
@@ -1292,6 +1351,7 @@ useEffect(() => {
   // Lista a mostrar en el carrito: extras + actual
   const cartDisplayItems = useMemo(() => {
     if (!currentCartItem) return carritoState;
+    console.log({carritoState, currentCartItem})
     return [...carritoState, currentCartItem];
   }, [carritoState, currentCartItem]);
 
@@ -1897,6 +1957,7 @@ const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
     paymentPickupAddress: string,
     paymentDropoffAddress: string
   ): string[] => {
+    console.log({bd, paymentPickupAddress, paymentDropoffAddress});
     const reasons: string[] = [];
     if (!bd) return ["Faltan datos de la reserva."];
 
@@ -2065,8 +2126,19 @@ const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
 
   // === Estado listo para pagar
   const isDepositReady = (): boolean => {
-    return getDepositDisabledReasons().length === 0;
-  };
+  // Mantén las validaciones originales, pero ignora las relacionadas con direcciones.
+  const reasons = getDepositDisabledReasons();
+  const nonAddressReasons = reasons.filter(
+    (msg) => !/(recogida|destino|direcci[oó]n)/i.test(String(msg || ""))
+  );
+
+  // Solo las direcciones se validan desde el modal (Paso 3)
+  const hasModalAddressErrors =
+    Boolean(String(modalFieldErrors?.pickupAddress || "").trim()) ||
+    Boolean(String(modalFieldErrors?.dropoffAddress || "").trim());
+
+  return nonAddressReasons.length === 0 && !hasModalAddressErrors;
+};
 
   // Etiquetas seguras para servicio/route en quick
   const quickType: "traslado" | "tour" | undefined = bookingData?.quickType;
@@ -2186,13 +2258,16 @@ const transferLabel =
 
   // Sumar total del carrito desde state
   const totalCarrito = carritoState.reduce(
-    (acc: number, item: any) => acc + Number(item.totalPrice || 0),
-    0
-  );
+  (acc: number, item: any) => acc + Number(getCartItemPrice(item)),
+  0
+);
   const tieneTour = carritoState.some((item: any) => item.tipo === "tour");
   const tieneTraslado = carritoState.some(
     (item: any) => item.tipo === "traslado"
   );
+
+  
+
 
   // Calcular importes combinados (cuando hay carrito):
   // - combinedTotal: suma de totales de carrito + booking actual
@@ -2200,9 +2275,10 @@ const transferLabel =
   const combinedTotal = Number(
     (totalCarrito + Number(bookingData.totalPrice || total || 0)).toFixed(2)
   );
+  
   const computeDepositForItem = (itm: any) => {
-  const price = Number(itm?.totalPrice || 0);
-  const percent = getDepositPercent(itm); // devuelve 0.2 para TOUR/EVENT, 0.1 para TRASLADO
+  const price = Number(getCartItemPrice(itm));
+  const percent = getDepositPercent(itm); // 0.2 para TOUR/EVENT, 0.1 para TRASLADO
   return Number((price * percent).toFixed(2));
 };
   const combinedDepositSum =
@@ -2318,6 +2394,7 @@ categoriaTour: bookingData.categoriaTour || bookingData.tourCategory || "",
 subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
         totalPrice: Number(bookingData.totalPrice || total || 0),
       };
+     
 
       const updated = [...carritoState, item];
       localStorage.setItem("carritoCotizaciones", JSON.stringify(updated));
@@ -2673,6 +2750,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                                 value={paymentPickupAddress}
                                 onChange={(e) => {
                                   setPaymentPickupAddress(e.target.value);
+                                  
                                   // no tocar bookingData.pickupAddress para que el label del servicio no cambie
                                   if (fieldErrors.pickupAddress) {
                                     setFieldErrors((f) => {
@@ -4092,7 +4170,8 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
 
                                 <div className="flex items-center gap-3">
                                   <div className="text-sm font-bold">
-                                    {fmtMoney(it.totalPrice)}€
+                                   
+                                     {fmtMoney(getCartItemPrice(it))}€
                                   </div>
                                   
                                     <Button
@@ -4728,16 +4807,23 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                           }
                         >
                           <SelectTrigger
-                            data-modal-field="origen"
-                            className={
-                              "cursor-pointer " +
-                              (modalFieldErrors.origen
-                                ? "border-destructive focus-visible:ring-destructive"
-                                : "")
-                            }
-                          >
-                            <SelectValue placeholder={modalForm.origen ? "" : (modalForm.pickupAddress || "Seleccionar origen")} />
-                          </SelectTrigger>
+    data-modal-field="origen"
+    className={
+      "cursor-pointer max-w-full " +
+      (modalFieldErrors.origen
+        ? "border-destructive focus-visible:ring-destructive"
+        : "")
+    }
+    title={modalForm.origen ? getOriginLabel(modalForm.origen) : undefined}
+  >
+    {modalForm.origen ? (
+      <span className="truncate w-full">
+        {truncate(getOriginLabel(modalForm.origen), 30)}
+      </span>
+    ) : (
+      <SelectValue placeholder="Seleccionar origen" />
+    )}
+  </SelectTrigger>
                           <SelectContent>
                              {originKeys.map((k) => (
                                     <SelectItem key={k} value={k}>
@@ -4759,39 +4845,52 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             setModalForm({ ...modalForm, destino: value })
                           }
                         >
-                          <SelectTrigger
-                            data-modal-field="destino"
-                            disabled={!modalForm.origen}
-                            className={
-                              "cursor-pointer disabled:cursor-not-allowed " +
-                              (modalFieldErrors.destino
-                                ? "border-destructive focus-visible:ring-destructive"
-                                : "")
-                            }
-                          >
-                            <SelectValue
-                              placeholder={
-                                modalForm.origen
-                                  ? (modalForm.destino ? "" : (modalForm.dropoffAddress || "Seleccionar destino"))
-                                  : (modalForm.dropoffAddress || "Selecciona el origen primero")
-                              }
-                            />
-                          </SelectTrigger>
+                         <SelectTrigger
+    data-modal-field="destino"
+    disabled={!modalForm.origen}
+    className={
+      "cursor-pointer disabled:cursor-not-allowed max-w-full " +
+      (modalFieldErrors.destino
+        ? "border-destructive focus-visible:ring-destructive"
+        : "")
+    }
+    title={
+      modalForm.destino ? getDestinationLabel(modalForm.destino) : undefined
+    }
+  >
+    {modalForm.destino ? (
+      <span className="truncate w-full">
+        {truncate(getDestinationLabel(modalForm.destino), 30)}
+      </span>
+    ) : (
+      <SelectValue
+        placeholder={
+          modalForm.origen ? "Seleccionar destino" : "Selecciona el origen primero"
+        }
+      />
+    )}
+  </SelectTrigger>
                           <SelectContent>
-                            {destinationKeys.length > 0 ? (
-                                    destinationKeys.map((d) => (
-                                      <SelectItem key={d} value={d}>
-                                        {getDestinationLabel(d)}
-                                      </SelectItem>
-                                    ))
-                                  ) : (
-                                    <SelectItem value="-" disabled>
-                                      {bookingData.origen
-                                        ? "No hay destinos disponibles"
-                                        : "Selecciona el origen primero"}
-                                    </SelectItem>
-                                  )}
-                          </SelectContent>
+  {(() => {
+    // No listar el destino si es igual al origen seleccionado
+    const list = destinationKeys.filter(
+      (d) => String(d) !== String(modalForm.origen)
+    );
+    return list.length > 0 ? (
+      list.map((d) => (
+        <SelectItem key={d} value={d}>
+          {getDestinationLabel(d)}
+        </SelectItem>
+      ))
+    ) : (
+      <SelectItem value="-" disabled>
+        {bookingData.origen
+          ? "No hay destinos disponibles"
+          : "Selecciona el origen primero"}
+      </SelectItem>
+    );
+  })()}
+</SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">

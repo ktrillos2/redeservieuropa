@@ -766,7 +766,7 @@ useEffect(() => {
 
     // ——— Traslado: resolvemos transferDoc por la ruta actual del ítem ———
     let transferDoc = item?.transferDoc;
-
+   
     
 
     setModalForm({
@@ -777,11 +777,11 @@ useEffect(() => {
       // --- RUTA ORIGINAL (hidratar ambos pares) ---
       // Prioriza las claves 'origen'/'destino' guardadas en el item;
       // si no existen, cae a pickup/dropoff, y viceversa para mantener ambos campos visibles.
-      origen: toIndexKey(transferDoc.from)|| "",
-      destino: toIndexKey(transferDoc.to)|| "",
+      origen: toIndexKey(transferDoc?.from)|| "",
+      destino: toIndexKey(transferDoc?.to)|| "",
       pickupAddress: item?.pickupAddress ?? item?.origen ?? "",
       dropoffAddress: item?.dropoffAddress ?? item?.destino ?? "",
-
+      tipoTour: item?.tipoTour || "",
       // tour/transfer docs
       selectedTourSlug: item?.selectedTourSlug || "",
       tourDoc: item?.tourDoc,               // si es tour
@@ -4991,7 +4991,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             value={
                               modalForm.categoriaTour === "escala"
                                 ? "escala"
-                                : modalForm.subtipoTour || "" // 👈 si viene vacío, se queda vacío
+                                : modalForm.tipoTour || "" // 👈 si viene vacío, se queda vacío
                             }
                             onValueChange={(value) => {
                               if (value === "escala") {

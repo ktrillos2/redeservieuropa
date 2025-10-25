@@ -916,7 +916,7 @@ if (bookingData.tipoReserva === "traslado") {
                       <div className="space-y-4">
                         {/* Campos para traslado */}
                         {bookingData.tipoReserva === "traslado" && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                             {/* Origen */}
 <div className="space-y-2">
   <label className="text-sm font-medium flex items-center gap-2">
@@ -933,7 +933,7 @@ if (bookingData.tipoReserva === "traslado") {
     <SelectTrigger
       data-field="origen"
       className={
-        "cursor-pointer " +
+        "cursor-pointer max-w-[90%] md:max-w-[100%]" +
         (fieldErrors.origen ? "border-destructive focus-visible:ring-destructive" : "")
       }
     >
@@ -968,7 +968,7 @@ if (bookingData.tipoReserva === "traslado") {
                                   data-field="destino"
                                   disabled={!bookingData.origen}
                                   className={
-                                    "cursor-pointer disabled:cursor-not-allowed " +
+                                    "cursor-pointer disabled:cursor-not-allowed  max-w-[90%] md:max-w-[100%]" +
                                     (fieldErrors.destino
                                       ? "border-destructive focus-visible:ring-destructive"
                                       : "")

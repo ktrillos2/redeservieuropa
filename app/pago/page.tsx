@@ -1,16 +1,7 @@
 "use client";
 import { TooltipBriefInfo } from "@/components/ui/tooltip-brief-info";
 
-// Mapa de etiquetas amigables para mostrar en los labels
-const labelMap = {
-  cdg: "Aeropuerto CDG",
-  orly: "Aeropuerto Orly",
-  beauvais: "Aeropuerto Beauvais",
-  paris: "París Centro",
-  disneyland: "Disneyland",
-  asterix: "Parc Astérix",
-  versailles: "Versalles",
-};
+
 // idaYVuelta removed: round-trip option deprecated
 // Removed idaYVuelta from modalForm initialization
 // Removed idaYVuelta from bookingData
@@ -63,7 +54,7 @@ import {
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PhoneInputIntl } from "@/components/ui/phone-input";
 import { EmailAutocomplete } from "@/components/ui/email-autocomplete";
-import { getTransferDocByRoute, TransferDoc } from "@/sanity/lib/transfers";
+import { buildTransfersIndexes, getTransferDocByRoute, TransferDoc } from "@/sanity/lib/transfers";
 
 // Helper: formato con máximo 2 decimales (sin forzar ceros)
 const fmtMoney = (n: number | string | undefined | null) => {
@@ -349,6 +340,7 @@ export default function PaymentPage() {
 
   // Lista de tours para los selects dentro del modal (cargada desde API)
   const [toursList, setToursList] = useState<TourData[]>([]);
+  const [transfersList, setTransfersList] = useState<TransferDoc[]>([]);
 
   const toTitle = (s?: string) => {
     if (!s) return "";
@@ -432,6 +424,18 @@ export default function PaymentPage() {
       .then((res) => res.json())
       .then((data) => {
         if (mounted) setToursList(data?.tours || []);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/transfers")
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted) setTransfersList(data?.transfers || []);
       })
       .catch(() => {});
     return () => {
@@ -608,29 +612,6 @@ useEffect(() => {
     return caps[_v || "coche"] || 56;
   };
 
-  // Helper: intentar convertir un valor (etiqueta completa o dirección) a la clave usada en labelMap
-  const getLocationKeyFromValue = (v?: string) => {
-    if (!v) return "";
-    const val = String(v).trim();
-    const low = val.toLowerCase();
-    // si ya es una clave
-    if (Object.keys(labelMap).includes(val)) return val;
-    // buscar coincidencia exacta en labels
-    const exact = Object.keys(labelMap).find(
-      (k) => (labelMap[k as keyof typeof labelMap] || "").toLowerCase() === low
-    );
-    if (exact) return exact;
-    // buscar por inclusión (p.ej. 'cdg' en 'Aeropuerto CDG' o 'paris' en 'París')
-    const incl = Object.keys(labelMap).find(
-      (k) =>
-        low.includes(k) ||
-        (labelMap[k as keyof typeof labelMap] || "")
-          .toLowerCase()
-          .includes(low) ||
-        (labelMap[k as keyof typeof labelMap] || "").toLowerCase().includes(k)
-    );
-    return incl || "";
-  };
 
   const availableDestinations = useMemo(() => {
     try {
@@ -728,8 +709,8 @@ useEffect(() => {
 
     const invertedData = {
       tipo: defaultTipo,
-      origen: getLocationKeyFromValue(currentDestination) || "",
-      destino: getLocationKeyFromValue(currentOrigin) || "",
+      origen:  "",
+      destino:  "",
       // 💡 Direcciones VACÍAS (es nueva cotización)
       pickupAddress: "",
       dropoffAddress: "",
@@ -897,7 +878,7 @@ useEffect(() => {
       const normalize = (v: string | undefined) => {
         if (!v) return undefined;
         const low = String(v).toLowerCase();
-        if (Object.keys(labelMap).includes(low)) return low;
+        
         if (low.includes("cdg")) return "cdg";
         if (low.includes("orly")) return "orly";
         if (low.includes("beauvais") || low.includes("bva")) return "beauvais";
@@ -1062,6 +1043,33 @@ useEffect(() => {
     setModalStep((s) => Math.min(3, s + 1)); // 👈 avanza 1 paso
   };
 
+  const transfersIdx = useMemo(
+      () => buildTransfersIndexes(transfersList || []),
+      [transfersList]
+    );
+  
+    // Claves de origen disponibles y labels helpers
+    const originKeys = useMemo(
+      () => Object.keys(transfersIdx.byOrigin || {}),
+      [transfersIdx]
+    );
+    const getOriginLabel = (k?: string) =>
+      (k && transfersIdx.byOrigin?.[k]?.label) || k || "";
+  const destinationKeys = useMemo(() => {
+    if (!bookingData?.origen) return [];
+    return Object.keys(
+      transfersIdx.byOrigin?.[bookingData.origen]?.destinations || {}
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingData?.origen, transfersIdx]);
+  const getDestinationLabel = (k?: string) => {
+    if (!k || !bookingData?.origen) return k || "";
+    return (
+      transfersIdx.byOrigin?.[bookingData.origen]?.destinations?.[k]?.label || k
+    );
+  };
+
+
   const updateCurrentBookingFromModal = () => {
   const mf = modalForm;
   setBookingData((prev: any) => {
@@ -1161,63 +1169,6 @@ useEffect(() => {
     }
   };
 
-  const buildCartItemFromModal = (mf: any, existingId?: number) => ({
-    id: existingId ?? mf.id ?? Date.now(),
-    tipo: mf.tipo || "traslado",
-    // Mantén serviceLabel y serviceSubLabel coherentes y simples
-    serviceLabel:
-  mf.tipo === "tour"
-    ? "Tour"
-    : (mf.transferDoc?.title ||
-       `${labelMap[mf.origen as keyof typeof labelMap] || mf.origen} → ${labelMap[mf.destino as keyof typeof labelMap] || mf.destino}` ||
-       "Traslado"),
-    serviceSubLabel:
-      mf.tipo === "tour"
-        ? toursList.find(
-            (t) =>
-              t.slug === mf.selectedTourSlug || t.title === mf.selectedTourSlug
-          )?.title ||
-          toTitle(mf.selectedTourSlug || "") ||
-          "Tour"
-        : (() => {
-            const originLabel = mf.origen
-              ? labelMap[mf.origen as keyof typeof labelMap] || mf.origen
-              : mf.pickupAddress || "";
-            const destLabel = mf.destino
-              ? labelMap[mf.destino as keyof typeof labelMap] || mf.destino
-              : mf.dropoffAddress || "";
-            return originLabel || destLabel
-              ? `${originLabel}${originLabel && destLabel ? " → " : ""}${destLabel}`
-              : "Traslado";
-          })(),
-    origen: mf.origen || "",
-    destino: mf.destino || "",
-    pickupAddress: mf.pickupAddress || "",
-    dropoffAddress: mf.dropoffAddress || "",
-    date: mf.date || "",
-    time: mf.time || "",
-    passengers: Number(mf.passengers || 1),
-    ninos: Number(mf.ninos || 0),
-    vehicle: mf.vehicle || "coche",
-    selectedTourSlug: mf.selectedTourSlug || "",
-    categoriaTour: mf.categoriaTour || "",
-    subtipoTour: mf.subtipoTour || "",
-    flightNumber: mf.flightNumber || "",
-    flightArrivalTime: mf.flightArrivalTime || "", // 👈 ahora sí
-    flightDepartureTime: mf.flightDepartureTime || "", // 👈 ahora sí
-    luggage23kg: Number(mf.luggage23kg ?? 0),
-    luggage10kg: Number(mf.luggage10kg ?? 0),
-    specialRequests: mf.specialRequests || "",
-    totalPrice: Number(mf.totalPrice || 0),
-    contactName: mf.contactName || "",
-    contactPhone: mf.contactPhone || "",
-    contactEmail: mf.contactEmail || "",
-    // preserva doc/flags de traslado si existen
-    transferDoc: mf.transferDoc,
-    requireFlightInfo: mf.requireFlightInfo === true,
-    requireFlightNumber: mf.requireFlightNumber === true,
-    requireFlightTimes: mf.requireFlightTimes === true,
-  });
 
   const validateModalForSave = (mf: any): Record<string, string> => {
     const errs: Record<string, string> = {};
@@ -1358,11 +1309,11 @@ useEffect(() => {
                 ? "Tour"
                 : (() => {
                     const originLabel = modalForm.origen
-                      ? labelMap[modalForm.origen as keyof typeof labelMap] ||
+                      ? 
                         modalForm.origen
                       : modalForm.pickupAddress || it.pickupAddress || "";
                     const destLabel = modalForm.destino
-                      ? labelMap[modalForm.destino as keyof typeof labelMap] ||
+                      ? 
                         modalForm.destino
                       : modalForm.dropoffAddress || it.dropoffAddress || "";
                     if (!originLabel && !destLabel)
@@ -2143,7 +2094,7 @@ const transferLabel =
   bookingData?.transferDoc?.name ||
   bookingData?.transferData?.name ||
   (bookingData?.transferDoc?.from && bookingData?.transferDoc?.to
-    ? `${labelMap[bookingData.transferDoc.from as keyof typeof labelMap] || bookingData.transferDoc.from} → ${labelMap[bookingData.transferDoc.to as keyof typeof labelMap] || bookingData.transferDoc.to}`
+    ? `${bookingData.transferDoc.from} → ${bookingData.transferDoc.to}`
     : "");
   const tourName =
     bookingData?.tourDoc?.title ||
@@ -2158,14 +2109,14 @@ const transferLabel =
       ? bookingData?.quickType === "traslado"
         ? transferLabel || // 👈 PRIORIDAD al nombre del traslado
           (bookingData?.origen && bookingData?.destino
-            ? `${labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen} → ${labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino}`
+            ? `${ bookingData.origen} → ${bookingData.destino}`
             : "Traslado")
         : tourName || "Tour"
       : isTour
         ? tourName || "Tour"
         : transferLabel || // 👈 PRIORIDAD al nombre del traslado
           (bookingData?.origen && bookingData?.destino
-            ? `${labelMap[bookingData.origen as keyof typeof labelMap] || bookingData.origen} → ${labelMap[bookingData.destino as keyof typeof labelMap] || bookingData.destino}`
+            ? `${ bookingData.origen} → ${bookingData.destino}`
             : "Traslado");
   // Enviar a WhatsApp cuando el método es efectivo
   const sendWhatsApp = () => {
@@ -2323,10 +2274,10 @@ const transferLabel =
         secondaryLabel = truncate(name, 30);
       } else {
         const originLabel = safeOrigen
-          ? labelMap[safeOrigen as keyof typeof labelMap] || safeOrigen
+          ?  safeOrigen
           : "";
         const destLabel = safeDestino
-          ? labelMap[safeDestino as keyof typeof labelMap] || safeDestino
+          ?  safeDestino
           : "";
         const route =
           originLabel || destLabel
@@ -2705,7 +2656,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             </h4>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Origen del servicio${bookingData?.origen ? ` [${labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen}]` : ""}`}
+                                {`Origen del servicio${bookingData?.origen ? ` [${bookingData.origen}]` : ""}`}
                               </label>
                               <p className="text-sm text-muted-foreground">
                                 {carritoState && carritoState.length > 0
@@ -2736,15 +2687,13 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Destino del servicio${bookingData?.destino ? ` [${labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino}]` : ""}`}
+                                {`Destino del servicio${bookingData?.destino ? ` [${bookingData.destino}]` : ""}`}
                               </label>
                               <p className="text-sm text-muted-foreground">
                                 {carritoState && carritoState.length > 0
                                   ? ""
                                   : bookingData.dropoffAddress ||
-                                    labelMap?.[
-                                      bookingData.destino as keyof typeof labelMap
-                                    ] ||
+                                    
                                     bookingData.destino ||
                                     "No especificado"}
                               </p>
@@ -2875,7 +2824,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                               <label className="text-xs font-medium">
                                 {`Origen del servicio${
                                   bookingData?.origen
-                                    ? ` [${labelMap?.[bookingData.origen as keyof typeof labelMap] || bookingData.origen}]`
+                                    ? ` [${bookingData.origen}]`
                                     : ""
                                 }`}
                               </label>
@@ -2907,7 +2856,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Destino del servicio${bookingData?.destino ? ` [${labelMap?.[bookingData.destino as keyof typeof labelMap] || bookingData.destino}]` : ""}`}
+                                {`Destino del servicio${bookingData?.destino ? ` [${bookingData.destino}]` : ""}`}
                               </label>
                               <Input
                                 placeholder="Ubicación exacta"
@@ -4113,7 +4062,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
   <div className="text-xs text-muted-foreground">
     {/* Preferimos siempre lo que viene del transferDoc */}
     {(it.transferDoc?.from ||
-      (it.origen && labelMap[it.origen as keyof typeof labelMap]) ||
+      
       it.origen ||
       it.pickupAddress ||
       "")}
@@ -4130,7 +4079,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
       : ""}
 
     {(it.transferDoc?.to ||
-      (it.destino && labelMap[it.destino as keyof typeof labelMap]) ||
+      
       it.destino ||
       it.dropoffAddress ||
       "")}
@@ -4409,14 +4358,12 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
 
                               // Origen/Destino legibles (para traslados)
                               const originPretty =
-                                (bookingData?.origen &&
-                                  (labelMap as any)?.[bookingData.origen]) ||
+                                
                                 bookingData?.pickupAddress ||
                                 bookingData?.origen ||
                                 "";
                               const destPretty =
-                                (bookingData?.destino &&
-                                  (labelMap as any)?.[bookingData.destino]) ||
+                                
                                 bookingData?.dropoffAddress ||
                                 bookingData?.destino ||
                                 "";
@@ -4674,27 +4621,29 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                           console.log(
                             "[Modal] Traslado clicked after return initiated - applying saved swapped origin/destination"
                           );
-                          const newOrigen =
-                            getLocationKeyFromValue(
-                              savedDestinationOnLoad ||
-                                bookingData?.dropoffAddress ||
-                                ""
-                            ) ||
-                            savedDestinationOnLoad ||
-                            "";
-                          const newDestino =
-                            getLocationKeyFromValue(
-                              savedOriginOnLoad ||
-                                bookingData?.pickupAddress ||
-                                ""
-                            ) ||
-                            savedOriginOnLoad ||
-                            "";
+                          // const newOrigen =
+                          //   getLocationKeyFromValue(
+                          //     savedDestinationOnLoad ||
+                          //       bookingData?.dropoffAddress ||
+                          //       ""
+                          //   ) ||
+                          //   savedDestinationOnLoad ||
+                          //   "";
+                          // const newDestino =
+                          //   getLocationKeyFromValue(
+                          //     savedOriginOnLoad ||
+                          //       bookingData?.pickupAddress ||
+                          //       ""
+                          //   ) ||
+                          //   savedOriginOnLoad ||
+                          //   "";
                           setModalForm((prev: any) => ({
                             ...prev,
                             tipo: "traslado",
-                            origen: newOrigen,
-                            destino: newDestino,
+                            // origen: newOrigen,
+                            // destino: newDestino,
+                            origen: '',
+                            destino: '',
                             pickupAddress:
                               bookingData?.dropoffAddress ||
                               prev.pickupAddress ||
@@ -4767,7 +4716,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-accent" />
-                          {`Origen${modalForm.origen ? ` ${labelMap[modalForm.origen as keyof typeof labelMap] || modalForm.origen}` : ""}`}
+                          {`Origen${modalForm.origen ? ` ${ modalForm.origen}` : ""}`}
                         </label>
                         <Select
                           value={modalForm.origen}
@@ -4791,18 +4740,18 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             <SelectValue placeholder="Seleccionar origen" />
                           </SelectTrigger>
                           <SelectContent>
-                            {Object.keys(labelMap).map((k) => (
-                              <SelectItem key={k} value={k}>
-                                {labelMap[k as keyof typeof labelMap]}
-                              </SelectItem>
-                            ))}
+                             {originKeys.map((k) => (
+                                    <SelectItem key={k} value={k}>
+                                      {getOriginLabel(k)}
+                                    </SelectItem>
+                                  ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-accent" />
-                          {`Destino${modalForm.destino ? ` ${labelMap[modalForm.destino as keyof typeof labelMap] || modalForm.destino}` : ""}`}
+                          {`Destino${modalForm.destino ? ` ${ modalForm.destino}` : ""}`}
                         </label>
                         <Select
                           value={modalForm.destino}
@@ -4829,20 +4778,19 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableDestinations &&
-                            availableDestinations.length > 0 ? (
-                              availableDestinations.map((d) => (
-                                <SelectItem key={d} value={d}>
-                                  {labelMap[d as keyof typeof labelMap] || d}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="-" disabled>
-                                {modalForm.origen
-                                  ? "No hay destinos disponibles"
-                                  : "Selecciona el origen primero"}
-                              </SelectItem>
-                            )}
+                            {destinationKeys.length > 0 ? (
+                                    destinationKeys.map((d) => (
+                                      <SelectItem key={d} value={d}>
+                                        {getDestinationLabel(d)}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <SelectItem value="-" disabled>
+                                      {bookingData.origen
+                                        ? "No hay destinos disponibles"
+                                        : "Selecciona el origen primero"}
+                                    </SelectItem>
+                                  )}
                           </SelectContent>
                         </Select>
                       </div>

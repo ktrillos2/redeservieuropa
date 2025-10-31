@@ -82,21 +82,20 @@ export async function POST(req: Request) {
     }
 
     const orders = await serverClient.fetch<Array<any>>(
-  `*[_type == "order" && payment.paymentId == $pid]{
-    _id,
-    calendar{eventId},
-    service{
-      type,title,date,time,totalPrice,passengers,
-      pickupAddress,dropoffAddress,
-      flightNumber,flightArrivalTime,flightDepartureTime,
-      luggage23kg,luggage10kg,isNightTime,extraLuggage,
-      selectedPricingOption
-    },
-    payment{method,requestedMethod,currency},
-    contact{name,email,phone,referralSource}
-  }`,
-  { pid: paymentId }
-)
+      `*[_type == "order" && payment.paymentId == $pid]{
+        _id,
+        services[]{
+          type,title,date,time,totalPrice,passengers,
+          pickupAddress,dropoffAddress,
+          flightNumber,flightArrivalTime,flightDepartureTime,
+          luggage23kg,luggage10kg,ninos,isNightTime,
+          payFullNow,depositPercent
+        },
+        payment{status,method,requestedMethod,currency,payFullNow,depositPercent},
+        contact{name,email,phone,referralSource}
+      }`,
+      { pid: paymentId }
+    )
 
     if (!orders?.length)
       return NextResponse.json({ ok: true, note: 'no-orders' })
@@ -114,42 +113,72 @@ export async function POST(req: Request) {
       }
     }
 
-    /*──────── Google Calendar: 1 evento por servicio ────────*/
+    /*──────── Google Calendar: 1 evento por cada servicio de cada orden ────────*/
     if (status === 'paid') {
       for (const ord of orders) {
-        let exists = false
-        if (ord.calendar?.eventId) {
-          const evt = await getCalendarEventById(ord.calendar.eventId)
-          exists = Boolean(evt?.id)
-        }
-        if (exists) continue
+        const services = ord.services || []
+        
+        for (let idx = 0; idx < services.length; idx++) {
+          const service = services[idx]
+          
+          // Calcular pago según depositPercent del servicio
+          const total = Number(service?.totalPrice || 0)
+          const pct = service?.depositPercent || ord.payment?.depositPercent || 
+                     (service?.type === 'tour' ? 20 : service?.type === 'evento' ? 15 : 10)
+          const paidAmount = Number((total * pct / 100).toFixed(1))
 
-        const total = Number(ord.service?.totalPrice || 0)
-        const paid20 = Number((total * 0.2).toFixed(1))
+          // Crear payload para Google Calendar con la fecha y hora correcta en zona horaria de París
+          const payload = buildOrderEventPayload({
+            service,
+            payment: { ...ord.payment, paidAmount, depositPercent: pct },
+            contact: ord.contact,
+          })
 
-        const payload = buildOrderEventPayload({
-          ...ord,
-          payment: { ...(ord.payment || {}), paidAmount: paid20 },
-        })
-
-        const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}`)
-        if (evt?.id) {
-          await serverClient.patch(ord._id).set({
-            calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
-          }).commit()
-          console.log('[orders/sync] event created', { orderId: ord._id, eventId: evt.id })
+          try {
+            const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}:${idx}`)
+            if (evt?.id) {
+              console.log('[orders/sync] event created', { 
+                orderId: ord._id, 
+                serviceIdx: idx, 
+                eventId: evt.id,
+                date: service.date,
+                time: service.time
+              })
+            }
+          } catch (err) {
+            console.error('[orders/sync] calendar error', { 
+              orderId: ord._id, 
+              serviceIdx: idx, 
+              error: err?.message || err 
+            })
+          }
         }
       }
     }
 
     /*──────── Envío de correos (idempotente) ────────*/
     if (status === 'paid') {
-      const totalAmount = orders.reduce((a, o) => a + (o.service?.totalPrice || 0), 0)
-      const paidAmount = Number((totalAmount * 0.2).toFixed(1))
+      // Calcular totales considerando todos los servicios
+      let totalAmount = 0
+      let paidAmount = 0
+      
+      for (const ord of orders) {
+        for (const service of (ord.services || [])) {
+          const total = Number(service?.totalPrice || 0)
+          const pct = service?.depositPercent || ord.payment?.depositPercent || 
+                     (service?.type === 'tour' ? 20 : service?.type === 'evento' ? 15 : 10)
+          totalAmount += total
+          paidAmount += total * pct / 100
+        }
+      }
+      
+      paidAmount = Number(paidAmount.toFixed(1))
+      
       const acquired = await acquireMailLock(paymentId)
 
       if (acquired) {
-        const services = orders.map(o => o.service)
+        // Aplanar todos los servicios de todas las órdenes
+        const allServices = orders.flatMap(o => o.services || [])
         const contact = orders.find(o => o.contact?.email)?.contact
 
         const adminHtml = renderAdminNewServicesEmailMulti({
@@ -157,7 +186,7 @@ export async function POST(req: Request) {
           amount: paidAmount,
           currency: orders[0]?.payment?.currency || 'EUR',
           contact,
-          services,
+          services: allServices,
         })
 
         const clientHtml = contact
@@ -166,7 +195,7 @@ export async function POST(req: Request) {
               amount: paidAmount,
               currency: orders[0]?.payment?.currency || 'EUR',
               contact,
-              services,
+              services: allServices,
             })
           : null
 
@@ -213,14 +242,14 @@ export async function PUT(req: Request) {
   `*[_type == "order" && payment.paymentId == $pid]{
     _id,
     calendar{eventId},
-    service{
+    services[]{
       type,title,date,time,totalPrice,passengers,
       pickupAddress,dropoffAddress,
       flightNumber,flightArrivalTime,flightDepartureTime,
-      luggage23kg,luggage10kg,isNightTime,extraLuggage,
-      selectedPricingOption
+      luggage23kg,luggage10kg,ninos,isNightTime,
+      payFullNow,depositPercent
     },
-    payment{method,requestedMethod,currency},
+    payment{method,requestedMethod,currency,payFullNow,depositPercent},
     contact{name,email,phone,referralSource}
   }`,
   { pid: paymentId }
@@ -229,27 +258,41 @@ export async function PUT(req: Request) {
     const results: any[] = []
 
     for (const ord of orders) {
-      let exists = false
-      if (ord.calendar?.eventId) {
-        const evt = await getCalendarEventById(ord.calendar.eventId!)
-        exists = Boolean(evt?.id)
-      }
-      if (!exists) {
-        const total = Number(ord.service?.totalPrice || 0)
-        const paid20 = Number((total * 0.2).toFixed(1))
+      const services = ord.services || []
+      
+      for (let idx = 0; idx < services.length; idx++) {
+        const service = services[idx]
+        
+        // Calcular pago según depositPercent del servicio
+        const total = Number(service?.totalPrice || 0)
+        const pct = service?.depositPercent || ord.payment?.depositPercent || 
+                   (service?.type === 'tour' ? 20 : service?.type === 'evento' ? 15 : 10)
+        const paidAmount = Number((total * pct / 100).toFixed(1))
+        
         const payload = buildOrderEventPayload({
-          ...ord,
-          payment: { ...(ord as any).payment, paidAmount: paid20 },
+          service,
+          payment: { ...ord.payment, paidAmount, depositPercent: pct },
+          contact: ord.contact,
         })
-        const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}`)
-        if (evt?.id) {
-          await serverClient.patch(ord._id).set({
-            calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
-          }).commit()
+        
+        try {
+          const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}:${idx}`)
+          if (evt?.id) {
+            console.log('[orders/sync PUT] event created', { 
+              orderId: ord._id, 
+              serviceIdx: idx, 
+              eventId: evt.id 
+            })
+          }
+          results.push({ orderId: ord._id, serviceIdx: idx, created: Boolean(evt?.id) })
+        } catch (err) {
+          console.error('[orders/sync PUT] calendar error', { 
+            orderId: ord._id, 
+            serviceIdx: idx, 
+            error: err?.message || err 
+          })
+          results.push({ orderId: ord._id, serviceIdx: idx, error: err?.message || err })
         }
-        results.push({ orderId: ord._id, created: Boolean(evt?.id) })
-      } else {
-        results.push({ orderId: ord._id, exists: true })
       }
     }
     return NextResponse.json({ ok: true, results })

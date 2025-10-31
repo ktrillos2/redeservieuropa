@@ -37,7 +37,14 @@ ${text}
 
 export async function buildWhatsappLinkFromOrder(orderId: string, templateId?: string) {
   const order = await serverClient.fetch<any>(
-    `*[_type == "order" && _id == $id][0]{ _id, orderNumber, contact{name, phone, email}, service{type,title,date,time,pickupAddress,dropoffAddress}, payment{amount,currency}, whatsappTemplateKey->{ _id, body } }`,
+    `*[_type == "order" && _id == $id][0]{ 
+      _id, 
+      orderNumber, 
+      contact{name, phone, email}, 
+      services[]{type,title,date,time,pickupAddress,dropoffAddress,totalPrice}, 
+      payment{amount,currency}, 
+      whatsappTemplateKey->{ _id, body } 
+    }`,
     { id: orderId }
   )
   if (!order) throw new Error('Order not found')
@@ -47,14 +54,22 @@ export async function buildWhatsappLinkFromOrder(orderId: string, templateId?: s
     template = await serverClient.fetch<any>(`*[_type == "whatsappTemplate" && _id == $id][0]{ _id, body }`, { id: templateId })
   }
   const bodyBlocks: PortableTextBlock[] = (template?.body || []) as any
+  
+  // Para variables, usar el primer servicio como referencia
+  const firstService = order?.services?.[0]
+  const serviceList = (order?.services || [])
+    .map((s: any) => `${s.title || s.type} - ${s.date} ${s.time}`)
+    .join(', ')
+  
   const vars = {
     name: order?.contact?.name,
     phone: order?.contact?.phone,
-    service: order?.service?.title || order?.service?.type,
-    date: order?.service?.date,
-    time: order?.service?.time,
-    pickup: order?.service?.pickupAddress,
-    dropoff: order?.service?.dropoffAddress,
+    service: firstService?.title || firstService?.type || 'Servicio',
+    services: serviceList,
+    date: firstService?.date,
+    time: firstService?.time,
+    pickup: firstService?.pickupAddress,
+    dropoff: firstService?.dropoffAddress,
     orderNumber: order?.orderNumber,
     amount: order?.payment?.amount,
     currency: order?.payment?.currency || 'EUR',

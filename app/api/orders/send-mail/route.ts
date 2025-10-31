@@ -95,20 +95,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'El pedido no está pagado' }, { status: 400 })
     }
 
-    // Construir datos de servicios
-    const services = [{
-      type: order.service?.type,
-      title: order.service?.title,
-      date: order.service?.date,
-      time: order.service?.time,
-      totalPrice: order.service?.totalPrice,
-      pickupAddress: order.service?.pickupAddress,
-      dropoffAddress: order.service?.dropoffAddress,
-      flightNumber: order.service?.flightNumber,
-      passengers: order.service?.passengers,
-    }]
+    // Construir datos de servicios desde el array
+    const services = (order.services || []).map((s: any) => ({
+      type: s?.type,
+      title: s?.title,
+      date: s?.date,
+      time: s?.time,
+      totalPrice: s?.totalPrice,
+      pickupAddress: s?.pickupAddress,
+      dropoffAddress: s?.dropoffAddress,
+      flightNumber: s?.flightNumber,
+      flightArrivalTime: s?.flightArrivalTime,
+      flightDepartureTime: s?.flightDepartureTime,
+      luggage23kg: s?.luggage23kg,
+      luggage10kg: s?.luggage10kg,
+      ninos: s?.ninos,
+      passengers: s?.passengers,
+      payFullNow: s?.payFullNow,
+      depositPercent: s?.depositPercent,
+    }))
     console.log('[send-mail][DEBUG] Servicios:', services)
-    const totalAmount = order.payment?.amount?.value ? Number(order.payment.amount.value) : (order.service?.totalPrice || 0)
+    
+    // Calcular total considerando depositPercent de cada servicio
+    let totalAmount = 0
+    for (const s of (order.services || [])) {
+      const total = Number(s?.totalPrice || 0)
+      const pct = s?.depositPercent || order.payment?.depositPercent || 
+                 (s?.type === 'tour' ? 20 : s?.type === 'evento' ? 15 : 10)
+      totalAmount += total * pct / 100
+    }
+    totalAmount = Number(totalAmount.toFixed(1))
+    
     console.log('[send-mail][DEBUG] Total a enviar:', totalAmount)
 
     // Plantillas

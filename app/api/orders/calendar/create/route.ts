@@ -13,17 +13,68 @@ export async function POST(req: NextRequest) {
     }
     const { paymentId } = await req.json().catch(() => ({})) as { paymentId?: string }
     if (!paymentId) return NextResponse.json({ ok: false, error: 'Missing paymentId' }, { status: 400 })
-    const order = await serverClient.fetch<any>(`*[_type == "order" && payment.paymentId == $pid][0]{ _id, calendar{eventId,htmlLink}, contact, service }`, { pid: paymentId })
-    if (!order?._id) return NextResponse.json({ ok: false, error: 'Order not found' }, { status: 404 })
-    if (order?.calendar?.eventId) {
-      return NextResponse.json({ ok: true, event: { id: order.calendar.eventId, htmlLink: order.calendar.htmlLink }, skipped: true })
+    
+    const orders = await serverClient.fetch<any[]>(
+      `*[_type == "order" && payment.paymentId == $pid]{ 
+        _id, 
+        calendar{eventId,htmlLink}, 
+        contact, 
+        services[]{
+          type,title,date,time,totalPrice,passengers,
+          pickupAddress,dropoffAddress,
+          flightNumber,flightArrivalTime,flightDepartureTime,
+          luggage23kg,luggage10kg,ninos,isNightTime,
+          payFullNow,depositPercent
+        },
+        payment{payFullNow,depositPercent}
+      }`, 
+      { pid: paymentId }
+    )
+    
+    if (!orders?.length) return NextResponse.json({ ok: false, error: 'No orders found' }, { status: 404 })
+    
+    const createdEvents: any[] = []
+    
+    // Crear un evento por cada servicio de cada orden
+    for (const order of orders) {
+      const services = order.services || []
+      
+      for (let idx = 0; idx < services.length; idx++) {
+        const service = services[idx]
+        
+        // Calcular pago según depositPercent del servicio
+        const total = Number(service?.totalPrice || 0)
+        const pct = service?.depositPercent || order.payment?.depositPercent || 
+                   (service?.type === 'tour' ? 20 : service?.type === 'evento' ? 15 : 10)
+        const paidAmount = Number((total * pct / 100).toFixed(1))
+        
+        const payload = buildOrderEventPayload({
+          service,
+          payment: { ...order.payment, paidAmount, depositPercent: pct },
+          contact: order.contact,
+        })
+        
+        try {
+          const evt = await createCalendarEvent(payload, `${paymentId}:${order._id}:${idx}`)
+          if (evt?.id) {
+            createdEvents.push({ orderId: order._id, serviceIdx: idx, eventId: evt.id, htmlLink: evt.htmlLink })
+            console.log('[calendar/create] event created', { 
+              orderId: order._id, 
+              serviceIdx: idx, 
+              eventId: evt.id 
+            })
+          }
+        } catch (err) {
+          console.error('[calendar/create] error', { 
+            orderId: order._id, 
+            serviceIdx: idx, 
+            error: err?.message || err 
+          })
+        }
+      }
     }
-    const payload = buildOrderEventPayload(order)
-    const evt = await createCalendarEvent(payload, paymentId)
-    if (evt?.id) {
-      await serverClient.patch(order._id).set({ calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() } }).commit()
-    }
-    return NextResponse.json({ ok: true, event: evt || null })
+    
+    return NextResponse.json({ ok: true, events: createdEvents })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'Error' }, { status: 500 })
   }

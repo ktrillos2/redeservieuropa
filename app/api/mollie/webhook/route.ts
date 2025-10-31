@@ -69,15 +69,15 @@ export async function POST(req: Request) {
   `*[_type == "order" && payment.paymentId == $pid]{
     _id,
     contact{name,email,phone,referralSource},
-    service{
+    services[]{
       type,title,date,time,totalPrice,passengers,
       pickupAddress,dropoffAddress,
       flightNumber,flightArrivalTime,flightDepartureTime,
-      luggage23kg,luggage10kg,isNightTime,extraLuggage,
-      selectedPricingOption
+      luggage23kg,luggage10kg,ninos,isNightTime,
+      payFullNow,depositPercent
     },
     calendar{eventId,htmlLink},
-    payment{currency,method,requestedMethod}
+    payment{currency,method,requestedMethod,payFullNow,depositPercent}
   }`,
   { pid: paymentId }
 )
@@ -85,24 +85,59 @@ export async function POST(req: Request) {
     if (!orders?.length)
       return NextResponse.json({ ok: true, note: 'no-orders' })
 
-    // Monto total y pagado (20% del total)
-    const totalAmount = orders.reduce((a, o) => a + (o.service?.totalPrice || 0), 0)
-    const paidAmount = Number((totalAmount * 0.2).toFixed(1))
-
-    // Crear eventos de Calendar (uno por servicio)
+    // Calcular montos considerando todos los servicios
+    let totalAmount = 0
+    let paidAmount = 0
+    
     for (const ord of orders) {
-      const exists = ord.calendar?.eventId && (await getCalendarEventById(ord.calendar.eventId))
-      if (exists?.id) continue
+      for (const service of (ord.services || [])) {
+        const total = Number(service?.totalPrice || 0)
+        const pct = service?.depositPercent || ord.payment?.depositPercent || 
+                   (service?.type === 'tour' ? 20 : service?.type === 'evento' ? 15 : 10)
+        totalAmount += total
+        paidAmount += total * pct / 100
+      }
+    }
+    
+    paidAmount = Number(paidAmount.toFixed(1))
 
-      const payload = buildOrderEventPayload({
-        ...ord,
-        payment: { ...ord.payment, paidAmount },
-      })
-      const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}`)
-      if (evt?.id) {
-        await serverClient.patch(ord._id).set({
-          calendar: { eventId: evt.id, htmlLink: evt.htmlLink, createdAt: new Date().toISOString() },
-        }).commit()
+    // Crear eventos de Calendar (uno por cada servicio de cada orden)
+    for (const ord of orders) {
+      const services = ord.services || []
+      
+      for (let idx = 0; idx < services.length; idx++) {
+        const service = services[idx]
+        
+        // Calcular pago según depositPercent del servicio
+        const total = Number(service?.totalPrice || 0)
+        const pct = service?.depositPercent || ord.payment?.depositPercent || 
+                   (service?.type === 'tour' ? 20 : service?.type === 'evento' ? 15 : 10)
+        const servicePaidAmount = Number((total * pct / 100).toFixed(1))
+
+        const payload = buildOrderEventPayload({
+          service,
+          payment: { ...ord.payment, paidAmount: servicePaidAmount, depositPercent: pct },
+          contact: ord.contact,
+        })
+        
+        try {
+          const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}:${idx}`)
+          if (evt?.id) {
+            console.log('[webhook] event created', { 
+              orderId: ord._id, 
+              serviceIdx: idx, 
+              eventId: evt.id,
+              date: service.date,
+              time: service.time
+            })
+          }
+        } catch (err) {
+          console.error('[webhook] calendar error', { 
+            orderId: ord._id, 
+            serviceIdx: idx, 
+            error: err?.message || err 
+          })
+        }
       }
     }
 
@@ -111,7 +146,7 @@ export async function POST(req: Request) {
     if (!lock) return NextResponse.json({ ok: true, skipped: true })
 
     const contact = orders.find(o => o.contact?.email)?.contact
-    const services = orders.map(o => o.service)
+    const services = orders.flatMap(o => o.services || [])
 
     const adminHtml = renderAdminNewServicesEmailMulti({
   mollieId: paymentId,

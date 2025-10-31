@@ -154,7 +154,7 @@
       const total = Number(s.totalPrice || 0)
       const percent = depositPercentFor(s.type, s.payFullNow, s.depositPercent ?? null)
       const paidNow = round1(total * (percent / 100))
-      const tag = overallTag(services)
+      const tag = tagServicio(s.type)
 
       return `
         <li>
@@ -171,16 +171,15 @@
     const contentHtml = `
       <p>¡Gracias por tu pago y tu confianza!</p>
       <p>Hemos recibido tu pago y tus reservas han quedado confirmadas.</p>
-      <h3>Detalles de tus servicios</h3>
+      <h3>Servicios contratados</h3>
       <ul class="list">
         ${itemsHtml}
       </ul>
       <p><b>Total de servicios:</b> ${totalSum.toFixed(2)} ${params.currency || 'EUR'}</p>
     `
-    // Asunto con primer tag
-    const firstTag = tagServicio(services[0]?.type)
+    
     return renderBrandEmail({
-      title: `[${firstTag}] ¡Gracias por tu pago!`,
+      title: '¡Gracias por tu pago!',
       intro: `Hola${params.contact?.name ? ' ' + escapeHtml(params.contact.name) : ''}, gracias por confiar en nosotros.`,
       contentHtml,
       footerNote: 'Equipo de Redeservi Europa'
@@ -204,8 +203,12 @@
     }>
   }) {
     const services = params.services || []
+    
+    // Determinar el título según la cantidad de servicios
+    const isMultiple = services.length > 1
+    const title = isMultiple ? 'Resumen de reservas' : tagServicio(services[0]?.type)
 
-    const itemsHtml = services.map(s => {
+    const itemsHtml = services.map((s, idx) => {
       const total = Number(s.totalPrice || 0)
       const percent = depositPercentFor(s.type, s.payFullNow, s.depositPercent ?? null)
       const paidNow = round1(total * (percent / 100))
@@ -228,7 +231,7 @@
 
       return `
         <li>
-          <b>[${tag}]</b> ${escapeHtml(s.title || 'Reserva')}<br/>
+          ${isMultiple ? `<b>Servicio ${idx + 1}:</b> ` : ''}<b>[${tag}]</b> ${escapeHtml(s.title || 'Reserva')}<br/>
           <b>Fecha:</b> ${escapeHtml(s.date || '\u2014')} ${escapeHtml(s.time || '')}<br/>
           <b>Recogida:</b> ${escapeHtml(s.pickupAddress || '\u2014')} • <b>Destino:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
           ${flightLine ? `${flightLine}<br/>` : ''}
@@ -240,9 +243,8 @@
     }).join('')
 
     const totalSum = services.reduce((acc, s) => acc + (s.totalPrice || 0), 0)
-    const firstTag = tagServicio(services[0]?.type)
 
-    // 👇 “¿Cómo nos conoció?” ahora sí llega por contact.referralSource (o en su defecto podría venir en service.referralSource)
+    // 👇 "¿Cómo nos conoció?" ahora sí llega por contact.referralSource (o en su defecto podría venir en service.referralSource)
     const contactBlock = params.contact ? `
       <h3>Contacto</h3>
       <ul class="list">
@@ -254,7 +256,7 @@
     ` : ''
 
     const contentHtml = `
-      <p><b>Nuevos servicios confirmados</b></p>
+      <p><b>${isMultiple ? 'Nuevas reservas confirmadas' : 'Nueva reserva confirmada'}</b></p>
       <ul class="list">
         ${itemsHtml}
       </ul>
@@ -262,7 +264,7 @@
       ${contactBlock}
     `
     return renderBrandEmail({
-      title: `[${firstTag}] Nuevos servicios confirmados`,
+      title: `[${title}] ${isMultiple ? 'Nuevas reservas confirmadas' : 'Nueva reserva confirmada'}`,
       intro: 'Se ha confirmado un pago y los servicios asociados han quedado registrados.',
       contentHtml,
       footerNote: 'Generado automáticamente'

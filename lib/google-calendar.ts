@@ -242,6 +242,14 @@ export function buildOrderEventPayload(order: any) {
   const date = order?.service?.date
   let time = order?.service?.time || '00:00'
 
+  // Log para debug
+  console.log('[buildOrderEventPayload] Input:', { 
+    date, 
+    timeRaw: time, 
+    type, 
+    title: titleBase 
+  })
+
   try {
     const raw = String(time).trim()
     const m = raw.match(/^\s*(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?\s*$/)
@@ -272,6 +280,14 @@ export function buildOrderEventPayload(order: any) {
   const endMo = String(endDateObj.getUTCMonth() + 1).padStart(2, '0')
   const endD = String(endDateObj.getUTCDate()).padStart(2, '0')
   const endStr = `${endY}-${endMo}-${endD}T${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`
+
+  // Log para debug
+  console.log('[buildOrderEventPayload] Output:', { 
+    startLocal, 
+    endStr, 
+    timezone: tz,
+    hours 
+  })
 
   const total = Number(order?.service?.totalPrice || 0)
   const paidNow = Math.round(total * (depositPercent / 100) * 10) / 10

@@ -20,6 +20,10 @@ export function getTransporter(): Transporter {
     port,
     secure: false, // 587 STARTTLS
     auth: { user, pass },
+    // En desarrollo, ignorar errores de certificado SSL
+    tls: {
+      rejectUnauthorized: process.env.NODE_ENV === 'production'
+    }
   })
   return transporter
 }

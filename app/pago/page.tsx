@@ -1,7 +1,6 @@
 "use client";
 import { TooltipBriefInfo } from "@/components/ui/tooltip-brief-info";
 
-
 // idaYVuelta removed: round-trip option deprecated
 // Removed idaYVuelta from modalForm initialization
 // Removed idaYVuelta from bookingData
@@ -54,7 +53,12 @@ import {
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PhoneInputIntl } from "@/components/ui/phone-input";
 import { EmailAutocomplete } from "@/components/ui/email-autocomplete";
-import { buildTransfersIndexes, getTransferDocByRoute, toIndexKey, TransferDoc } from "@/sanity/lib/transfers";
+import {
+  buildTransfersIndexes,
+  getTransferDocByRoute,
+  toIndexKey,
+  TransferDoc,
+} from "@/sanity/lib/transfers";
 import { TourDoc } from "@/sanity/lib/tours";
 
 // Helper: formato con máximo 2 decimales (sin forzar ceros)
@@ -134,8 +138,7 @@ const INC_5 = 34,
 function computeFromTourDoc(pax: number, tourDoc: any) {
   const n = Math.max(1, Math.floor(pax || 0));
   const mode = tourDoc?.pricingMode;
- 
-  
+
   // MODO "rules": base hasta 4; 5→+34; 6→+32; 7→+28; 8→+26
   // NUEVO: 9+ = (precio de 8) + INC_8 * (n - 8)
   if (mode === "rules" && tourDoc?.pricingRules?.baseUpTo4EUR != null) {
@@ -149,7 +152,7 @@ function computeFromTourDoc(pax: number, tourDoc: any) {
     const priceAt8 = base + INC_5 + INC_6 + INC_7 + INC_8;
     return priceAt8 + INC_8 * (n - 8);
   }
-  
+
   // MODO "table": 4..8 explícitos + extraFrom9 por cada pasajero > 8 (ya contemplaba 9+ sin tope)
   if (mode === "table" && tourDoc?.pricingTable) {
     const {
@@ -167,7 +170,7 @@ function computeFromTourDoc(pax: number, tourDoc: any) {
     if (n === 8) return p8;
     return p8 + extraFrom9 * (n - 8);
   }
-  
+
   // Fallback si no hay modo ni tabla
   return Number(tourDoc?.booking?.startingPriceEUR ?? 0) || 0;
 }
@@ -196,8 +199,6 @@ const truncate = (s: string, n = 30) => {
   const str = String(s);
   return str.length <= n ? str : str.slice(0, n - 1) + "…";
 };
-
-
 
 type Requirements = {
   requireTime?: boolean;
@@ -357,52 +358,59 @@ export default function PaymentPage() {
   const cartActive = (carritoState?.length ?? 0) >= 1;
 
   const buildSinglePayload = (bd: any): CartItem => {
-    console.warn({bd})
-  const isTourCurrent = !!(
-    bd?.isEvent || bd?.tourId || bd?.tourDoc || bd?.selectedTourSlug || bd?.quickType === "tour"
-  );
-  const tipo: "tour" | "traslado" = isTourCurrent ? "tour" : "traslado";
-  
-  return {
-    id: Date.now(),
-    tipo,
-    serviceLabel: isTourCurrent ? "Tour" : "Traslado",
-    serviceSubLabel: isTourCurrent
-      ? bd?.tourData?.title || bd?.tourDoc?.title || bd?.selectedTourSlug || "Tour"
-      : undefined,
+    console.warn({ bd });
+    const isTourCurrent = !!(
+      bd?.isEvent ||
+      bd?.tourId ||
+      bd?.tourDoc ||
+      bd?.selectedTourSlug ||
+      bd?.quickType === "tour"
+    );
+    const tipo: "tour" | "traslado" = isTourCurrent ? "tour" : "traslado";
 
-    // 👇👇 CAMBIA estas 3
-    vehicle: bd?.vehicle || bd?.vehiculo || bd?.vehicleType || "",
-    categoriaTour: bd?.categoriaTour || bd?.tourCategory || "",
-    subtipoTour: bd?.subtipoTour || bd?.tourSubtype || "",
+    return {
+      id: Date.now(),
+      tipo,
+      serviceLabel: isTourCurrent ? "Tour" : "Traslado",
+      serviceSubLabel: isTourCurrent
+        ? bd?.tourData?.title ||
+          bd?.tourDoc?.title ||
+          bd?.selectedTourSlug ||
+          "Tour"
+        : undefined,
 
-    origen: bd?.origen || "",
-    destino: bd?.destino || "",
-    pickupAddress: bd?.pickupAddress || "",
-    dropoffAddress: bd?.dropoffAddress || "",
-    date: bd?.date || bd?.fecha || "",
-    time: bd?.time || bd?.hora || "",
-    passengers: Number(bd?.passengers || bd?.pasajeros || 1),
-    ninos: Number(bd?.ninos || 0),
-    transferDoc: bd?.transferDoc,
-    tourDoc: bd?.tourDoc,
+      // 👇👇 CAMBIA estas 3
+      vehicle: bd?.vehicle || bd?.vehiculo || bd?.vehicleType || "",
+      categoriaTour: bd?.categoriaTour || bd?.tourCategory || "",
+      subtipoTour: bd?.subtipoTour || bd?.tourSubtype || "",
 
-    selectedTourSlug: bd?.selectedTourSlug || "",
-    flightNumber: bd?.flightNumber || "",
-    flightArrivalTime: bd?.flightArrivalTime || "",
-    flightDepartureTime: bd?.flightDepartureTime || "",
-    luggage23kg: Number(bd?.luggage23kg ?? 0),
-    luggage10kg: Number(bd?.luggage10kg ?? 0),
-    specialRequests: bd?.specialRequests || "",
-    totalPrice: Number(bd?.totalPrice || 0),
-    contactName: bd?.contactName || "",
-    contactPhone: bd?.contactPhone || "",
-    contactEmail: bd?.contactEmail || "",
+      origen: bd?.origen || "",
+      destino: bd?.destino || "",
+      pickupAddress: bd?.pickupAddress || "",
+      dropoffAddress: bd?.dropoffAddress || "",
+      date: bd?.date || bd?.fecha || "",
+      time: bd?.time || bd?.hora || "",
+      passengers: Number(bd?.passengers || bd?.pasajeros || 1),
+      ninos: Number(bd?.ninos || 0),
+      transferDoc: bd?.transferDoc,
+      tourDoc: bd?.tourDoc,
+
+      selectedTourSlug: bd?.selectedTourSlug || "",
+      flightNumber: bd?.flightNumber || "",
+      flightArrivalTime: bd?.flightArrivalTime || "",
+      flightDepartureTime: bd?.flightDepartureTime || "",
+      luggage23kg: Number(bd?.luggage23kg ?? 0),
+      luggage10kg: Number(bd?.luggage10kg ?? 0),
+      specialRequests: bd?.specialRequests || "",
+      totalPrice: Number(bd?.totalPrice || 0),
+      contactName: bd?.contactName || "",
+      contactPhone: bd?.contactPhone || "",
+      contactEmail: bd?.contactEmail || "",
+    };
   };
-};
 
   const buildSubmission = () => {
-    console.warn({bookingData})
+    console.warn({ bookingData });
     const current = buildSinglePayload(bookingData);
     const cartItems = Array.isArray(carritoState) ? carritoState : [];
     const items: CartItem[] = cartItems.length ? [...cartItems] : [];
@@ -451,7 +459,7 @@ export default function PaymentPage() {
 
   // Cuando bookingData se carga, guardar origen/destino en variables separadas
   useEffect(() => {
-    console.log(bookingData)
+    console.log(bookingData);
     if (!bookingData) return;
     // detectar distintos nombres de campo que pueden contener origen/destino
     const o =
@@ -501,47 +509,52 @@ export default function PaymentPage() {
   ]);
 
   // === /pago: recalcular total cuando el booking es TRASLADO con transferDoc ===
-useEffect(() => {
-  if (!bookingData?.transferDoc) return;
+  useEffect(() => {
+    if (!bookingData?.transferDoc) return;
 
-  const pax = Number(bookingData.passengers || 1);
+    const pax = Number(bookingData.passengers || 1);
 
-  // 1) base según doc del traslado
-  let base = computeFromTransferDoc(pax, bookingData.transferDoc);
+    // 1) base según doc del traslado
+    let base = computeFromTransferDoc(pax, bookingData.transferDoc);
 
-  // 2) extras (idénticos a tu lógica actual)
-  const isNight = (() => {
-    const t = bookingData.time || bookingData.hora;
-    if (!t) return false;
-    const [hh] = String(t).split(":").map(Number);
-    return (hh || 0) >= 21 || (hh || 0) < 6;
-  })();
+    // 2) extras (idénticos a tu lógica actual)
+    const isNight = (() => {
+      const t = bookingData.time || bookingData.hora;
+      if (!t) return false;
+      const [hh] = String(t).split(":").map(Number);
+      return (hh || 0) >= 21 || (hh || 0) < 6;
+    })();
 
-  const extraLuggage = Number(bookingData.luggage23kg || 0) > 3;
-  const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
+    const extraLuggage = Number(bookingData.luggage23kg || 0) > 3;
+    const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
 
-  const total = Number((base + extrasSum).toFixed(2));
+    const total = Number((base + extrasSum).toFixed(2));
 
-  if (total !== Number(bookingData.totalPrice || 0) || base !== Number(bookingData.basePrice || 0)) {
-    setBookingData((prev: any) => {
-      const next = {
-        ...prev,
-        basePrice: base,
-        isNightTime: isNight,
-        extraLuggage,
-        totalPrice: total,
-      };
-      try { localStorage.setItem("bookingData", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }
-}, [
-  bookingData?.transferDoc,
-  bookingData?.passengers,
-  bookingData?.time,
-  bookingData?.hora,
-  bookingData?.luggage23kg,
-]);
+    if (
+      total !== Number(bookingData.totalPrice || 0) ||
+      base !== Number(bookingData.basePrice || 0)
+    ) {
+      setBookingData((prev: any) => {
+        const next = {
+          ...prev,
+          basePrice: base,
+          isNightTime: isNight,
+          extraLuggage,
+          totalPrice: total,
+        };
+        try {
+          localStorage.setItem("bookingData", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+  }, [
+    bookingData?.transferDoc,
+    bookingData?.passengers,
+    bookingData?.time,
+    bookingData?.hora,
+    bookingData?.luggage23kg,
+  ]);
 
   // Exponer en el body un atributo cuando el modal de cotización esté abierto
   useEffect(() => {
@@ -617,7 +630,6 @@ useEffect(() => {
     const caps: Record<string, number> = { coche: 4, minivan: 6, van: 8 };
     return caps[_v || "coche"] || 56;
   };
-
 
   const availableDestinations = useMemo(() => {
     try {
@@ -715,8 +727,8 @@ useEffect(() => {
 
     const invertedData = {
       tipo: defaultTipo,
-      origen:  "",
-      destino:  "",
+      origen: "",
+      destino: "",
       // 💡 Direcciones VACÍAS (es nueva cotización)
       pickupAddress: "",
       dropoffAddress: "",
@@ -765,22 +777,27 @@ useEffect(() => {
   };
 
   const openEditModal = async (item: any) => {
-    console.warn({toursList,item})
+    console.warn({ toursList, item });
     const tipo: "tour" | "traslado" =
       item?.tipo ||
-      (item?.tourId || item?.tourDoc || item?.selectedTourSlug ? "tour" : "traslado");
+      (item?.tourId || item?.tourDoc || item?.selectedTourSlug
+        ? "tour"
+        : "traslado");
 
     // ——— Traslado: resolvemos transferDoc por la ruta actual del ítem ———
     let transferDoc = item?.transferDoc;
-   let resolvedSelectedTourSlug = item?.selectedTourSlug || "";
+    let resolvedSelectedTourSlug = item?.selectedTourSlug || "";
 
-  if (!resolvedSelectedTourSlug && item?.tourDoc?._id && Array.isArray(toursList)) {
-    const matched = toursList.find((t) => t._id === item.tourDoc._id);
-    if (matched?.slug) {
-      resolvedSelectedTourSlug = matched.slug;
+    if (
+      !resolvedSelectedTourSlug &&
+      item?.tourDoc?._id &&
+      Array.isArray(toursList)
+    ) {
+      const matched = toursList.find((t) => t._id === item.tourDoc._id);
+      if (matched?.slug) {
+        resolvedSelectedTourSlug = matched.slug;
+      }
     }
-  }
-
 
     setModalForm({
       // identidad del ítem
@@ -790,20 +807,26 @@ useEffect(() => {
       // --- RUTA ORIGINAL (hidratar ambos pares) ---
       // Prioriza las claves 'origen'/'destino' guardadas en el item;
       // si no existen, cae a pickup/dropoff, y viceversa para mantener ambos campos visibles.
-      origen: toIndexKey(transferDoc?.from)|| item.origen || "",
-      destino: toIndexKey(transferDoc?.to)|| item.destino || "",
+      origen: toIndexKey(transferDoc?.from) || item.origen || "",
+      destino: toIndexKey(transferDoc?.to) || item.destino || "",
       pickupAddress: item?.pickupAddress ?? item?.origen ?? "",
       dropoffAddress: item?.dropoffAddress ?? item?.destino ?? "",
-      tipoTour: item?.tipoTour || item?.subtipoTour|| "",
+      tipoTour: item?.tipoTour || item?.subtipoTour || "",
       // tour/transfer docs
       selectedTourSlug: resolvedSelectedTourSlug,
-      tourDoc: item?.tourDoc,               // si es tour
-      transferDoc,                          // si es traslado
+      tourDoc: item?.tourDoc, // si es tour
+      transferDoc, // si es traslado
 
       // flags de vuelo (prioriza los del transferDoc)
-      requireFlightInfo:  !!(transferDoc?.requireFlightInfo ?? item?.requireFlightInfo),
-      requireFlightNumber:!!(transferDoc?.requireFlightNumber ?? item?.requireFlightNumber),
-      requireFlightTimes: !!(transferDoc?.requireFlightTimes ?? item?.requireFlightTimes),
+      requireFlightInfo: !!(
+        transferDoc?.requireFlightInfo ?? item?.requireFlightInfo
+      ),
+      requireFlightNumber: !!(
+        transferDoc?.requireFlightNumber ?? item?.requireFlightNumber
+      ),
+      requireFlightTimes: !!(
+        transferDoc?.requireFlightTimes ?? item?.requireFlightTimes
+      ),
 
       // resto de campos
       date: item?.date || "",
@@ -890,7 +913,7 @@ useEffect(() => {
       const normalize = (v: string | undefined) => {
         if (!v) return undefined;
         const low = String(v).toLowerCase();
-        
+
         if (low.includes("cdg")) return "cdg";
         if (low.includes("orly")) return "orly";
         if (low.includes("beauvais") || low.includes("bva")) return "beauvais";
@@ -918,29 +941,32 @@ useEffect(() => {
   };
 
   useEffect(() => {
-  if (modalEditingId === null) return;          // solo en modo edición
-  if (modalForm?.tipo !== "traslado") return;
-  const from = modalForm?.origen?.trim();
-  const to   = modalForm?.destino?.trim();
-  if (!from || !to) return;
+    if (modalEditingId === null) return; // solo en modo edición
+    if (modalForm?.tipo !== "traslado") return;
+    const from = modalForm?.origen?.trim();
+    const to = modalForm?.destino?.trim();
+    if (!from || !to) return;
 
-  let cancelled = false;
-  const t = setTimeout(async () => {
-    try {
-      const doc = await getTransferDocByRoute(from, to);
-      if (cancelled) return;
-      setModalForm((s: any) => ({
-        ...s,
-        transferDoc: doc || undefined,
-        requireFlightInfo:  !!(doc?.requireFlightInfo),
-        requireFlightNumber:!!(doc?.requireFlightNumber),
-        requireFlightTimes: !!(doc?.requireFlightTimes),
-      }));
-    } catch {}
-  }, 250); // debounce
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const doc = await getTransferDocByRoute(from, to);
+        if (cancelled) return;
+        setModalForm((s: any) => ({
+          ...s,
+          transferDoc: doc || undefined,
+          requireFlightInfo: !!doc?.requireFlightInfo,
+          requireFlightNumber: !!doc?.requireFlightNumber,
+          requireFlightTimes: !!doc?.requireFlightTimes,
+        }));
+      } catch {}
+    }, 250); // debounce
 
-  return () => { cancelled = true; clearTimeout(t); };
-}, [modalForm?.origen, modalForm?.destino, modalEditingId]);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [modalForm?.origen, modalForm?.destino, modalEditingId]);
 
   // Mantener total calculado cuando cambian campos relevantes
   useEffect(() => {
@@ -964,8 +990,8 @@ useEffect(() => {
     modalForm.luggage23kg,
     modalForm.luggage10kg,
     modalForm.selectedTourSlug,
-  modalForm.categoriaTour,
-  modalForm.subtipoTour,
+    modalForm.categoriaTour,
+    modalForm.subtipoTour,
   ]);
 
   // Validación por paso del modal
@@ -1058,167 +1084,172 @@ useEffect(() => {
   };
 
   const transfersIdx = useMemo(
-      () => buildTransfersIndexes(transfersList || []),
-      [transfersList]
-    );
-  
-    // Claves de origen disponibles y labels helpers
-    const originKeys = useMemo(
-      () => Object.keys(transfersIdx.byOrigin || {}),
-      [transfersIdx]
-    );
-    const getOriginLabel = (k?: string) =>
-      (k && transfersIdx.byOrigin?.[k]?.label) || k || "";
-  const destinationKeys = useMemo(() => {
-  const originKey = (modalForm as any)?.origen || "";
-  if (!originKey) return [];
-  return Object.keys(
-    transfersIdx.byOrigin?.[originKey]?.destinations || {}
+    () => buildTransfersIndexes(transfersList || []),
+    [transfersList]
   );
-}, [modalForm?.origen, transfersIdx]);
 
-// Devuelve la etiqueta del destino considerando el origen ACTUAL del modal.
-// Si k === origen, no retorna nada (cadena vacía). Hace fallback buscando en todos los orígenes.
-const getDestinationLabel = (k?: string) => {
-  const originKey = (modalForm as any)?.origen || (bookingData as any)?.originKey || "";
-  if (!k) return "";
-  if (originKey && k === originKey) return "";
+  // Claves de origen disponibles y labels helpers
+  const originKeys = useMemo(
+    () => Object.keys(transfersIdx.byOrigin || {}),
+    [transfersIdx]
+  );
+  const getOriginLabel = (k?: string) =>
+    (k && transfersIdx.byOrigin?.[k]?.label) || k || "";
+  const destinationKeys = useMemo(() => {
+    const originKey = (modalForm as any)?.origen || "";
+    if (!originKey) return [];
+    return Object.keys(transfersIdx.byOrigin?.[originKey]?.destinations || {});
+  }, [modalForm?.origen, transfersIdx]);
 
-  // 1) Primero intenta con el origen actual del modal
-  const fromCurrent =
-    originKey &&
-    transfersIdx.byOrigin?.[originKey]?.destinations?.[k]?.label;
-  if (fromCurrent) return fromCurrent;
+  // Devuelve la etiqueta del destino considerando el origen ACTUAL del modal.
+  // Si k === origen, no retorna nada (cadena vacía). Hace fallback buscando en todos los orígenes.
+  const getDestinationLabel = (k?: string) => {
+    const originKey =
+      (modalForm as any)?.origen || (bookingData as any)?.originKey || "";
+    if (!k) return "";
+    if (originKey && k === originKey) return "";
 
-  // 2) Fallback: busca ese destino por todas las entradas
-  for (const ok of Object.keys(transfersIdx.byOrigin || {})) {
-    const lbl = transfersIdx.byOrigin?.[ok]?.destinations?.[k]?.label;
-    if (lbl) return lbl;
-  }
+    // 1) Primero intenta con el origen actual del modal
+    const fromCurrent =
+      originKey && transfersIdx.byOrigin?.[originKey]?.destinations?.[k]?.label;
+    if (fromCurrent) return fromCurrent;
 
-  // 3) Si no encuentra, devuelve la key
-  return k;
-};
-const getCartItemPrice = (it: any): number => {
-  try {
-    // Tours/Eventos: usa el total ya calculado o la función de tours si existiera doc
-    if (it?.tipo === "tour") {
-      if (it?.tourDoc) {
-        const pax = Math.max(1, Number(it.passengers || 1));
-        return Number(computeFromTourDoc(pax, it.tourDoc) || 0);
+    // 2) Fallback: busca ese destino por todas las entradas
+    for (const ok of Object.keys(transfersIdx.byOrigin || {})) {
+      const lbl = transfersIdx.byOrigin?.[ok]?.destinations?.[k]?.label;
+      if (lbl) return lbl;
+    }
+
+    // 3) Si no encuentra, devuelve la key
+    return k;
+  };
+  const getCartItemPrice = (it: any): number => {
+    try {
+      // Tours/Eventos: usa el total ya calculado o la función de tours si existiera doc
+      if (it?.tipo === "tour") {
+        if (it?.tourDoc) {
+          const pax = Math.max(1, Number(it.passengers || 1));
+          return Number(computeFromTourDoc(pax, it.tourDoc) || 0);
+        }
+        return Number(it?.totalPrice || 0);
       }
+
+      // Traslado con transferDoc: usa p4..p8 y 9+ = p8 + 20€/pax extra
+      if (it?.tipo === "traslado" && it?.transferDoc) {
+        const pax = Math.max(1, Number(it.passengers || 1));
+        return Number(computeFromTransferDoc(pax, it.transferDoc) || 0);
+      }
+
+      // Fallback traslado sin doc: intenta por origen/destino conocidos
+      if (it?.tipo === "traslado") {
+        const normalize = (v?: string) => {
+          if (!v) return undefined;
+          const s = String(v).toLowerCase();
+          if (s.includes("cdg")) return "cdg";
+          if (s.includes("orly")) return "orly";
+          if (s.includes("beauvais") || s.includes("bva")) return "beauvais";
+          if (s.includes("disney")) return "disneyland";
+          if (s.includes("parís") || s.includes("paris")) return "paris";
+          return undefined;
+        };
+        const pax = Math.max(1, Number(it.passengers || 1));
+        const from = normalize(it.origen) || normalize(it.pickupAddress);
+        const to = normalize(it.destino) || normalize(it.dropoffAddress);
+        const base = calcBaseTransferPrice(from, to, pax);
+        return typeof base === "number" ? base : Number(it?.totalPrice || 0);
+      }
+
+      return Number(it?.totalPrice || 0);
+    } catch {
       return Number(it?.totalPrice || 0);
     }
-
-    // Traslado con transferDoc: usa p4..p8 y 9+ = p8 + 20€/pax extra
-    if (it?.tipo === "traslado" && it?.transferDoc) {
-      const pax = Math.max(1, Number(it.passengers || 1));
-      return Number(computeFromTransferDoc(pax, it.transferDoc) || 0);
-    }
-
-    // Fallback traslado sin doc: intenta por origen/destino conocidos
-    if (it?.tipo === "traslado") {
-      const normalize = (v?: string) => {
-        if (!v) return undefined;
-        const s = String(v).toLowerCase();
-        if (s.includes("cdg")) return "cdg";
-        if (s.includes("orly")) return "orly";
-        if (s.includes("beauvais") || s.includes("bva")) return "beauvais";
-        if (s.includes("disney")) return "disneyland";
-        if (s.includes("parís") || s.includes("paris")) return "paris";
-        return undefined;
-      };
-      const pax = Math.max(1, Number(it.passengers || 1));
-      const from = normalize(it.origen) || normalize(it.pickupAddress);
-      const to = normalize(it.destino) || normalize(it.dropoffAddress);
-      const base = calcBaseTransferPrice(from, to, pax);
-      return typeof base === "number" ? base : Number(it?.totalPrice || 0);
-    }
-
-    return Number(it?.totalPrice || 0);
-  } catch {
-    return Number(it?.totalPrice || 0);
-  }
-};
+  };
 
   const updateCurrentBookingFromModal = () => {
-  const mf = modalForm;
-  setBookingData((prev: any) => {
-    const next = {
-      ...prev,
-      quickType: mf.tipo === "tour" ? "tour" : "traslado",
+    const mf = modalForm;
+    setBookingData((prev: any) => {
+      const next = {
+        ...prev,
+        quickType: mf.tipo === "tour" ? "tour" : "traslado",
 
-      // campos comunes
-      origen: mf.origen || prev?.origen || "",
-      destino: mf.destino || prev?.destino || "",
-      pickupAddress: mf.pickupAddress || prev?.pickupAddress || "",
-      dropoffAddress: mf.dropoffAddress || prev?.dropoffAddress || "",
-      date: mf.date,
-      time: mf.time,
-      passengers: Number(mf.passengers || 1),
-      ninos: Number(mf.ninos || 0),
-      vehicle: mf.vehicle || prev?.vehicle || "coche",
+        // campos comunes
+        origen: mf.origen || prev?.origen || "",
+        destino: mf.destino || prev?.destino || "",
+        pickupAddress: mf.pickupAddress || prev?.pickupAddress || "",
+        dropoffAddress: mf.dropoffAddress || prev?.dropoffAddress || "",
+        date: mf.date,
+        time: mf.time,
+        passengers: Number(mf.passengers || 1),
+        ninos: Number(mf.ninos || 0),
+        vehicle: mf.vehicle || prev?.vehicle || "coche",
 
-      // tour
-      selectedTourSlug: mf.selectedTourSlug || prev?.selectedTourSlug || "",
-      categoriaTour: mf.categoriaTour || prev?.categoriaTour || "",
-      subtipoTour: mf.subtipoTour || prev?.subtipoTour || "",
+        // tour
+        selectedTourSlug: mf.selectedTourSlug || prev?.selectedTourSlug || "",
+        categoriaTour: mf.categoriaTour || prev?.categoriaTour || "",
+        subtipoTour: mf.subtipoTour || prev?.subtipoTour || "",
 
-      // vuelo / equipaje
-      flightNumber: mf.flightNumber || prev?.flightNumber || "",
-      flightArrivalTime: mf.flightArrivalTime || prev?.flightArrivalTime || "",
-      flightDepartureTime:
-        mf.flightDepartureTime || prev?.flightDepartureTime || "",
-      luggage23kg: Number(mf.luggage23kg ?? prev?.luggage23kg ?? 0),
-      luggage10kg: Number(mf.luggage10kg ?? prev?.luggage10kg ?? 0),
+        // vuelo / equipaje
+        flightNumber: mf.flightNumber || prev?.flightNumber || "",
+        flightArrivalTime:
+          mf.flightArrivalTime || prev?.flightArrivalTime || "",
+        flightDepartureTime:
+          mf.flightDepartureTime || prev?.flightDepartureTime || "",
+        luggage23kg: Number(mf.luggage23kg ?? prev?.luggage23kg ?? 0),
+        luggage10kg: Number(mf.luggage10kg ?? prev?.luggage10kg ?? 0),
 
-      specialRequests: mf.specialRequests || prev?.specialRequests || "",
+        specialRequests: mf.specialRequests || prev?.specialRequests || "",
 
-      // total (respeta el que calcula tu computeModalPrice)
-      totalPrice: Number(mf.totalPrice || prev?.totalPrice || 0),
-    };
-    try { localStorage.setItem("bookingData", JSON.stringify(next)); } catch {}
-    return next;
-  });
+        // total (respeta el que calcula tu computeModalPrice)
+        totalPrice: Number(mf.totalPrice || prev?.totalPrice || 0),
+      };
+      try {
+        localStorage.setItem("bookingData", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
-  // cerrar modal como en updateExistingItem
-  setQuoteModalOpen(false);
-  setModalEditingId(null);
-  setModalStep(1);
-  toast({ title: "Guardado", description: "Reserva actual actualizada." });
-};
+    // cerrar modal como en updateExistingItem
+    setQuoteModalOpen(false);
+    setModalEditingId(null);
+    setModalStep(1);
+    toast({ title: "Guardado", description: "Reserva actual actualizada." });
+  };
 
   const handleModalSave = (isEdit = false) => {
     console.warn("Guardando modal...", modalForm);
-  const errs = validateModalForSave({ ...modalForm });
-  if (modalRequiresFlight(modalForm, toursList)) {
-    if (!modalForm.flightNumber?.trim()) errs.flightNumber = "Requerido";
-    if (!modalForm.flightArrivalTime?.trim()) errs.flightArrivalTime = "Requerido";
-    if (!modalForm.flightDepartureTime?.trim()) errs.flightDepartureTime = "Requerido";
-  }
-  if (Object.keys(errs).length) {
-    setModalFieldErrors(errs);
-    requestAnimationFrame(() => {
-      const first = Object.keys(errs)[0];
-      const el = document.querySelector(`[data-modal-field="${first}"]`) as HTMLElement | null;
-      el?.focus();
-    });
-    return;
-  }
-
-  setModalFieldErrors({});
-
-  // 👇 clave: si estamos “editando” y el id es -1, actualiza bookingData
-  if (modalEditingId !== null) {
-    if (modalEditingId === -1) {
-      updateCurrentBookingFromModal();
-    } else {
-      updateExistingItem();
+    const errs = validateModalForSave({ ...modalForm });
+    if (modalRequiresFlight(modalForm, toursList)) {
+      if (!modalForm.flightNumber?.trim()) errs.flightNumber = "Requerido";
+      if (!modalForm.flightArrivalTime?.trim())
+        errs.flightArrivalTime = "Requerido";
+      if (!modalForm.flightDepartureTime?.trim())
+        errs.flightDepartureTime = "Requerido";
     }
-  } else {
-    saveModalAsNew();
-  }
-};
+    if (Object.keys(errs).length) {
+      setModalFieldErrors(errs);
+      requestAnimationFrame(() => {
+        const first = Object.keys(errs)[0];
+        const el = document.querySelector(
+          `[data-modal-field="${first}"]`
+        ) as HTMLElement | null;
+        el?.focus();
+      });
+      return;
+    }
+
+    setModalFieldErrors({});
+
+    // 👇 clave: si estamos “editando” y el id es -1, actualiza bookingData
+    if (modalEditingId !== null) {
+      if (modalEditingId === -1) {
+        updateCurrentBookingFromModal();
+      } else {
+        updateExistingItem();
+      }
+    } else {
+      saveModalAsNew();
+    }
+  };
 
   const persistCarrito = (next: any[]) => {
     try {
@@ -1240,10 +1271,8 @@ const getCartItemPrice = (it: any): number => {
     }
   };
 
-
   const validateModalForSave = (mf: any): Record<string, string> => {
     const errs: Record<string, string> = {};
-    
 
     // comunes
     if (!mf.passengers || Number(mf.passengers) <= 0)
@@ -1257,7 +1286,8 @@ const getCartItemPrice = (it: any): number => {
     if (modalRequiresFlight(mf, toursList)) {
       if (!mf.flightNumber?.trim()) errs.flightNumber = "Requerido";
       if (!mf.flightArrivalTime?.trim()) errs.flightArrivalTime = "Requerido";
-      if (!mf.flightDepartureTime?.trim()) errs.flightDepartureTime = "Requerido";
+      if (!mf.flightDepartureTime?.trim())
+        errs.flightDepartureTime = "Requerido";
     }
     // si es tour, forzar selección de tour
     if (
@@ -1273,25 +1303,25 @@ const getCartItemPrice = (it: any): number => {
 
   // Helper centralizado
   const modalTourRequiresFlight = (mf: any, tours: TourData[]): boolean => {
-  if (mf?.tipo !== "tour") return false; // 👈 evita falsos positivos en traslados
+    if (mf?.tipo !== "tour") return false; // 👈 evita falsos positivos en traslados
 
-  if (mf?.tourDoc?.requirements?.requireFlightNumber) return true;
-  if (mf?.tourData?.requirements?.requireFlightNumber) return true;
-  if (mf?.requireFlightNumber) return true;
+    if (mf?.tourDoc?.requirements?.requireFlightNumber) return true;
+    if (mf?.tourData?.requirements?.requireFlightNumber) return true;
+    if (mf?.requireFlightNumber) return true;
 
-  try {
-    const sel = Array.isArray(tours)
-      ? tours.find(
-          (t) =>
-            (t.slug || t.title) === mf.selectedTourSlug ||
-            t.title === mf.selectedTourSlug
-        )
-      : null;
-    return sel?.requirements?.requireFlightNumber === true;
-  } catch {
-    return false;
-  }
-};
+    try {
+      const sel = Array.isArray(tours)
+        ? tours.find(
+            (t) =>
+              (t.slug || t.title) === mf.selectedTourSlug ||
+              t.title === mf.selectedTourSlug
+          )
+        : null;
+      return sel?.requirements?.requireFlightNumber === true;
+    } catch {
+      return false;
+    }
+  };
 
   const modalRequiresFlight = (mf: any, tours: TourData[]): boolean => {
     // 1) Tours: respeta requirements del tour (único caso donde puede ser obligatorio)
@@ -1363,7 +1393,7 @@ const getCartItemPrice = (it: any): number => {
   // Lista a mostrar en el carrito: extras + actual
   const cartDisplayItems = useMemo(() => {
     if (!currentCartItem) return carritoState;
-    console.log({carritoState, currentCartItem})
+    console.log({ carritoState, currentCartItem });
     return [...carritoState, currentCartItem];
   }, [carritoState, currentCartItem]);
 
@@ -1381,12 +1411,10 @@ const getCartItemPrice = (it: any): number => {
                 ? "Tour"
                 : (() => {
                     const originLabel = modalForm.origen
-                      ? 
-                        modalForm.origen
+                      ? modalForm.origen
                       : modalForm.pickupAddress || it.pickupAddress || "";
                     const destLabel = modalForm.destino
-                      ? 
-                        modalForm.destino
+                      ? modalForm.destino
                       : modalForm.dropoffAddress || it.dropoffAddress || "";
                     if (!originLabel && !destLabel)
                       return it.serviceLabel || "Traslado";
@@ -1465,7 +1493,12 @@ const getCartItemPrice = (it: any): number => {
       const hour = now.getHours();
       const isNight = hour >= 21 || hour < 6;
       // Sólo aplicar automáticamente si el registro aún no tenía isNightTime true y NO es un tour (los tours ya incorporan lógica propia)
-      if (isNight && !bookingData.isNightTime && !bookingData.tourId && !bookingData.time) {
+      if (
+        isNight &&
+        !bookingData.isNightTime &&
+        !bookingData.tourId &&
+        !bookingData.time
+      ) {
         setBookingData((prev: any) => {
           if (!prev) return prev;
           const next = {
@@ -1494,329 +1527,327 @@ const getCartItemPrice = (it: any): number => {
   }, [bookingData?.passengers, bookingData?.pasajeros, bookingData?.ninos]);
 
   const updateBookingField = (key: string, value: any) => {
-  setBookingData((prev: any) => {
-    const next: any = { ...prev, [key]: value };
+    setBookingData((prev: any) => {
+      const next: any = { ...prev, [key]: value };
 
-    // 🔧 Normalizar campos numéricos (SIN límite 9)
-    next.passengers = Math.max(1, Math.min(56, Number(next.passengers || 1)));
-    next.luggage23kg = Math.max(0, Number(next.luggage23kg ?? 0));
-    next.luggage10kg = Math.max(0, Number(next.luggage10kg ?? 0));
+      // 🔧 Normalizar campos numéricos (SIN límite 9)
+      next.passengers = Math.max(1, Math.min(56, Number(next.passengers || 1)));
+      next.luggage23kg = Math.max(0, Number(next.luggage23kg ?? 0));
+      next.luggage10kg = Math.max(0, Number(next.luggage10kg ?? 0));
 
-    // 🎫 Eventos: total = precio por persona * cupos
-    if (next.isEvent && typeof next.pricePerPerson === "number") {
-      const total =
-        Number(next.pricePerPerson) * Number(next.passengers || 1);
-      next.totalPrice = Number(total.toFixed(2));
-      try {
-        localStorage.setItem("bookingData", JSON.stringify(next));
-      } catch {}
-      // limpieza de errores
-      setFieldErrors((prevErr) => {
-        if (!prevErr[key]) return prevErr;
-        if (typeof value === "string" && value.trim() === "") return prevErr;
-        if (key === "contactEmail") {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-          if (!emailRegex.test(String(value))) return prevErr;
-        }
-        if (key === "contactPhone") {
-          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
-        }
-        const passengers = next.passengers ?? next.pasajeros;
-        const date = next.date ?? next.fecha;
-        const time = next.time ?? next.hora;
-        const contactName = next.contactName;
-        const contactPhone = next.contactPhone;
-        const contactEmail = next.contactEmail;
-        const pickupAddress = next.pickupAddress;
-        const dropoffAddress = next.dropoffAddress;
-        const needsAddresses =
-          !next.isEvent && !next.isTourQuick && !next.tourId;
-        const allValid =
-          passengers &&
-          Number(passengers) > 0 &&
-          date &&
-          String(date).trim() !== "" &&
-          time &&
-          String(time).trim() !== "" &&
-          contactName &&
-          String(contactName).trim() !== "" &&
-          contactPhone &&
-          String(contactPhone).trim() !== "" &&
-          contactEmail &&
-          String(contactEmail).trim() !== "" &&
-          (!needsAddresses ||
-            (pickupAddress &&
-              String(pickupAddress).trim() !== "" &&
-              dropoffAddress &&
-              String(dropoffAddress).trim() !== ""));
-        if (allValid) return {};
-        const clone = { ...prevErr };
-        delete clone[key];
-        return clone;
-      });
-      return next;
-    }
-
-    // 🧮 TOURS: delega el total a computeFromTourDoc (precio escala por pax)
-    if (next.tourDoc) {
-      const n = Number(next.passengers || 1);
-      let total = computeFromTourDoc(n, next.tourDoc);
-      // Si aplicas recargos globales a tours, déjalos aquí
-      if (next.isNightTime) total += 5;
-      if (Number(next.luggage23kg || 0) > 3) total += 10;
-
-      next.totalPrice = Number(total.toFixed(2));
-      try {
-        localStorage.setItem("bookingData", JSON.stringify(next));
-      } catch {}
-
-      // limpieza de errores
-      setFieldErrors((prevErr) => {
-        if (!prevErr[key]) return prevErr;
-        if (typeof value === "string" && value.trim() === "") return prevErr;
-        if (key === "contactEmail") {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-          if (!emailRegex.test(String(value))) return prevErr;
-        }
-        if (key === "contactPhone") {
-          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
-        }
-        const passengers = next.passengers ?? next.pasajeros;
-        const date = next.date ?? next.fecha;
-        const time = next.time ?? next.hora;
-        const contactName = next.contactName;
-        const contactPhone = next.contactPhone;
-        const contactEmail = next.contactEmail;
-        const pickupAddress = next.pickupAddress;
-        const dropoffAddress = next.dropoffAddress;
-        const needsAddresses =
-          !next.isEvent && !next.isTourQuick && !next.tourId;
-        const allValid =
-          passengers &&
-          Number(passengers) > 0 &&
-          date &&
-          String(date).trim() !== "" &&
-          time &&
-          String(time).trim() !== "" &&
-          contactName &&
-          String(contactName).trim() !== "" &&
-          contactPhone &&
-          String(contactPhone).trim() !== "" &&
-          contactEmail &&
-          String(contactEmail).trim() !== "" &&
-          (!needsAddresses ||
-            (pickupAddress &&
-              String(pickupAddress).trim() !== "" &&
-              dropoffAddress &&
-              String(dropoffAddress).trim() !== ""));
-        if (allValid) return {};
-        const clone = { ...prevErr };
-        delete clone[key];
-        return clone;
-      });
-      return next;
-    }
-
-    // 🚗 TRASLADOS con transferDoc: calcula base con priceP4..P8 y extras
-    if (next.transferDoc) {
-      const pax = Math.max(1, Number(next.passengers || 1));
-      const base = computeFromTransferDoc(pax, next.transferDoc);
-
-      const isNight = (() => {
-        const t = next.time || next.hora;
-        if (!t) return false;
-        const [hh] = String(t).split(":").map(Number);
-        const h = hh || 0;
-        return h >= 21 || h < 6;
-      })();
-      const extraLuggage = Number(next.luggage23kg ?? 0) > 3;
-      const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
-
-      next.basePrice = base;
-      next.isNightTime = isNight;
-      next.extraLuggage = extraLuggage;
-      next.luggageCount =
-        Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0);
-      next.totalPrice = Number((base + extrasSum).toFixed(2));
-
-      try {
-        localStorage.setItem("bookingData", JSON.stringify(next));
-      } catch {}
-
-      // limpieza de errores
-      setFieldErrors((prevErr) => {
-        if (!prevErr[key]) return prevErr;
-        if (typeof value === "string" && value.trim() === "") return prevErr;
-        if (key === "contactEmail") {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-          if (!emailRegex.test(String(value))) return prevErr;
-        }
-        if (key === "contactPhone") {
-          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
-        }
-        const passengers = next.passengers ?? next.pasajeros;
-        const date = next.date ?? next.fecha;
-        const time = next.time ?? next.hora;
-        const contactName = next.contactName;
-        const contactPhone = next.contactPhone;
-        const contactEmail = next.contactEmail;
-        const pickupAddress = next.pickupAddress;
-        const dropoffAddress = next.dropoffAddress;
-        const needsAddresses =
-          !next.isEvent && !next.isTourQuick && !next.tourId;
-        const allValid =
-          passengers &&
-          Number(passengers) > 0 &&
-          date &&
-          String(date).trim() !== "" &&
-          time &&
-          String(time).trim() !== "" &&
-          contactName &&
-          String(contactName).trim() !== "" &&
-          contactPhone &&
-          String(contactPhone).trim() !== "" &&
-          contactEmail &&
-          String(contactEmail).trim() !== "" &&
-          (!needsAddresses ||
-            (pickupAddress &&
-              String(pickupAddress).trim() !== "" &&
-              dropoffAddress &&
-              String(dropoffAddress).trim() !== ""));
-        if (allValid) return {};
-        const clone = { ...prevErr };
-        delete clone[key];
-        return clone;
-      });
-
-      return next;
-    }
-
-    // 🚗 TRASLADOS SIN transferDoc: calcula base por direcciones (fallback)
-    if (next.pickupAddress && next.dropoffAddress) {
-      const from = (next.pickupAddress || "").toLowerCase().includes("cdg")
-        ? "cdg"
-        : (next.pickupAddress || "").toLowerCase().includes("orly")
-          ? "orly"
-          : (next.pickupAddress || "").toLowerCase().includes("beauvais")
-            ? "beauvais"
-            : (next.pickupAddress || "").toLowerCase().includes("disney")
-              ? "disneyland"
-              : (next.pickupAddress || "").toLowerCase().includes("parís") ||
-                  (next.pickupAddress || "").toLowerCase().includes("paris")
-                ? "paris"
-                : undefined;
-
-      const to = (next.dropoffAddress || "").toLowerCase().includes("cdg")
-        ? "cdg"
-        : (next.dropoffAddress || "").toLowerCase().includes("orly")
-          ? "orly"
-          : (next.dropoffAddress || "").toLowerCase().includes("beauvais")
-            ? "beauvais"
-            : (next.dropoffAddress || "").toLowerCase().includes("disney")
-              ? "disneyland"
-              : (next.dropoffAddress || "")
-                    .toLowerCase()
-                    .includes("parís") ||
-                (next.dropoffAddress || "").toLowerCase().includes("paris")
-                ? "paris"
-                : undefined;
-
-      const pax = Math.max(1, Number(next.passengers || 1));
-      const baseCalc = calcBaseTransferPrice(from, to, pax);
-      const base =
-        typeof baseCalc === "number" ? baseCalc : Number(next.basePrice || 0);
-
-      const isNight = (() => {
-        if (!next.time) return false;
-        const [hh] = String(next.time).split(":").map(Number);
-        const h = hh || 0;
-        return h >= 21 || h < 6;
-      })();
-      const extraLuggage = Number(next.luggage23kg ?? 0) > 3;
-      const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
-
-      next.isNightTime = isNight;
-      next.extraLuggage = extraLuggage;
-      next.luggageCount =
-        Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0);
-      next.totalPrice = Number((base + extrasSum).toFixed(2));
-      next.basePrice = base;
-
-      try {
-        localStorage.setItem("bookingData", JSON.stringify(next));
-      } catch {}
-
-      // limpieza de errores
-      setFieldErrors((prevErr) => {
-        if (!prevErr[key]) return prevErr;
-        if (typeof value === "string" && value.trim() === "") return prevErr;
-        if (key === "contactEmail") {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-          if (!emailRegex.test(String(value))) return prevErr;
-        }
-        if (key === "contactPhone") {
-          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
-        }
-        const passengers = next.passengers ?? next.pasajeros;
-        const date = next.date ?? next.fecha;
-        const time = next.time ?? next.hora;
-        const contactName = next.contactName;
-        const contactPhone = next.contactPhone;
-        const contactEmail = next.contactEmail;
-        const pickupAddress = next.pickupAddress;
-        const dropoffAddress = next.dropoffAddress;
-        const needsAddresses =
-          !next.isEvent && !next.isTourQuick && !next.tourId;
-        const allValid =
-          passengers &&
-          Number(passengers) > 0 &&
-          date &&
-          String(date).trim() !== "" &&
-          time &&
-          String(time).trim() !== "" &&
-          contactName &&
-          String(contactName).trim() !== "" &&
-          contactPhone &&
-          String(contactPhone).trim() !== "" &&
-          contactEmail &&
-          String(contactEmail).trim() !== "" &&
-          (!needsAddresses ||
-            (pickupAddress &&
-              String(pickupAddress).trim() !== "" &&
-              dropoffAddress &&
-              String(dropoffAddress).trim() !== ""));
-        if (allValid) return {};
-        const clone = { ...prevErr };
-        delete clone[key];
-        return clone;
-      });
-
-      return next;
-    }
-
-    // 🧩 Por defecto: solo persistir y limpiar error del campo
-    try {
-      localStorage.setItem("bookingData", JSON.stringify(next));
-    } catch {}
-
-    setFieldErrors((prevErr) => {
-      if (!prevErr[key]) return prevErr;
-      if (typeof value === "string" && value.trim() === "") return prevErr;
-      if (key === "contactEmail") {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        if (!emailRegex.test(String(value))) return prevErr;
+      // 🎫 Eventos: total = precio por persona * cupos
+      if (next.isEvent && typeof next.pricePerPerson === "number") {
+        const total =
+          Number(next.pricePerPerson) * Number(next.passengers || 1);
+        next.totalPrice = Number(total.toFixed(2));
+        try {
+          localStorage.setItem("bookingData", JSON.stringify(next));
+        } catch {}
+        // limpieza de errores
+        setFieldErrors((prevErr) => {
+          if (!prevErr[key]) return prevErr;
+          if (typeof value === "string" && value.trim() === "") return prevErr;
+          if (key === "contactEmail") {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+            if (!emailRegex.test(String(value))) return prevErr;
+          }
+          if (key === "contactPhone") {
+            if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+          }
+          const passengers = next.passengers ?? next.pasajeros;
+          const date = next.date ?? next.fecha;
+          const time = next.time ?? next.hora;
+          const contactName = next.contactName;
+          const contactPhone = next.contactPhone;
+          const contactEmail = next.contactEmail;
+          const pickupAddress = next.pickupAddress;
+          const dropoffAddress = next.dropoffAddress;
+          const needsAddresses =
+            !next.isEvent && !next.isTourQuick && !next.tourId;
+          const allValid =
+            passengers &&
+            Number(passengers) > 0 &&
+            date &&
+            String(date).trim() !== "" &&
+            time &&
+            String(time).trim() !== "" &&
+            contactName &&
+            String(contactName).trim() !== "" &&
+            contactPhone &&
+            String(contactPhone).trim() !== "" &&
+            contactEmail &&
+            String(contactEmail).trim() !== "" &&
+            (!needsAddresses ||
+              (pickupAddress &&
+                String(pickupAddress).trim() !== "" &&
+                dropoffAddress &&
+                String(dropoffAddress).trim() !== ""));
+          if (allValid) return {};
+          const clone = { ...prevErr };
+          delete clone[key];
+          return clone;
+        });
+        return next;
       }
-      if (key === "contactPhone") {
-        if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+
+      // 🧮 TOURS: delega el total a computeFromTourDoc (precio escala por pax)
+      if (next.tourDoc) {
+        const n = Number(next.passengers || 1);
+        let total = computeFromTourDoc(n, next.tourDoc);
+        // Si aplicas recargos globales a tours, déjalos aquí
+        if (next.isNightTime) total += 5;
+        if (Number(next.luggage23kg || 0) > 3) total += 10;
+
+        next.totalPrice = Number(total.toFixed(2));
+        try {
+          localStorage.setItem("bookingData", JSON.stringify(next));
+        } catch {}
+
+        // limpieza de errores
+        setFieldErrors((prevErr) => {
+          if (!prevErr[key]) return prevErr;
+          if (typeof value === "string" && value.trim() === "") return prevErr;
+          if (key === "contactEmail") {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+            if (!emailRegex.test(String(value))) return prevErr;
+          }
+          if (key === "contactPhone") {
+            if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+          }
+          const passengers = next.passengers ?? next.pasajeros;
+          const date = next.date ?? next.fecha;
+          const time = next.time ?? next.hora;
+          const contactName = next.contactName;
+          const contactPhone = next.contactPhone;
+          const contactEmail = next.contactEmail;
+          const pickupAddress = next.pickupAddress;
+          const dropoffAddress = next.dropoffAddress;
+          const needsAddresses =
+            !next.isEvent && !next.isTourQuick && !next.tourId;
+          const allValid =
+            passengers &&
+            Number(passengers) > 0 &&
+            date &&
+            String(date).trim() !== "" &&
+            time &&
+            String(time).trim() !== "" &&
+            contactName &&
+            String(contactName).trim() !== "" &&
+            contactPhone &&
+            String(contactPhone).trim() !== "" &&
+            contactEmail &&
+            String(contactEmail).trim() !== "" &&
+            (!needsAddresses ||
+              (pickupAddress &&
+                String(pickupAddress).trim() !== "" &&
+                dropoffAddress &&
+                String(dropoffAddress).trim() !== ""));
+          if (allValid) return {};
+          const clone = { ...prevErr };
+          delete clone[key];
+          return clone;
+        });
+        return next;
       }
-      const clone = { ...prevErr };
-      delete clone[key];
-      return clone;
+
+      // 🚗 TRASLADOS con transferDoc: calcula base con priceP4..P8 y extras
+      if (next.transferDoc) {
+        const pax = Math.max(1, Number(next.passengers || 1));
+        const base = computeFromTransferDoc(pax, next.transferDoc);
+
+        const isNight = (() => {
+          const t = next.time || next.hora;
+          if (!t) return false;
+          const [hh] = String(t).split(":").map(Number);
+          const h = hh || 0;
+          return h >= 21 || h < 6;
+        })();
+        const extraLuggage = Number(next.luggage23kg ?? 0) > 3;
+        const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
+
+        next.basePrice = base;
+        next.isNightTime = isNight;
+        next.extraLuggage = extraLuggage;
+        next.luggageCount =
+          Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0);
+        next.totalPrice = Number((base + extrasSum).toFixed(2));
+
+        try {
+          localStorage.setItem("bookingData", JSON.stringify(next));
+        } catch {}
+
+        // limpieza de errores
+        setFieldErrors((prevErr) => {
+          if (!prevErr[key]) return prevErr;
+          if (typeof value === "string" && value.trim() === "") return prevErr;
+          if (key === "contactEmail") {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+            if (!emailRegex.test(String(value))) return prevErr;
+          }
+          if (key === "contactPhone") {
+            if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+          }
+          const passengers = next.passengers ?? next.pasajeros;
+          const date = next.date ?? next.fecha;
+          const time = next.time ?? next.hora;
+          const contactName = next.contactName;
+          const contactPhone = next.contactPhone;
+          const contactEmail = next.contactEmail;
+          const pickupAddress = next.pickupAddress;
+          const dropoffAddress = next.dropoffAddress;
+          const needsAddresses =
+            !next.isEvent && !next.isTourQuick && !next.tourId;
+          const allValid =
+            passengers &&
+            Number(passengers) > 0 &&
+            date &&
+            String(date).trim() !== "" &&
+            time &&
+            String(time).trim() !== "" &&
+            contactName &&
+            String(contactName).trim() !== "" &&
+            contactPhone &&
+            String(contactPhone).trim() !== "" &&
+            contactEmail &&
+            String(contactEmail).trim() !== "" &&
+            (!needsAddresses ||
+              (pickupAddress &&
+                String(pickupAddress).trim() !== "" &&
+                dropoffAddress &&
+                String(dropoffAddress).trim() !== ""));
+          if (allValid) return {};
+          const clone = { ...prevErr };
+          delete clone[key];
+          return clone;
+        });
+
+        return next;
+      }
+
+      // 🚗 TRASLADOS SIN transferDoc: calcula base por direcciones (fallback)
+      if (next.pickupAddress && next.dropoffAddress) {
+        const from = (next.pickupAddress || "").toLowerCase().includes("cdg")
+          ? "cdg"
+          : (next.pickupAddress || "").toLowerCase().includes("orly")
+            ? "orly"
+            : (next.pickupAddress || "").toLowerCase().includes("beauvais")
+              ? "beauvais"
+              : (next.pickupAddress || "").toLowerCase().includes("disney")
+                ? "disneyland"
+                : (next.pickupAddress || "").toLowerCase().includes("parís") ||
+                    (next.pickupAddress || "").toLowerCase().includes("paris")
+                  ? "paris"
+                  : undefined;
+
+        const to = (next.dropoffAddress || "").toLowerCase().includes("cdg")
+          ? "cdg"
+          : (next.dropoffAddress || "").toLowerCase().includes("orly")
+            ? "orly"
+            : (next.dropoffAddress || "").toLowerCase().includes("beauvais")
+              ? "beauvais"
+              : (next.dropoffAddress || "").toLowerCase().includes("disney")
+                ? "disneyland"
+                : (next.dropoffAddress || "").toLowerCase().includes("parís") ||
+                    (next.dropoffAddress || "").toLowerCase().includes("paris")
+                  ? "paris"
+                  : undefined;
+
+        const pax = Math.max(1, Number(next.passengers || 1));
+        const baseCalc = calcBaseTransferPrice(from, to, pax);
+        const base =
+          typeof baseCalc === "number" ? baseCalc : Number(next.basePrice || 0);
+
+        const isNight = (() => {
+          if (!next.time) return false;
+          const [hh] = String(next.time).split(":").map(Number);
+          const h = hh || 0;
+          return h >= 21 || h < 6;
+        })();
+        const extraLuggage = Number(next.luggage23kg ?? 0) > 3;
+        const extrasSum = (isNight ? 5 : 0) + (extraLuggage ? 10 : 0);
+
+        next.isNightTime = isNight;
+        next.extraLuggage = extraLuggage;
+        next.luggageCount =
+          Number(next.luggage23kg ?? 0) + Number(next.luggage10kg ?? 0);
+        next.totalPrice = Number((base + extrasSum).toFixed(2));
+        next.basePrice = base;
+
+        try {
+          localStorage.setItem("bookingData", JSON.stringify(next));
+        } catch {}
+
+        // limpieza de errores
+        setFieldErrors((prevErr) => {
+          if (!prevErr[key]) return prevErr;
+          if (typeof value === "string" && value.trim() === "") return prevErr;
+          if (key === "contactEmail") {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+            if (!emailRegex.test(String(value))) return prevErr;
+          }
+          if (key === "contactPhone") {
+            if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+          }
+          const passengers = next.passengers ?? next.pasajeros;
+          const date = next.date ?? next.fecha;
+          const time = next.time ?? next.hora;
+          const contactName = next.contactName;
+          const contactPhone = next.contactPhone;
+          const contactEmail = next.contactEmail;
+          const pickupAddress = next.pickupAddress;
+          const dropoffAddress = next.dropoffAddress;
+          const needsAddresses =
+            !next.isEvent && !next.isTourQuick && !next.tourId;
+          const allValid =
+            passengers &&
+            Number(passengers) > 0 &&
+            date &&
+            String(date).trim() !== "" &&
+            time &&
+            String(time).trim() !== "" &&
+            contactName &&
+            String(contactName).trim() !== "" &&
+            contactPhone &&
+            String(contactPhone).trim() !== "" &&
+            contactEmail &&
+            String(contactEmail).trim() !== "" &&
+            (!needsAddresses ||
+              (pickupAddress &&
+                String(pickupAddress).trim() !== "" &&
+                dropoffAddress &&
+                String(dropoffAddress).trim() !== ""));
+          if (allValid) return {};
+          const clone = { ...prevErr };
+          delete clone[key];
+          return clone;
+        });
+
+        return next;
+      }
+
+      // 🧩 Por defecto: solo persistir y limpiar error del campo
+      try {
+        localStorage.setItem("bookingData", JSON.stringify(next));
+      } catch {}
+
+      setFieldErrors((prevErr) => {
+        if (!prevErr[key]) return prevErr;
+        if (typeof value === "string" && value.trim() === "") return prevErr;
+        if (key === "contactEmail") {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+          if (!emailRegex.test(String(value))) return prevErr;
+        }
+        if (key === "contactPhone") {
+          if (String(value).replace(/\D/g, "").length < 6) return prevErr;
+        }
+        const clone = { ...prevErr };
+        delete clone[key];
+        return clone;
+      });
+
+      return next;
     });
-
-    return next;
-  });
-};
+  };
 
   // Validar email en blur y actualizar errores de campo
   const validateAndSetEmail = (value: string) => {
@@ -1865,7 +1896,6 @@ const getCartItemPrice = (it: any): number => {
         return false;
       }
     })();
-
 
   if (!bookingData) {
     return (
@@ -1942,17 +1972,15 @@ const getCartItemPrice = (it: any): number => {
   } catch {}
   const total = Number(bookingData?.totalPrice || computedBase || 0);
   const isSingleTour =
-  !cartActive &&
-  (
-    bookingData?.isEvent ||                       // evento cuenta como tour para % depósito
-    bookingData?.tourId ||                        // tour con id
-    bookingData?.tourDoc ||                       // tour con doc cargado
-    bookingData?.selectedTourSlug                 // tour elegido por slug
-  );
+    !cartActive &&
+    (bookingData?.isEvent || // evento cuenta como tour para % depósito
+      bookingData?.tourId || // tour con id
+      bookingData?.tourDoc || // tour con doc cargado
+      bookingData?.selectedTourSlug); // tour elegido por slug
 
-const depositPercent = isSingleTour ? 0.2 : 0.1;
-const depositPercentInt = Math.round(depositPercent * 100);
-const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
+  const depositPercent = isSingleTour ? 0.2 : 0.1;
+  const depositPercentInt = Math.round(depositPercent * 100);
+  const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
   const remaining = Math.max(0, Number((total - deposit).toFixed(2)));
   // const amountNow = payFullNow ? total : deposit
   const clientHour = (() => {
@@ -2062,94 +2090,94 @@ const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
   };
 
   // Razones por las que no se puede pagar todavía (si el botón está desactivado)
- const getDepositDisabledReasons = (): string[] => {
-  const reasons: string[] = [];
-  const cartLen = carritoState?.length ?? 0;
+  const getDepositDisabledReasons = (): string[] => {
+    const reasons: string[] = [];
+    const cartLen = carritoState?.length ?? 0;
 
-  // 1) Si hay 2+ cotizaciones, valida el carrito
-  if (cartLen >= 2) {
-    reasons.push(...validateCartItems(carritoState));
-  }
-
-  // 2) Valida siempre la cotización actual (la “larga”)
-  reasons.push(
-    ...validateSingleBooking(
-      bookingData,
-      paymentPickupAddress,
-      paymentDropoffAddress
-    )
-  );
-
-  // ➕ Regla extra SOLO para TRASLADOS que requieran datos de vuelo
-  try {
-    const b = bookingData || {};
-    const type =
-      String(b?.tipo || b?.tipoReserva || b?.quickType || "").toLowerCase();
-    const isTransfer = type === "traslado";
-
-    if (isTransfer) {
-      const doc = b.transferDoc || {};
-      const requireFlightInfo =
-        !!b.requireFlightInfo ||
-        !!doc.requireFlightInfo ||
-        !!doc.requiredFlightInfo ||
-        !!doc.requireFlight;
-
-      const requireFlightNumber =
-        !!b.requireFlightNumber ||
-        !!doc.requireFlightNumber ||
-        !!doc.requiredFlightNumber ||
-        !!doc.requireFlight;
-
-      const requireFlightTimes =
-        !!b.requireFlightTimes ||
-        !!doc.requireFlightTimes ||
-        !!doc.requiredFlightTimes ||
-        requireFlightInfo; // si se pide info de vuelo, pedimos horas
-
-      const has = (v: any) =>
-        typeof v === "number" ? true : Boolean(String(v ?? "").trim());
-
-      if (requireFlightInfo || requireFlightNumber) {
-        if (!has(b.flightNumber)) reasons.push("Ingresa el número de vuelo.");
-      }
-      if (requireFlightInfo || requireFlightTimes) {
-        if (!has(b.flightArrivalTime))
-          reasons.push("Ingresa la hora de llegada del vuelo.");
-        if (!has(b.flightDepartureTime))
-          reasons.push("Ingresa la hora de salida del vuelo.");
-      }
+    // 1) Si hay 2+ cotizaciones, valida el carrito
+    if (cartLen >= 2) {
+      reasons.push(...validateCartItems(carritoState));
     }
-  } catch {
-    // no romper UI por errores de lectura
-  }
 
-  // 3) Incluye errores de campos actuales (si existieran)
-  for (const v of Object.values(fieldErrors || {})) {
-    const msg = String(v || "").trim();
-    if (msg) reasons.push(msg);
-  }
+    // 2) Valida siempre la cotización actual (la “larga”)
+    reasons.push(
+      ...validateSingleBooking(
+        bookingData,
+        paymentPickupAddress,
+        paymentDropoffAddress
+      )
+    );
 
-  // Dedup y salida ordenada
-  return Array.from(new Set(reasons)).filter(Boolean);
-};
+    // ➕ Regla extra SOLO para TRASLADOS que requieran datos de vuelo
+    try {
+      const b = bookingData || {};
+      const type = String(
+        b?.tipo || b?.tipoReserva || b?.quickType || ""
+      ).toLowerCase();
+      const isTransfer = type === "traslado";
 
+      if (isTransfer) {
+        const doc = b.transferDoc || {};
+        const requireFlightInfo =
+          !!b.requireFlightInfo ||
+          !!doc.requireFlightInfo ||
+          !!doc.requiredFlightInfo ||
+          !!doc.requireFlight;
+
+        const requireFlightNumber =
+          !!b.requireFlightNumber ||
+          !!doc.requireFlightNumber ||
+          !!doc.requiredFlightNumber ||
+          !!doc.requireFlight;
+
+        const requireFlightTimes =
+          !!b.requireFlightTimes ||
+          !!doc.requireFlightTimes ||
+          !!doc.requiredFlightTimes ||
+          requireFlightInfo; // si se pide info de vuelo, pedimos horas
+
+        const has = (v: any) =>
+          typeof v === "number" ? true : Boolean(String(v ?? "").trim());
+
+        if (requireFlightInfo || requireFlightNumber) {
+          if (!has(b.flightNumber)) reasons.push("Ingresa el número de vuelo.");
+        }
+        if (requireFlightInfo || requireFlightTimes) {
+          if (!has(b.flightArrivalTime))
+            reasons.push("Ingresa la hora de llegada del vuelo.");
+          if (!has(b.flightDepartureTime))
+            reasons.push("Ingresa la hora de salida del vuelo.");
+        }
+      }
+    } catch {
+      // no romper UI por errores de lectura
+    }
+
+    // 3) Incluye errores de campos actuales (si existieran)
+    for (const v of Object.values(fieldErrors || {})) {
+      const msg = String(v || "").trim();
+      if (msg) reasons.push(msg);
+    }
+
+    // Dedup y salida ordenada
+    return Array.from(new Set(reasons)).filter(Boolean);
+  };
 
   // === Estado listo para pagar
   const isDepositReady = (): boolean => {
-  // Mantén las validaciones originales, pero ignora las relacionadas con direcciones.
-  const reasons = getDepositDisabledReasons();
-  const nonAddressReasons = reasons.filter(
-    (msg) => !/(recogida|destino|direcci[oó]n)/i.test(String(msg || ""))
-  );
+    // Mantén las validaciones originales, pero ignora las relacionadas con direcciones.
+    const reasons = getDepositDisabledReasons();
+    const nonAddressReasons = reasons.filter(
+      (msg) => !/(recogida|destino|direcci[oó]n)/i.test(String(msg || ""))
+    );
 
-  // Solo las direcciones se validan desde el modal (Paso 3)
-  const hasModalAddressErrors =
-    Boolean(String(modalFieldErrors?.pickupAddress || "").trim()) ||
-    Boolean(String(modalFieldErrors?.dropoffAddress || "").trim());
+    // Solo las direcciones se validan desde el modal (Paso 3)
+    const hasModalAddressErrors =
+      Boolean(String(modalFieldErrors?.pickupAddress || "").trim()) ||
+      Boolean(String(modalFieldErrors?.dropoffAddress || "").trim());
 
-  return nonAddressReasons.length === 0 && !hasModalAddressErrors;
-};
+    return nonAddressReasons.length === 0 && !hasModalAddressErrors;
+  };
 
   // Etiquetas seguras para servicio/route en quick
   const quickType: "traslado" | "tour" | undefined = bookingData?.quickType;
@@ -2170,35 +2198,34 @@ const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
   })();
 
   // === NUEVO: label de traslado desde Sanity (title/name) o desde from/to ===
-const transferLabel =
-  bookingData?.transferDoc?.title ||
-  bookingData?.transferData?.title ||
-  bookingData?.transferDoc?.name ||
-  bookingData?.transferData?.name ||
-  (bookingData?.transferDoc?.from && bookingData?.transferDoc?.to
-    ? `${bookingData.transferDoc.from} → ${bookingData.transferDoc.to}`
-    : "");
+  const transferLabel =
+    bookingData?.transferDoc?.title ||
+    bookingData?.transferData?.title ||
+    bookingData?.transferDoc?.name ||
+    bookingData?.transferData?.name ||
+    (bookingData?.transferDoc?.from && bookingData?.transferDoc?.to
+      ? `${bookingData.transferDoc.from} → ${bookingData.transferDoc.to}`
+      : "");
   const tourName =
     bookingData?.tourDoc?.title ||
     selectedTourTitleFromList ||
     (bookingData?.tourId ? toTitle(bookingData.tourId) : "");
 
   // ===== REEMPLAZA tu serviceLabel por este =====
-  const serviceLabel =
-  bookingData?.isEvent
+  const serviceLabel = bookingData?.isEvent
     ? bookingData?.eventTitle || "Evento especial"
     : isQuick
       ? bookingData?.quickType === "traslado"
         ? transferLabel || // 👈 PRIORIDAD al nombre del traslado
           (bookingData?.origen && bookingData?.destino
-            ? `${ bookingData.origen} → ${bookingData.destino}`
+            ? `${bookingData.origen} → ${bookingData.destino}`
             : "Traslado")
         : tourName || "Tour"
       : isTour
         ? tourName || "Tour"
         : transferLabel || // 👈 PRIORIDAD al nombre del traslado
           (bookingData?.origen && bookingData?.destino
-            ? `${ bookingData.origen} → ${bookingData.destino}`
+            ? `${bookingData.origen} → ${bookingData.destino}`
             : "Traslado");
   // Enviar a WhatsApp cuando el método es efectivo
   const sendWhatsApp = () => {
@@ -2269,16 +2296,13 @@ const transferLabel =
 
   // Sumar total del carrito desde state
   const totalCarrito = carritoState.reduce(
-  (acc: number, item: any) => acc + Number(getCartItemPrice(item)),
-  0
-);
+    (acc: number, item: any) => acc + Number(getCartItemPrice(item)),
+    0
+  );
   const tieneTour = carritoState.some((item: any) => item.tipo === "tour");
   const tieneTraslado = carritoState.some(
     (item: any) => item.tipo === "traslado"
   );
-
-  
-
 
   // Calcular importes combinados (cuando hay carrito):
   // - combinedTotal: suma de totales de carrito + booking actual
@@ -2286,12 +2310,12 @@ const transferLabel =
   const combinedTotal = Number(
     (totalCarrito + Number(bookingData.totalPrice || total || 0)).toFixed(2)
   );
-  
+
   const computeDepositForItem = (itm: any) => {
-  const price = Number(getCartItemPrice(itm));
-  const percent = getDepositPercent(itm); // 0.2 para TOUR/EVENT, 0.1 para TRASLADO
-  return Number((price * percent).toFixed(2));
-};
+    const price = Number(getCartItemPrice(itm));
+    const percent = getDepositPercent(itm); // 0.2 para TOUR/EVENT, 0.1 para TRASLADO
+    return Number((price * percent).toFixed(2));
+  };
   const combinedDepositSum =
     carritoState.reduce(
       (acc: number, it: any) => acc + computeDepositForItem(it),
@@ -2332,10 +2356,10 @@ const transferLabel =
         ? true
         : Boolean(bookingData.tourId);
       const primaryLabel = isTourType
-  ? "Tour"
-  : (bookingData?.transferDoc?.title ||
-     bookingData?.transferData?.title ||
-     "Traslado");
+        ? "Tour"
+        : bookingData?.transferDoc?.title ||
+          bookingData?.transferData?.title ||
+          "Traslado";
       let secondaryLabel = "";
       if (isTourType) {
         const name =
@@ -2359,12 +2383,8 @@ const transferLabel =
           "Tour";
         secondaryLabel = truncate(name, 30);
       } else {
-        const originLabel = safeOrigen
-          ?  safeOrigen
-          : "";
-        const destLabel = safeDestino
-          ?  safeDestino
-          : "";
+        const originLabel = safeOrigen ? safeOrigen : "";
+        const destLabel = safeDestino ? safeDestino : "";
         const route =
           originLabel || destLabel
             ? `${originLabel}${originLabel && destLabel ? " → " : ""}${destLabel}`
@@ -2400,12 +2420,16 @@ const transferLabel =
         passengers: Number(
           bookingData.passengers || bookingData.pasajeros || 1
         ),
-        vehicle: bookingData.vehicle || bookingData.vehiculo || bookingData.vehicleType || "",
-categoriaTour: bookingData.categoriaTour || bookingData.tourCategory || "",
-subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
+        vehicle:
+          bookingData.vehicle ||
+          bookingData.vehiculo ||
+          bookingData.vehicleType ||
+          "",
+        categoriaTour:
+          bookingData.categoriaTour || bookingData.tourCategory || "",
+        subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
         totalPrice: Number(bookingData.totalPrice || total || 0),
       };
-     
 
       const updated = [...carritoState, item];
       localStorage.setItem("carritoCotizaciones", JSON.stringify(updated));
@@ -2423,7 +2447,6 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
       alert("No se pudo agregar al carrito. Intenta nuevamente.");
     }
   };
-  
 
   return (
     <main className="min-h-screen">
@@ -2761,7 +2784,7 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                                 value={paymentPickupAddress}
                                 onChange={(e) => {
                                   setPaymentPickupAddress(e.target.value);
-                                  
+
                                   // no tocar bookingData.pickupAddress para que el label del servicio no cambie
                                   if (fieldErrors.pickupAddress) {
                                     setFieldErrors((f) => {
@@ -2781,7 +2804,6 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                                 {carritoState && carritoState.length > 0
                                   ? ""
                                   : bookingData.dropoffAddress ||
-                                    
                                     bookingData.destino ||
                                     "No especificado"}
                               </p>
@@ -4135,44 +4157,42 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                                   </div>
 
                                   {it.tipo === "tour" ? (
-  <div className="text-xs text-muted-foreground">
-    {truncate(
-      it.serviceSubLabel ||
-        toursList?.find(
-          (t) => t.slug === it.selectedTourSlug || t.title === it.selectedTourSlug
-        )?.title ||
-        toTitle(it.selectedTourSlug) ||
-        "Tour",
-      30
-    )}
-  </div>
-) : (
-  <div className="text-xs text-muted-foreground">
-    {/* Preferimos siempre lo que viene del transferDoc */}
-    {(it.transferDoc?.from ||
-      
-      it.origen ||
-      it.pickupAddress ||
-      "")}
+                                    <div className="text-xs text-muted-foreground">
+                                      {truncate(
+                                        it.serviceSubLabel ||
+                                          toursList?.find(
+                                            (t) =>
+                                              t.slug === it.selectedTourSlug ||
+                                              t.title === it.selectedTourSlug
+                                          )?.title ||
+                                          toTitle(it.selectedTourSlug) ||
+                                          "Tour",
+                                        30
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground">
+                                      {/* Preferimos siempre lo que viene del transferDoc */}
+                                      {it.transferDoc?.from ||
+                                        it.origen ||
+                                        it.pickupAddress ||
+                                        ""}
 
-    {(
-      (it.transferDoc?.from ||
-        it.origen ||
-        it.pickupAddress) &&
-      (it.transferDoc?.to ||
-        it.destino ||
-        it.dropoffAddress)
-    )
-      ? " → "
-      : ""}
+                                      {(it.transferDoc?.from ||
+                                        it.origen ||
+                                        it.pickupAddress) &&
+                                      (it.transferDoc?.to ||
+                                        it.destino ||
+                                        it.dropoffAddress)
+                                        ? " → "
+                                        : ""}
 
-    {(it.transferDoc?.to ||
-      
-      it.destino ||
-      it.dropoffAddress ||
-      "")}
-  </div>
-)}
+                                      {it.transferDoc?.to ||
+                                        it.destino ||
+                                        it.dropoffAddress ||
+                                        ""}
+                                    </div>
+                                  )}
 
                                   <div className="text-xs text-muted-foreground">
                                     {it.date} {it.time} • {it.passengers} pax
@@ -4181,18 +4201,16 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
 
                                 <div className="flex items-center gap-3">
                                   <div className="text-sm font-bold">
-                                   
-                                     {fmtMoney(getCartItemPrice(it))}€
+                                    {fmtMoney(getCartItemPrice(it))}€
                                   </div>
-                                  
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => openEditModal(it)}
-                                    >
-                                      Editar
-                                    </Button>
-                                  
+
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => openEditModal(it)}
+                                  >
+                                    Editar
+                                  </Button>
                                 </div>
                               </div>
                             ))}
@@ -4447,12 +4465,10 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
 
                               // Origen/Destino legibles (para traslados)
                               const originPretty =
-                                
                                 bookingData?.pickupAddress ||
                                 bookingData?.origen ||
                                 "";
                               const destPretty =
-                                
                                 bookingData?.dropoffAddress ||
                                 bookingData?.destino ||
                                 "";
@@ -4731,8 +4747,8 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             tipo: "traslado",
                             // origen: newOrigen,
                             // destino: newDestino,
-                            origen: '',
-                            destino: '',
+                            origen: "",
+                            destino: "",
                             pickupAddress:
                               bookingData?.dropoffAddress ||
                               prev.pickupAddress ||
@@ -4818,36 +4834,40 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                           }
                         >
                           <SelectTrigger
-    data-modal-field="origen"
-    className={
-      "cursor-pointer max-w-full " +
-      (modalFieldErrors.origen
-        ? "border-destructive focus-visible:ring-destructive"
-        : "")
-    }
-    title={modalForm.origen ? getOriginLabel(modalForm.origen) : undefined}
-  >
-    {modalForm.origen ? (
-      <span className="truncate w-full">
-        {truncate(getOriginLabel(modalForm.origen), 30)}
-      </span>
-    ) : (
-      <SelectValue placeholder="Seleccionar origen" />
-    )}
-  </SelectTrigger>
+                            data-modal-field="origen"
+                            className={
+                              "cursor-pointer max-w-full " +
+                              (modalFieldErrors.origen
+                                ? "border-destructive focus-visible:ring-destructive"
+                                : "")
+                            }
+                            title={
+                              modalForm.origen
+                                ? getOriginLabel(modalForm.origen)
+                                : undefined
+                            }
+                          >
+                            {modalForm.origen ? (
+                              <span className="truncate w-full">
+                                {truncate(getOriginLabel(modalForm.origen), 30)}
+                              </span>
+                            ) : (
+                              <SelectValue placeholder="Seleccionar origen" />
+                            )}
+                          </SelectTrigger>
                           <SelectContent>
-                             {originKeys.map((k) => (
-                                    <SelectItem key={k} value={k}>
-                                      {getOriginLabel(k)}
-                                    </SelectItem>
-                                  ))}
+                            {originKeys.map((k) => (
+                              <SelectItem key={k} value={k}>
+                                {getOriginLabel(k)}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-accent" />
-                          
+
                           {`Destino`}
                         </label>
                         <Select
@@ -4856,52 +4876,59 @@ subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
                             setModalForm({ ...modalForm, destino: value })
                           }
                         >
-                         <SelectTrigger
-    data-modal-field="destino"
-    disabled={!modalForm.origen}
-    className={
-      "cursor-pointer disabled:cursor-not-allowed max-w-full " +
-      (modalFieldErrors.destino
-        ? "border-destructive focus-visible:ring-destructive"
-        : "")
-    }
-    title={
-      modalForm.destino ? getDestinationLabel(modalForm.destino) : undefined
-    }
-  >
-    {modalForm.destino ? (
-      <span className="truncate w-full">
-        {truncate(getDestinationLabel(modalForm.destino), 30)}
-      </span>
-    ) : (
-      <SelectValue
-        placeholder={
-          modalForm.origen ? "Seleccionar destino" : "Selecciona el origen primero"
-        }
-      />
-    )}
-  </SelectTrigger>
+                          <SelectTrigger
+                            data-modal-field="destino"
+                            disabled={!modalForm.origen}
+                            className={
+                              "cursor-pointer disabled:cursor-not-allowed max-w-full " +
+                              (modalFieldErrors.destino
+                                ? "border-destructive focus-visible:ring-destructive"
+                                : "")
+                            }
+                            title={
+                              modalForm.destino
+                                ? getDestinationLabel(modalForm.destino)
+                                : undefined
+                            }
+                          >
+                            {modalForm.destino ? (
+                              <span className="truncate w-full">
+                                {truncate(
+                                  getDestinationLabel(modalForm.destino),
+                                  30
+                                )}
+                              </span>
+                            ) : (
+                              <SelectValue
+                                placeholder={
+                                  modalForm.origen
+                                    ? "Seleccionar destino"
+                                    : "Selecciona el origen primero"
+                                }
+                              />
+                            )}
+                          </SelectTrigger>
                           <SelectContent>
-  {(() => {
-    // No listar el destino si es igual al origen seleccionado
-    const list = destinationKeys.filter(
-      (d) => String(d) !== String(modalForm.origen)
-    );
-    return list.length > 0 ? (
-      list.map((d) => (
-        <SelectItem key={d} value={d}>
-          {getDestinationLabel(d)}
-        </SelectItem>
-      ))
-    ) : (
-      <SelectItem value="-" disabled>
-        {bookingData.origen
-          ? "No hay destinos disponibles"
-          : "Selecciona el origen primero"}
-      </SelectItem>
-    );
-  })()}
-</SelectContent>
+                            {(() => {
+                              // No listar el destino si es igual al origen seleccionado
+                              const list = destinationKeys.filter(
+                                (d) => String(d) !== String(modalForm.origen)
+                              );
+                              return list.length > 0 ? (
+                                list.map((d) => (
+                                  <SelectItem key={d} value={d}>
+                                    {getDestinationLabel(d)}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="-" disabled>
+                                  {bookingData.origen
+                                    ? "No hay destinos disponibles"
+                                    : "Selecciona el origen primero"}
+                                </SelectItem>
+                              );
+                            })()}
+                          </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">

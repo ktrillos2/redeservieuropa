@@ -79,80 +79,74 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No se obtuvo checkoutUrl' }, { status: 500 })
     }
 
-    // 3) Crear/guardar orden(es) inicial(es) en Sanity
+    // 3) Crear UNA ÚNICA orden en Sanity con todos los servicios
     try {
       const items: any[] = Array.isArray(body?.carrito) ? body.carrito : []
-      const docsToCreate: any[] = []
+      const allServices: any[] = []
+      
+      // Extraer información de contacto (priorizar body.contact > booking)
+      const contactName = body?.contact?.name || booking?.contactName || booking?.name || 'Cliente'
+      const contactEmail = body?.contact?.email || booking?.contactEmail || booking?.email || ''
+      const contactPhone = body?.contact?.phone || booking?.contactPhone || booking?.phone || ''
+      const referralSource = body?.referralSource || booking?.referralSource || booking?.comoNosConocio || booking?.heardFrom || null
+      
+      // Flags de pago
+      const payFullNow = Boolean(body?.payFullNow || booking?.payFullNow)
+      const depositPercent = typeof body?.depositPercent === 'number' 
+        ? body.depositPercent 
+        : typeof booking?.depositPercent === 'number'
+        ? booking.depositPercent
+        : null
 
-      // Helper para construir doc desde un elemento (item o booking)
-const buildDocFrom = (src: any) => {
-  // --- flags útiles enviados desde el front
-  const payFullNow = Boolean(src?.payFullNow)
-  const referralSource = src?.referralSource || src?.comoNosConocio || src?.heardFrom || null
-  const depositPercent = typeof src?.depositPercent === 'number' ? src.depositPercent : null
+      // Helper para construir objeto de servicio
+      const buildServiceObject = (src: any) => {
+        const isTour =
+          !!src?.tourId ||
+          !!src?.tourDoc ||
+          !!src?.tourData ||
+          !!src?.selectedTourSlug ||
+          src?.quickType === 'tour' ||
+          src?.isTourQuick === true ||
+          src?.tipo === 'tour' ||
+          !!src?.categoriaTour
 
-  // --- Generador de número de orden único (RSE-YYMMDD-HHMM-XXXX)
-  const makeOrderNumber = () => {
-    const t = new Date()
-    const y = String(t.getFullYear()).slice(-2)
-    const m = String(t.getMonth() + 1).padStart(2, '0')
-    const d = String(t.getDate()).padStart(2, '0')
-    const h = String(t.getHours()).padStart(2, '0')
-    const min = String(t.getMinutes()).padStart(2, '0')
-    const rand = Math.random().toString(36).slice(2, 6).toUpperCase()
-    return `RSE-${y}${m}${d}-${h}${min}-${rand}`
-  }
+        const tourTitle =
+          src?.tourDoc?.title ||
+          src?.tourData?.title ||
+          src?.tourTitle ||
+          (typeof src?.selectedTourSlug === 'string' ? src.selectedTourSlug : undefined)
 
-  // --- detección robusta del tipo TOUR
-  const isTour =
-    !!src?.tourId ||
-    !!src?.tourDoc ||
-    !!src?.tourData ||
-    !!src?.selectedTourSlug ||
-    src?.quickType === 'tour' ||
-    src?.isTourQuick === true ||
-    src?.tipo === 'tour' ||
-    !!src?.categoriaTour
+        const trasladoTitle =
+          src?.serviceLabel ||
+          `${src?.pickupAddress || ''}${src?.pickupAddress && src?.dropoffAddress ? ' → ' : ''}${src?.dropoffAddress || ''}`
 
-  // --- elegir título correcto
-  const tourTitle =
-    src?.tourDoc?.title ||
-    src?.tourData?.title ||
-    src?.tourTitle ||
-    (typeof src?.selectedTourSlug === 'string' ? src.selectedTourSlug : undefined)
-
-  const trasladoTitle =
-    src?.serviceLabel ||
-    `${src?.pickupAddress || ''}${src?.pickupAddress && src?.dropoffAddress ? ' -> ' : ''}${src?.dropoffAddress || ''}`
-
-  return {
-    _type: 'order',
-    orderNumber: makeOrderNumber(), // 👈 orden única
-    status: 'pending',
-    payment: {
-      provider: 'mollie',
-      paymentId: payment.id,
-      status: 'open',
-      amount: Number(src.totalPrice || amountNumber) || amountNumber,
-      currency: 'EUR',
-      requestedMethod: methodFromBody || undefined,
-      createdAt: new Date().toISOString(),
-      // persistimos banderas útiles para emails/calendar
-      payFullNow,
-      depositPercent,
-      raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links }),
-    },
-    contact: src
-      ? {
-          name: src.contactName || src.name || booking?.contactName,
-          email: src.contactEmail || src.email || booking?.contactEmail,
-          phone: src.contactPhone || src.phone || booking?.contactPhone,
-          referralSource: referralSource || booking?.referralSource || null,
+        const serviceType = src.isEvent ? 'evento' : isTour ? 'tour' : 'traslado'
+        
+        // 👇 Calcular depositPercent automáticamente según el tipo
+        const isPayingFullNow = Boolean(src.payFullNow || payFullNow)
+        let calculatedDepositPercent: number
+        
+        if (isPayingFullNow) {
+          calculatedDepositPercent = 100
+        } else if (typeof src.depositPercent === 'number') {
+          // Si viene especificado desde el front, respetarlo
+          calculatedDepositPercent = src.depositPercent
+        } else if (typeof depositPercent === 'number') {
+          // Si viene en el body general
+          calculatedDepositPercent = depositPercent
+        } else {
+          // Calcular según el tipo: 10% traslado, 20% tour, 15% evento
+          if (serviceType === 'tour') {
+            calculatedDepositPercent = 20
+          } else if (serviceType === 'evento') {
+            calculatedDepositPercent = 15
+          } else {
+            calculatedDepositPercent = 10 // traslado
+          }
         }
-      : undefined,
-    service: src
-      ? {
-          type: src.isEvent ? 'evento' : isTour ? 'tour' : 'traslado',
+
+        return {
+          type: serviceType,
           title: src.isEvent
             ? src.eventTitle || 'Evento'
             : isTour
@@ -168,8 +162,8 @@ const buildDocFrom = (src: any) => {
           pickupAddress: src.pickupAddress || src.pickup || undefined,
           dropoffAddress: src.dropoffAddress || src.dropoff || undefined,
           flightNumber: src.flightNumber || src.numeroVuelo || undefined,
-flightArrivalTime: src.flightArrivalTime || undefined,
-flightDepartureTime: src.flightDepartureTime || undefined,
+          flightArrivalTime: src.flightArrivalTime || undefined,
+          flightDepartureTime: src.flightDepartureTime || undefined,
           ninos: src.ninos ?? undefined,
           ninosMenores9: src.ninosMenores9 ?? undefined,
           luggage23kg: Object.prototype.hasOwnProperty.call(src, 'luggage23kg')
@@ -179,35 +173,78 @@ flightDepartureTime: src.flightDepartureTime || undefined,
             ? Number(src.luggage10kg)
             : undefined,
           isNightTime: Boolean(src.isNightTime),
-          extraLuggage: Boolean(src.extraLuggage),
-          totalPrice: Number(src.totalPrice || amountNumber) || amountNumber,
-          selectedPricingOption: src.selectedPricingOption || undefined,
+          totalPrice: Number(src.totalPrice || 0),
           notes: src.specialRequests || undefined,
+          payFullNow: isPayingFullNow,
+          depositPercent: calculatedDepositPercent, // 👈 Calculado automáticamente
+        }
+      }
+
+      // Agregar servicios del carrito
+      if (items.length > 0) {
+        for (const it of items) {
+          allServices.push(buildServiceObject(it))
+        }
+      }
+
+      // Agregar servicio principal (booking) si existe
+      if (booking) {
+        allServices.push(buildServiceObject(booking))
+      }
+
+      // Si no hay servicios, crear uno por defecto
+      if (allServices.length === 0) {
+        allServices.push({
+          type: 'traslado',
+          title: 'Servicio',
+          totalPrice: amountNumber,
+          payFullNow,
+          depositPercent: payFullNow ? 100 : 10, // 10% por defecto para traslado
+        })
+      }
+
+      // Crear UNA ÚNICA orden con todos los servicios
+      const orderDoc = {
+        _type: 'order',
+        orderNumber: makeOrderNumber(),
+        status: 'pending',
+        payment: {
+          provider: 'mollie',
+          paymentId: payment.id,
+          status: 'open',
+          amount: amountNumber,
+          currency: 'EUR',
+          requestedMethod: methodFromBody || undefined,
+          createdAt: new Date().toISOString(),
           payFullNow,
           depositPercent,
-        }
-      : undefined,
-    metadata: { source: 'web', createdAt: new Date().toISOString() },
-  }
-}
-
-      if (items.length > 0) {
-        for (const it of items) docsToCreate.push(buildDocFrom(it))
-      }
-      if (booking) docsToCreate.push(buildDocFrom(booking))
-      if (docsToCreate.length === 0) {
-        docsToCreate.push(buildDocFrom(booking || { totalPrice: amountNumber }))
+          raw: JSON.stringify({ id: payment.id, links: (payment as any)?._links }),
+        },
+        contact: {
+          name: contactName,
+          email: contactEmail,
+          phone: contactPhone,
+          referralSource: referralSource,
+        },
+        services: allServices, // 👈 Array de servicios
+        metadata: { source: 'web', createdAt: new Date().toISOString() },
       }
 
-      for (const d of docsToCreate) {
-        try {
-          await serverClient.create(d)
-        } catch (e) {
-          console.error('[Sanity][orders] No se pudo crear una de las órdenes:', e)
-        }
-      }
+      await serverClient.create(orderDoc)
+      
+      // Log detallado con los porcentajes calculados
+      const servicesLog = allServices.map((s, idx) => 
+        `${idx + 1}. ${s.title || s.type} (${s.type}): €${s.totalPrice} × ${s.depositPercent}% = €${(s.totalPrice * s.depositPercent / 100).toFixed(2)}`
+      ).join(' | ')
+      
+      console.log(`[Mollie][create] ✅ Orden ${orderDoc.orderNumber} creada:`)
+      console.log(`  👤 Cliente: ${contactName}`)
+      console.log(`  💰 Total: €${amountNumber}`)
+      console.log(`  📦 Servicios (${allServices.length}): ${servicesLog}`)
+
+
     } catch (err) {
-      console.error('[Sanity][orders] Error creando pedidos:', err)
+      console.error('[Sanity][orders] Error creando pedido:', err)
     }
 
     return NextResponse.json({ id: payment.id, checkoutUrl })

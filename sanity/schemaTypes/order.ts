@@ -17,7 +17,7 @@ export default defineType({
       name: 'orderNumber',
       title: 'Número de pedido',
       type: 'string',
-      description: 'Identificador legible del pedido (ej: ORD-2025-0001)'
+      description: 'Identificador legible del pedido (ej: RSE-250101-1430-ABCD)'
     }),
 
     defineField({
@@ -59,8 +59,6 @@ export default defineType({
         defineField({ name: 'method', title: 'Método', type: 'string' }),
         defineField({ name: 'createdAt', title: 'Creado en', type: 'datetime' }),
         defineField({ name: 'paidAt', title: 'Pagado en', type: 'datetime' }),
-
-        // 👇 NUEVOS (para depósitos/pago total)
         defineField({
           name: 'payFullNow',
           title: 'Pago completo ahora',
@@ -74,22 +72,21 @@ export default defineType({
           description: 'Porcentaje cobrado ahora (ej: 10 para traslado, 20 para tour).',
           validation: (r) => r.min(0).max(100)
         }),
-
         defineField({ name: 'raw', title: 'Datos sin procesar (JSON)', type: 'text', rows: 6 }),
       ]
     }),
 
-    {
+    defineField({
       name: 'calendar',
       title: 'Google Calendar',
       type: 'object',
       options: { collapsible: true, collapsed: true },
       fields: [
-        { name: 'eventId', type: 'string', title: 'Event ID' },
-        { name: 'htmlLink', type: 'url', title: 'Event Link' },
-        { name: 'createdAt', type: 'datetime', title: 'Creado en' },
+        defineField({ name: 'eventId', type: 'string', title: 'Event ID' }),
+        defineField({ name: 'htmlLink', type: 'url', title: 'Event Link' }),
+        defineField({ name: 'createdAt', type: 'datetime', title: 'Creado en' }),
       ],
-    },
+    }),
 
     defineField({
       name: 'contact',
@@ -104,80 +101,87 @@ export default defineType({
       ]
     }),
 
+    // 👇 Array de servicios (múltiples servicios en una sola orden)
     defineField({
-      name: 'service',
-      title: 'Servicio',
-      type: 'object',
-      options: { collapsible: true, collapsed: true },
-      fields: [
-        defineField({ name: 'type', title: 'Tipo', type: 'string', description: 'traslado | tour | evento' }),
-        defineField({ name: 'title', title: 'Título/Label', type: 'string' }),
-        defineField({ name: 'date', title: 'Fecha', type: 'date' }),
-        defineField({ name: 'time', title: 'Hora', type: 'string' }),
-        defineField({ name: 'passengers', title: 'Pasajeros / Cupos', type: 'number' }),
+      name: 'services',
+      title: 'Servicios',
+      type: 'array',
+      of: [{
+        type: 'object',
+        fields: [
+          defineField({ name: 'type', title: 'Tipo', type: 'string', description: 'traslado | tour | evento' }),
+          defineField({ name: 'title', title: 'Título/Label', type: 'string' }),
+          defineField({ name: 'date', title: 'Fecha', type: 'date' }),
+          defineField({ name: 'time', title: 'Hora', type: 'string' }),
+          defineField({ name: 'passengers', title: 'Pasajeros / Cupos', type: 'number' }),
 
-        defineField({ name: 'pickupAddress', title: 'Dirección de recogida', type: 'string' }),
-        defineField({ name: 'dropoffAddress', title: 'Dirección de destino', type: 'string' }),
+          defineField({ name: 'pickupAddress', title: 'Dirección de recogida', type: 'string' }),
+          defineField({ name: 'dropoffAddress', title: 'Dirección de destino', type: 'string' }),
 
-        defineField({ name: 'flightNumber', title: 'Número de vuelo', type: 'string' }),
-        // 👇 NUEVOS (tiempos de vuelo)
-        defineField({
-          name: 'flightArrivalTime',
-          title: 'Hora de llegada vuelo',
-          type: 'string',
-          description: 'HH:mm'
-        }),
-        defineField({
-          name: 'flightDepartureTime',
-          title: 'Hora de salida vuelo',
-          type: 'string',
-          description: 'HH:mm'
-        }),
+          defineField({ name: 'flightNumber', title: 'Número de vuelo', type: 'string' }),
+          defineField({
+            name: 'flightArrivalTime',
+            title: 'Hora de llegada vuelo',
+            type: 'string',
+            description: 'HH:mm'
+          }),
+          defineField({
+            name: 'flightDepartureTime',
+            title: 'Hora de salida vuelo',
+            type: 'string',
+            description: 'HH:mm'
+          }),
 
-        defineField({ name: 'luggage23kg', title: 'Maletas 23kg', type: 'number' }),
-        defineField({ name: 'luggage10kg', title: 'Maletas 10kg', type: 'number' }),
+          defineField({ name: 'luggage23kg', title: 'Maletas 23kg', type: 'number' }),
+          defineField({ name: 'luggage10kg', title: 'Maletas 10kg', type: 'number' }),
+          defineField({
+            name: 'ninos',
+            title: 'Niños (0-12)',
+            type: 'number',
+            validation: (r) => r.min(0)
+          }),
+          defineField({
+            name: 'ninosMenores9',
+            title: 'Niños menores de 9 años',
+            type: 'number',
+            validation: (r) => r.min(0)
+          }),
 
-        // 👇 NUEVO (niños)
-        defineField({
-          name: 'ninos',
-          title: 'Niños (0-12)',
-          type: 'number',
-          validation: (r) => r.min(0)
-        }),
+          defineField({ name: 'isNightTime', title: 'Recargo nocturno', type: 'boolean' }),
+          defineField({ name: 'totalPrice', title: 'Total calculado', type: 'number' }),
 
-        defineField({ name: 'isNightTime', title: 'Recargo nocturno', type: 'boolean' }),
-        defineField({ name: 'extraLuggage', title: 'Equipaje extra', type: 'boolean' }),
-        defineField({ name: 'totalPrice', title: 'Total calculado', type: 'number' }),
+          defineField({
+            name: 'payFullNow',
+            title: 'Pago completo ahora (servicio)',
+            type: 'boolean',
+            description: 'Si este servicio se pagó al 100% en vez de depósito.'
+          }),
+          defineField({
+            name: 'depositPercent',
+            title: 'Porcentaje de depósito (servicio)',
+            type: 'number',
+            description: 'Porcentaje cobrado ahora. Auto-calculado: 10% traslado, 20% tour, 15% evento.',
+            validation: (r) => r.min(0).max(100),
+            readOnly: false
+          }),
 
-        defineField({
-          name: 'selectedPricingOption',
-          title: 'Opción de precio',
-          type: 'object',
-          options: { collapsible: true, collapsed: true },
-          fields: [
-            defineField({ name: 'label', title: 'Etiqueta', type: 'string' }),
-            defineField({ name: 'price', title: 'Precio', type: 'number' }),
-            defineField({ name: 'hours', title: 'Horas', type: 'number' }),
-          ]
-        }),
-
-        // 👇 NUEVOS (depósito/pago completo a nivel servicio)
-        defineField({
-          name: 'payFullNow',
-          title: 'Pago completo ahora (servicio)',
-          type: 'boolean',
-          description: 'Si este servicio se pagó al 100% en vez de depósito.'
-        }),
-        defineField({
-          name: 'depositPercent',
-          title: 'Porcentaje de depósito (servicio)',
-          type: 'number',
-          description: 'Porcentaje cobrado ahora para este servicio.',
-          validation: (r) => r.min(0).max(100)
-        }),
-
-        defineField({ name: 'notes', title: 'Notas del cliente', type: 'text' }),
-      ]
+          defineField({ name: 'notes', title: 'Notas del cliente', type: 'text' }),
+        ],
+        preview: {
+          select: {
+            type: 'type',
+            title: 'title',
+            date: 'date',
+            price: 'totalPrice'
+          },
+          prepare({ type, title, date, price }) {
+            return {
+              title: title || type || 'Servicio',
+              subtitle: `${date || '—'} | ${price ? `€${price}` : '—'}`
+            }
+          }
+        }
+      }]
     }),
 
     defineField({
@@ -189,8 +193,6 @@ export default defineType({
         defineField({ name: 'source', title: 'Fuente', type: 'string' }),
         defineField({ name: 'createdAt', title: 'Creado en', type: 'datetime' }),
         defineField({ name: 'updatedAt', title: 'Actualizado en', type: 'datetime' }),
-        defineField({ name: 'clientIp', title: 'IP cliente', type: 'string' }),
-        defineField({ name: 'userAgent', title: 'User Agent', type: 'string' }),
       ]
     }),
   ],
@@ -200,27 +202,28 @@ export default defineType({
       title: 'orderNumber',
       status: 'status',
       amount: 'payment.amount',
-      date: 'service.date',
+      servicesCount: 'services',
       name: 'contact.name',
     },
-    prepare({ title, status, amount, date, name }) {
-      const who = title || name || 'Cliente'
+    prepare({ title, status, amount, servicesCount, name }) {
+      const who = name || 'Cliente'
       const amt = typeof amount === 'number' && Number.isFinite(amount) ? `€${amount.toFixed(2)}` : '€0.00'
+      const count = Array.isArray(servicesCount) ? servicesCount.length : 0
       const st = (() => {
         switch (status) {
-          case 'new': return 'nuevo'
-          case 'pending': return 'pendiente'
-          case 'paid': return 'pagado'
-          case 'processing': return 'en proceso'
-          case 'completed': return 'completado'
-          case 'cancelled': return 'cancelado'
-          case 'failed': return 'fallido'
-          default: return String(status || 'nuevo')
+          case 'new': return '🆕'
+          case 'pending': return '⏳'
+          case 'paid': return '✅'
+          case 'processing': return '🔄'
+          case 'completed': return '✔️'
+          case 'cancelled': return '❌'
+          case 'failed': return '⚠️'
+          default: return '❓'
         }
       })()
       return {
-        title: `${who} – ${amt} – ${st}`,
-        subtitle: date ? new Date(date).toLocaleDateString() : undefined,
+        title: `${st} ${who} – ${amt}`,
+        subtitle: `${title || 'Sin número'} | ${count} servicio${count !== 1 ? 's' : ''}`
       }
     }
   }

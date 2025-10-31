@@ -28,7 +28,7 @@ type Order = {
     phone?: string
     referralSource?: string
   }
-  service?: {
+  services?: Array<{
     type?: string
     title?: string
     date?: string
@@ -41,15 +41,13 @@ type Order = {
     flightDepartureTime?: string
     luggage23kg?: number
     luggage10kg?: number
+    ninos?: number
     isNightTime?: boolean
-    extraLuggage?: boolean
     totalPrice?: number
-    selectedPricingOption?: { label?: string; price?: number; hours?: number }
     notes?: string
     payFullNow?: boolean
     depositPercent?: number
-    referralSource?: string
-  }
+  }>
 }
 
 export default function GraciasPage() {
@@ -66,8 +64,13 @@ export default function GraciasPage() {
 
   // ===== Helpers UI / cálculo =====
   const fmt1 = (n: number) => n.toFixed(1)
+  
   const sumTotalServices = (list: Order[] | null) =>
-    (list || []).reduce((acc, o) => acc + (Number(o.service?.totalPrice || 0)), 0)
+    (list || []).reduce((acc, o) => {
+      const servicesSum = (o.services || []).reduce((s, srv) => 
+        s + Number(srv.totalPrice || 0), 0)
+      return acc + servicesSum
+    }, 0)
 
   const labelRequested = (m?: string | null) => {
     switch ((m || '').toLowerCase()) {
@@ -90,35 +93,62 @@ export default function GraciasPage() {
   const pctFromType = (type?: string) => {
     const t = String(type || '').toLowerCase()
     if (t === 'traslado') return 10
-    if (t === 'tour' || t === 'evento') return 20
-    return 20
+    if (t === 'tour') return 20
+    if (t === 'evento') return 15
+    return 10
   }
 
-  const depositPercentForOrder = (o?: Order) => {
-    if (!o) return 20
-    if (o.service?.payFullNow || o.payment?.payFullNow) return 100
-    if (typeof o.service?.depositPercent === 'number') return o.service.depositPercent
-    if (typeof o.payment?.depositPercent === 'number') return o.payment.depositPercent
-    return pctFromType(o.service?.type)
+  const depositPercentForService = (service: any, order: Order) => {
+    if (service?.payFullNow || order.payment?.payFullNow) return 100
+    if (typeof service?.depositPercent === 'number') return service.depositPercent
+    if (typeof order.payment?.depositPercent === 'number') return order.payment.depositPercent
+    return pctFromType(service?.type)
   }
 
   const sumPaidNow = (list: Order[] | null) =>
     (list || []).reduce((acc, o) => {
-      const pct = depositPercentForOrder(o)
-      const total = Number(o.service?.totalPrice || 0)
-      return acc + (total * pct / 100)
+      return acc + (o.services || []).reduce((s, srv) => {
+        const pct = depositPercentForService(srv, o)
+        const total = Number(srv.totalPrice || 0)
+        return s + (total * pct / 100)
+      }, 0)
     }, 0)
 
   // ===== Adapter: bundle (localStorage.lastCheckoutPayload) -> Order[] =====
-  // Estructura esperada del bundle (guardada en doPay):
-  // {
-  //   amountNow, paymentMethod, payFullNow, contact: {...},
-  //   items: [ { tipo, totalPrice, date, time, passengers, pickupAddress, dropoffAddress, flightNumber, flightArrivalTime, flightDepartureTime, luggage23kg, luggage10kg, specialRequests, ... }, ... ]
-  // }
   const ordersFromBundle = (b: any): Order[] => {
     if (!b || !Array.isArray(b.items)) return []
-    return b.items.map((it: any, idx: number) => ({
-      _id: `local-${idx}`,
+    
+    // Convertir todos los items a servicios
+    const allServices = b.items.map((it: any) => ({
+      type: it?.tipo === 'tour' ? 'tour' : 'traslado',
+      title:
+        it?.label ||
+        it?.serviceLabel ||
+        it?.serviceSubLabel ||
+        (it?.tipo === 'tour' ? 'Tour' : 'Traslado'),
+      date: it?.date,
+      time: it?.time,
+      passengers: Number(it?.passengers ?? 0),
+      pickupAddress: it?.pickupAddress,
+      dropoffAddress: it?.dropoffAddress,
+      flightNumber: it?.flightNumber,
+      flightArrivalTime: it?.flightArrivalTime,
+      flightDepartureTime: it?.flightDepartureTime,
+      luggage23kg: Number(it?.luggage23kg ?? 0),
+      luggage10kg: Number(it?.luggage10kg ?? 0),
+      ninos: Number(it?.ninos ?? 0),
+      isNightTime: !!it?.isNightTime,
+      totalPrice: Number(it?.totalPrice || 0),
+      payFullNow: !!b?.payFullNow,
+      depositPercent: b?.payFullNow
+        ? 100
+        : (it?.tipo === 'tour' ? 20 : 10),
+      notes: it?.specialRequests,
+    }))
+
+    // Retornar UNA orden con todos los servicios
+    return [{
+      _id: 'local-bundle',
       status: b?.payFullNow ? 'paid' : 'open',
       payment: {
         provider: 'mollie',
@@ -137,34 +167,8 @@ export default function GraciasPage() {
         phone: b?.contact?.phone,
         referralSource: b?.contact?.referralSource,
       },
-      service: {
-        type: it?.tipo === 'tour' ? 'tour' : 'traslado',
-        title:
-          it?.label ||
-          it?.serviceLabel ||
-          it?.serviceSubLabel ||
-          (it?.tipo === 'tour' ? 'Tour' : 'Traslado'),
-        date: it?.date,
-        time: it?.time,
-        passengers: Number(it?.passengers ?? 0),
-        pickupAddress: it?.pickupAddress,
-        dropoffAddress: it?.dropoffAddress,
-        flightNumber: it?.flightNumber,
-        flightArrivalTime: it?.flightArrivalTime,
-        flightDepartureTime: it?.flightDepartureTime,
-        luggage23kg: Number(it?.luggage23kg ?? 0),
-        luggage10kg: Number(it?.luggage10kg ?? 0),
-        isNightTime: !!it?.isNightTime,
-        extraLuggage: !!it?.extraLuggage,
-        totalPrice: Number(it?.totalPrice || 0),
-        payFullNow: !!b?.payFullNow,
-        depositPercent: b?.payFullNow
-          ? 100
-          : (it?.tipo === 'tour' ? 20 : 10),
-        notes: it?.specialRequests,
-        referralSource: b?.contact?.referralSource,
-      },
-    }))
+      services: allServices, // 👈 Array de servicios
+    }]
   }
 
   // ===== Efecto principal: lee pid, consulta estado, sincroniza, trae órdenes,
@@ -302,7 +306,6 @@ export default function GraciasPage() {
                       </div>
                       <div><span className="text-muted-foreground">Moneda:</span> {effectiveOrders[0].payment?.currency || 'EUR'}</div>
                       <div><span className="text-muted-foreground">Método solicitado:</span> {labelRequested(effectiveOrders[0].payment?.requestedMethod)}</div>
-                      <div><span className="text-muted-foreground">Método final (Mollie):</span> {labelMollie(effectiveOrders[0].payment?.method)}</div>
                       {effectiveOrders[0].payment?.paymentId && (
                         <div className="sm:col-span-2"><span className="text-muted-foreground">Referencia:</span> {effectiveOrders[0].payment?.paymentId}</div>
                       )}
@@ -317,10 +320,10 @@ export default function GraciasPage() {
                     <div className="grid sm:grid-cols-2 gap-2 text-sm">
                       <div><span className="text-muted-foreground">Nombre:</span> {effectiveOrders[0].contact?.name || '—'}</div>
                       <div><span className="text-muted-foreground">Teléfono:</span> {effectiveOrders[0].contact?.phone || '—'}</div>
-                      <div className="sm:grid-cols-2"><span className="text-muted-foreground">Email:</span> {effectiveOrders[0].contact?.email || '—'}</div>
-                      <div className="sm:grid-cols-2">
+                      <div><span className="text-muted-foreground">Email:</span> {effectiveOrders[0].contact?.email || '—'}</div>
+                      <div>
                         <span className="text-muted-foreground">¿Dónde nos conociste?</span>{' '}
-                        {effectiveOrders[0].contact?.referralSource || effectiveOrders[0].service?.referralSource || '—'}
+                        {effectiveOrders[0].contact?.referralSource || '—'}
                       </div>
                     </div>
                   </div>
@@ -329,58 +332,74 @@ export default function GraciasPage() {
                 {/* Servicios */}
                 {effectiveOrders && effectiveOrders.length > 0 ? (
                   <div className="space-y-4">
+                    <h2 className="text-2xl font-semibold text-primary">Servicios contratados</h2>
                     {effectiveOrders.map((ord) => {
-                      const service = ord.service
-                      if (!service) return null
-                      const total = Number(service.totalPrice || 0)
-                      const pct = depositPercentForOrder(ord)
-                      const paid = Number((total * pct / 100).toFixed(1))
+                      const services = ord.services || []
+                      if (services.length === 0) return null
 
-                      return (
-                        <div key={ord._id} className="rounded-lg border bg-white p-4 shadow-sm">
-                          <h2 className="text-xl font-semibold text-primary mb-2">
-                            {service.title || 'Servicio'}
-                          </h2>
-                          <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                            <div><span className="text-muted-foreground">Tipo:</span> {service.type || '—'}</div>
-                            <div><span className="text-muted-foreground">Fecha:</span> {service.date || '—'}</div>
-                            <div><span className="text-muted-foreground">Hora:</span> {service.time || '—'}</div>
-                            <div><span className="text-muted-foreground">Pasajeros:</span> {service.passengers ?? '—'}</div>
+                      return services.map((service, idx) => {
+                        const total = Number(service.totalPrice || 0)
+                        const pct = depositPercentForService(service, ord)
+                        const paid = Number((total * pct / 100).toFixed(1))
 
-                            {service.pickupAddress && (
-                              <div className="sm:col-span-2"><span className="text-muted-foreground">Recogida:</span> {service.pickupAddress}</div>
-                            )}
-                            {service.dropoffAddress && (
-                              <div className="sm:col-span-2"><span className="text-muted-foreground">Destino:</span> {service.dropoffAddress}</div>
-                            )}
-                            {service.flightNumber && (
-                              <div className="sm:col-span-2"><span className="text-muted-foreground">Vuelo:</span> {service.flightNumber}</div>
-                            )}
-                            {service.flightArrivalTime && (
-                              <div className="sm:col-span-2">
-                                <span className="text-muted-foreground">Hora llegada vuelo:</span> {service.flightArrivalTime}
+                        return (
+                          <div key={`${ord._id}-${idx}`} className="rounded-lg border bg-white p-4 shadow-sm">
+                            <h3 className="text-xl font-semibold text-primary mb-2">
+                              {service.title || service.type || 'Servicio'}
+                            </h3>
+                            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                              <div><span className="text-muted-foreground">Tipo:</span> {service.type || '—'}</div>
+                              <div><span className="text-muted-foreground">Fecha:</span> {service.date || '—'}</div>
+                              <div><span className="text-muted-foreground">Hora:</span> {service.time || '—'}</div>
+                              <div><span className="text-muted-foreground">Pasajeros:</span> {service.passengers ?? '—'}</div>
+                              <div><span className="text-muted-foreground">Niños:</span> {service.ninos ?? 0}</div>
+
+                              {service.pickupAddress && (
+                                <div><span className="text-muted-foreground">Recogida:</span> {service.pickupAddress}</div>
+                              )}
+                              {service.dropoffAddress && (
+                                <div><span className="text-muted-foreground">Destino:</span> {service.dropoffAddress}</div>
+                              )}
+                              {service.flightNumber && (
+                                <div><span className="text-muted-foreground">Vuelo:</span> {service.flightNumber}</div>
+                              )}
+                              {service.flightArrivalTime && (
+                                <div>
+                                  <span className="text-muted-foreground">Hora llegada vuelo:</span> {service.flightArrivalTime}
+                                </div>
+                              )}
+                              {service.flightDepartureTime && (
+                                <div>
+                                  <span className="text-muted-foreground">Hora salida vuelo:</span> {service.flightDepartureTime}
+                                </div>
+                              )}
+                              <div><span className="text-muted-foreground">Maletas 23kg:</span> {service.luggage23kg ?? 0}</div>
+                              <div><span className="text-muted-foreground">Maletas 10kg:</span> {service.luggage10kg ?? 0}</div>
+                              {service.notes && (
+                                <div className="sm:col-span-2"><span className="text-muted-foreground">Notas:</span> {service.notes}</div>
+                              )}
+                            </div>
+                            
+                            {/* Total y depósito */}
+                            <div className="mt-3 pt-3 border-t">
+                              <div className="flex justify-between items-center font-semibold">
+                                <span>Total del servicio:</span>
+                                <span className="text-lg text-primary">{fmt1(total)} €</span>
                               </div>
-                            )}
-                            {service.flightDepartureTime && (
-                              <div className="sm:col-span-2">
-                                <span className="text-muted-foreground">Hora salida vuelo:</span> {service.flightDepartureTime}
+                              <div className="flex justify-between items-center text-sm text-muted-foreground mt-1">
+                                <span>Pagado ahora ({pct}%):</span>
+                                <span className="font-semibold text-foreground">{fmt1(paid)} €</span>
                               </div>
-                            )}
-                            {service.selectedPricingOption?.label && (
-                              <div className="sm:col-span-2"><span className="text-muted-foreground">Opción:</span> {service.selectedPricingOption.label}</div>
-                            )}
-                            {service.notes && (
-                              <div className="sm:col-span-2"><span className="text-muted-foreground">Notas:</span> {service.notes}</div>
-                            )}
-
-                            <div><span className="text-muted-foreground">Total estimado:</span> {`${fmt1(total)} €`}</div>
-                            <div>
-                              <span className="text-muted-foreground">Monto pagado:</span> {`${fmt1(paid)} €`}{' '}
-                              <span className="text-xs text-muted-foreground">({pct}%)</span>
+                              {pct < 100 && (
+                                <div className="flex justify-between items-center text-sm text-amber-600 mt-1">
+                                  <span>Saldo pendiente:</span>
+                                  <span className="font-semibold">{fmt1(total - paid)} €</span>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      )
+                        )
+                      })
                     })}
                   </div>
                 ) : (

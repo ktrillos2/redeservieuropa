@@ -15,7 +15,26 @@ export async function GET(req: Request) {
       status,
       payment,
       contact,
-      service,
+      services[]{
+        type,
+        title,
+        date,
+        time,
+        passengers,
+        pickupAddress,
+        dropoffAddress,
+        flightNumber,
+        flightArrivalTime,
+        flightDepartureTime,
+        luggage23kg,
+        luggage10kg,
+        ninos,
+        isNightTime,
+        totalPrice,
+        notes,
+        payFullNow,
+        depositPercent
+      },
       notifications,
       metadata
     }`

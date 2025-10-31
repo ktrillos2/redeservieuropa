@@ -10,8 +10,12 @@ function isAuthed() {
 
 async function getData() {
   const orders = await serverClient.fetch<any[]>(
-    `*[_type == "order" && status == "paid" && defined(contact.phone)] | order(service.date desc) [0...200]{
-      _id, orderNumber, contact{name, phone}, service{title, type, date, time, pickupAddress, dropoffAddress},
+    `*[_type == "order" && status == "paid" && defined(contact.phone)] | order(_createdAt desc) [0...200]{
+      _id, 
+      orderNumber, 
+      contact{name, phone, email}, 
+      payment{amount, currency},
+      services[]{type, title, date, time, totalPrice, pickupAddress, dropoffAddress},
       whatsappTemplateKey->{ _id, title }
     }`
   )

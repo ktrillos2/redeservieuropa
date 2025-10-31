@@ -1,2 +1,7 @@
 /* Oculta header y footer dentro de la ruta /mensajes */
 header, footer { display: none !important; }
+
+/* Asegura que todo el texto del SelectItem se ponga blanco en hover */
+[data-highlighted] * {
+  color: white !important;
+}

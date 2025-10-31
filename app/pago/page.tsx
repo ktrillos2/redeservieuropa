@@ -55,6 +55,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PhoneInputIntl } from "@/components/ui/phone-input";
 import { EmailAutocomplete } from "@/components/ui/email-autocomplete";
 import { buildTransfersIndexes, getTransferDocByRoute, toIndexKey, TransferDoc } from "@/sanity/lib/transfers";
+import { TourDoc } from "@/sanity/lib/tours";
 
 // Helper: formato con máximo 2 decimales (sin forzar ceros)
 const fmtMoney = (n: number | string | undefined | null) => {
@@ -108,6 +109,7 @@ type CartItem = {
   luggage10kg?: number;
   specialRequests?: string;
   totalPrice: number;
+  tourDoc?: TourDoc;
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;
@@ -355,11 +357,12 @@ export default function PaymentPage() {
   const cartActive = (carritoState?.length ?? 0) >= 1;
 
   const buildSinglePayload = (bd: any): CartItem => {
+    console.warn({bd})
   const isTourCurrent = !!(
     bd?.isEvent || bd?.tourId || bd?.tourDoc || bd?.selectedTourSlug || bd?.quickType === "tour"
   );
   const tipo: "tour" | "traslado" = isTourCurrent ? "tour" : "traslado";
-
+  
   return {
     id: Date.now(),
     tipo,
@@ -382,6 +385,7 @@ export default function PaymentPage() {
     passengers: Number(bd?.passengers || bd?.pasajeros || 1),
     ninos: Number(bd?.ninos || 0),
     transferDoc: bd?.transferDoc,
+    tourDoc: bd?.tourDoc,
 
     selectedTourSlug: bd?.selectedTourSlug || "",
     flightNumber: bd?.flightNumber || "",
@@ -398,6 +402,7 @@ export default function PaymentPage() {
 };
 
   const buildSubmission = () => {
+    console.warn({bookingData})
     const current = buildSinglePayload(bookingData);
     const cartItems = Array.isArray(carritoState) ? carritoState : [];
     const items: CartItem[] = cartItems.length ? [...cartItems] : [];
@@ -760,15 +765,22 @@ useEffect(() => {
   };
 
   const openEditModal = async (item: any) => {
-    console.warn(item)
+    console.warn({toursList,item})
     const tipo: "tour" | "traslado" =
       item?.tipo ||
       (item?.tourId || item?.tourDoc || item?.selectedTourSlug ? "tour" : "traslado");
 
     // ——— Traslado: resolvemos transferDoc por la ruta actual del ítem ———
     let transferDoc = item?.transferDoc;
-   
-    
+   let resolvedSelectedTourSlug = item?.selectedTourSlug || "";
+
+  if (!resolvedSelectedTourSlug && item?.tourDoc?._id && Array.isArray(toursList)) {
+    const matched = toursList.find((t) => t._id === item.tourDoc._id);
+    if (matched?.slug) {
+      resolvedSelectedTourSlug = matched.slug;
+    }
+  }
+
 
     setModalForm({
       // identidad del ítem
@@ -778,13 +790,13 @@ useEffect(() => {
       // --- RUTA ORIGINAL (hidratar ambos pares) ---
       // Prioriza las claves 'origen'/'destino' guardadas en el item;
       // si no existen, cae a pickup/dropoff, y viceversa para mantener ambos campos visibles.
-      origen: toIndexKey(transferDoc?.from)|| "",
-      destino: toIndexKey(transferDoc?.to)|| "",
+      origen: toIndexKey(transferDoc?.from)|| item.origen || "",
+      destino: toIndexKey(transferDoc?.to)|| item.destino || "",
       pickupAddress: item?.pickupAddress ?? item?.origen ?? "",
       dropoffAddress: item?.dropoffAddress ?? item?.destino ?? "",
-      tipoTour: item?.tipoTour || "",
+      tipoTour: item?.tipoTour || item?.subtipoTour|| "",
       // tour/transfer docs
-      selectedTourSlug: item?.selectedTourSlug || "",
+      selectedTourSlug: resolvedSelectedTourSlug,
       tourDoc: item?.tourDoc,               // si es tour
       transferDoc,                          // si es traslado
 
@@ -1957,7 +1969,6 @@ const deposit = Math.max(1, Number((total * depositPercent).toFixed(2)));
     paymentPickupAddress: string,
     paymentDropoffAddress: string
   ): string[] => {
-    console.log({bd, paymentPickupAddress, paymentDropoffAddress});
     const reasons: string[] = [];
     if (!bd) return ["Faltan datos de la reserva."];
 

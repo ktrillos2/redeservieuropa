@@ -119,18 +119,6 @@ export default defineType({
           defineField({ name: 'dropoffAddress', title: 'Dirección de destino', type: 'string' }),
 
           defineField({ name: 'flightNumber', title: 'Número de vuelo', type: 'string' }),
-          defineField({
-            name: 'flightArrivalTime',
-            title: 'Hora de llegada vuelo',
-            type: 'string',
-            description: 'HH:mm'
-          }),
-          defineField({
-            name: 'flightDepartureTime',
-            title: 'Hora de salida vuelo',
-            type: 'string',
-            description: 'HH:mm'
-          }),
 
           defineField({ name: 'luggage23kg', title: 'Maletas 23kg', type: 'number' }),
           defineField({ name: 'luggage10kg', title: 'Maletas 10kg', type: 'number' }),

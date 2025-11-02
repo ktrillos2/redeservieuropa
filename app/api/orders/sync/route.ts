@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         services[]{
           type,title,date,time,totalPrice,passengers,
           pickupAddress,dropoffAddress,
-          flightNumber,flightArrivalTime,flightDepartureTime,
+          flightNumber,
           luggage23kg,luggage10kg,ninos,isNightTime,
           payFullNow,depositPercent
         },
@@ -245,7 +245,7 @@ export async function PUT(req: Request) {
     services[]{
       type,title,date,time,totalPrice,passengers,
       pickupAddress,dropoffAddress,
-      flightNumber,flightArrivalTime,flightDepartureTime,
+      flightNumber,
       luggage23kg,luggage10kg,ninos,isNightTime,
       payFullNow,depositPercent
     },

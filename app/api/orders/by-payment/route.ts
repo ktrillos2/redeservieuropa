@@ -24,8 +24,6 @@ export async function GET(req: Request) {
         pickupAddress,
         dropoffAddress,
         flightNumber,
-        flightArrivalTime,
-        flightDepartureTime,
         luggage23kg,
         luggage10kg,
         ninos,

@@ -576,8 +576,6 @@ if (bookingData.tipoReserva === "traslado") {
     // --- datos de vuelo (Hero no los pide; /pago los mostrará/validará si hace falta) ---
     flight: {
       number: bookingData.flightNumber || "",
-      departureTime: bookingData.flightDepartureTime || "",
-      arrivalTime: bookingData.flightArrivalTime || "",
     },
 
     // --- documento completo del traslado (similar a tourDoc) ---

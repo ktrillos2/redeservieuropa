@@ -197,7 +197,7 @@
     services?: Array<{
       type?: string; title?: string; date?: string; time?: string;
       totalPrice?: number; pickupAddress?: string; dropoffAddress?: string;
-      flightNumber?: string; flightArrivalTime?: string; flightDepartureTime?: string;
+      flightNumber?: string;
       luggage23kg?: number; luggage10kg?: number;
       passengers?: number; payFullNow?: boolean; depositPercent?: number | null
     }>
@@ -214,14 +214,10 @@
       const paidNow = round1(total * (percent / 100))
       const tag = tagServicio(s.type)
 
-      // ✈️ Linea de vuelo con llegada/salida, solo si hay algo
-        const flightLine = (() => {
-          const parts: string[] = []
-          if (s.flightNumber) parts.push(`<b>Vuelo:</b> ${escapeHtml(s.flightNumber)}`)
-          if (s.flightArrivalTime) parts.push(`<b>llegada:</b> ${escapeHtml(s.flightArrivalTime)}`)
-          if (s.flightDepartureTime) parts.push(`<b>salida:</b> ${escapeHtml(s.flightDepartureTime)}`)
-          return parts.length ? parts.join(' • ') : ''
-        })()
+      // ✈️ Linea de vuelo solo si hay número de vuelo
+        const flightLine = s.flightNumber 
+          ? `<b>Vuelo:</b> ${escapeHtml(s.flightNumber)}`
+          : ''
 
       // 🧳 Linea de maletas si hay alguna
       const luggageLine =

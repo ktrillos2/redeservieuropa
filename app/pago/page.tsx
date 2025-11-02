@@ -107,8 +107,6 @@ type CartItem = {
   categoriaTour?: string;
   subtipoTour?: string;
   flightNumber?: string;
-  flightArrivalTime?: string;
-  flightDepartureTime?: string;
   luggage23kg?: number;
   luggage10kg?: number;
   specialRequests?: string;
@@ -251,7 +249,6 @@ type CommonBookingFields = {
   pickupAddress?: string;
   dropoffAddress?: string;
   flightNumber?: string;
-  flightArrivalTime?: string;
   specialRequests?: string;
   totalPrice?: number;
   // UI/runtime helpers:
@@ -330,12 +327,10 @@ export default function PaymentPage() {
     categoriaTour: "",
     subtipoTour: "",
     flightNumber: "",
-    flightArrivalTime: "",
     totalPrice: 0,
     contactName: "",
     contactPhone: "",
     contactEmail: "",
-    flightDepartureTime: "",
   }));
   // Errores locales para el modal (validación por paso)
   const [modalFieldErrors, setModalFieldErrors] = useState<
@@ -397,8 +392,6 @@ export default function PaymentPage() {
 
       selectedTourSlug: bd?.selectedTourSlug || "",
       flightNumber: bd?.flightNumber || "",
-      flightArrivalTime: bd?.flightArrivalTime || "",
-      flightDepartureTime: bd?.flightDepartureTime || "",
       luggage23kg: Number(bd?.luggage23kg ?? 0),
       luggage10kg: Number(bd?.luggage10kg ?? 0),
       specialRequests: bd?.specialRequests || "",
@@ -681,8 +674,6 @@ export default function PaymentPage() {
 
       // 💡 Vuelo SIEMPRE vacío al crear nueva cotización
       flightNumber: "",
-      flightArrivalTime: "",
-      flightDepartureTime: "",
 
       // 💡 Equipaje SIEMPRE en cero al crear nueva cotización
       luggage23kg: 0,
@@ -756,8 +747,6 @@ export default function PaymentPage() {
 
       // 💡 Vuelo VACÍO
       flightNumber: "",
-      flightArrivalTime: "",
-      flightDepartureTime: "",
 
       // 💡 Equipaje en cero
       luggage23kg: 0,
@@ -836,8 +825,6 @@ export default function PaymentPage() {
       vehicle: item?.vehicle || "coche",
 
       flightNumber: item?.flightNumber || "",
-      flightArrivalTime: item?.flightArrivalTime || "",
-      flightDepartureTime: item?.flightDepartureTime || "",
 
       luggage23kg: Number(item?.luggage23kg ?? 0),
       luggage10kg: Number(item?.luggage10kg ?? 0),
@@ -1050,14 +1037,10 @@ export default function PaymentPage() {
       if (!date || !String(date).trim()) errs.date = "Requerido";
       if (!time || !String(time).trim()) errs.time = "Requerido";
 
-      // 🔴 Si el tour seleccionado exige vuelo → los 3 campos son obligatorios
+      // Si el tour seleccionado exige vuelo → solo número de vuelo es obligatorio
       if (modalRequiresFlight(mf, toursList)) {
         if (!String(mf.flightNumber || "").trim())
           errs.flightNumber = "Requerido";
-        if (!String(mf.flightArrivalTime || "").trim())
-          errs.flightArrivalTime = "Requerido";
-        if (!String(mf.flightDepartureTime || "").trim())
-          errs.flightDepartureTime = "Requerido";
       }
       return { valid: Object.keys(errs).length === 0, errors: errs };
     }
@@ -1190,10 +1173,6 @@ export default function PaymentPage() {
 
         // vuelo / equipaje
         flightNumber: mf.flightNumber || prev?.flightNumber || "",
-        flightArrivalTime:
-          mf.flightArrivalTime || prev?.flightArrivalTime || "",
-        flightDepartureTime:
-          mf.flightDepartureTime || prev?.flightDepartureTime || "",
         luggage23kg: Number(mf.luggage23kg ?? prev?.luggage23kg ?? 0),
         luggage10kg: Number(mf.luggage10kg ?? prev?.luggage10kg ?? 0),
 
@@ -1220,10 +1199,6 @@ export default function PaymentPage() {
     const errs = validateModalForSave({ ...modalForm });
     if (modalRequiresFlight(modalForm, toursList)) {
       if (!modalForm.flightNumber?.trim()) errs.flightNumber = "Requerido";
-      if (!modalForm.flightArrivalTime?.trim())
-        errs.flightArrivalTime = "Requerido";
-      if (!modalForm.flightDepartureTime?.trim())
-        errs.flightDepartureTime = "Requerido";
     }
     if (Object.keys(errs).length) {
       setModalFieldErrors(errs);
@@ -1285,9 +1260,6 @@ export default function PaymentPage() {
     }
     if (modalRequiresFlight(mf, toursList)) {
       if (!mf.flightNumber?.trim()) errs.flightNumber = "Requerido";
-      if (!mf.flightArrivalTime?.trim()) errs.flightArrivalTime = "Requerido";
-      if (!mf.flightDepartureTime?.trim())
-        errs.flightDepartureTime = "Requerido";
     }
     // si es tour, forzar selección de tour
     if (
@@ -1347,10 +1319,6 @@ export default function PaymentPage() {
 
     if (modalRequiresFlight(modalForm, toursList)) {
       if (!modalForm.flightNumber?.trim()) errs.flightNumber = "Requerido";
-      if (!modalForm.flightArrivalTime?.trim())
-        errs.flightArrivalTime = "Requerido";
-      if (!modalForm.flightDepartureTime?.trim())
-        errs.flightDepartureTime = "Requerido";
     }
 
     if (Object.keys(errs).length) {
@@ -1440,10 +1408,6 @@ export default function PaymentPage() {
             contactName: modalForm.contactName || it.contactName,
             contactPhone: modalForm.contactPhone || it.contactPhone,
             contactEmail: modalForm.contactEmail || it.contactEmail,
-            flightDepartureTime:
-              modalForm.flightDepartureTime || it.flightDepartureTime,
-            flightArrivalTime:
-              modalForm.flightArrivalTime || it.flightArrivalTime,
           }
         : it
     );
@@ -2030,7 +1994,7 @@ export default function PaymentPage() {
         reasons.push("El email no tiene un formato válido.");
     }
 
-    // 🔴 REGLA NUEVA: si el tour requiere datos de vuelo → exige número + hora llegada + hora salida
+    // Si el tour requiere número de vuelo, solo exigimos el número (no las horas de llegada/salida)
     const requireFlightByTour =
       bd?.tourDoc?.requirements?.requireFlightNumber === true ||
       bd?.tourData?.requirements?.requireFlightNumber === true;
@@ -2038,10 +2002,6 @@ export default function PaymentPage() {
     if (requireFlightByTour) {
       if (!String(bd.flightNumber || "").trim())
         reasons.push("Indica el número de vuelo.");
-      if (!String(bd.flightArrivalTime || "").trim())
-        reasons.push("Indica la hora de llegada del vuelo.");
-      if (!String(bd.flightDepartureTime || "").trim())
-        reasons.push("Indica la hora de salida del vuelo.");
     }
 
     // Si quieres además forzar hora del servicio por `requireTime` del tour:
@@ -2134,7 +2094,7 @@ export default function PaymentPage() {
           !!b.requireFlightTimes ||
           !!doc.requireFlightTimes ||
           !!doc.requiredFlightTimes ||
-          requireFlightInfo; // si se pide info de vuelo, pedimos horas
+          requireFlightInfo; // si se pide info de vuelo, pedimos solo número
 
         const has = (v: any) =>
           typeof v === "number" ? true : Boolean(String(v ?? "").trim());
@@ -2142,12 +2102,7 @@ export default function PaymentPage() {
         if (requireFlightInfo || requireFlightNumber) {
           if (!has(b.flightNumber)) reasons.push("Ingresa el número de vuelo.");
         }
-        if (requireFlightInfo || requireFlightTimes) {
-          if (!has(b.flightArrivalTime))
-            reasons.push("Ingresa la hora de llegada del vuelo.");
-          if (!has(b.flightDepartureTime))
-            reasons.push("Ingresa la hora de salida del vuelo.");
-        }
+        // Ya no pedimos hora de llegada ni salida del vuelo
       }
     } catch {
       // no romper UI por errores de lectura
@@ -2409,8 +2364,6 @@ export default function PaymentPage() {
         luggage23kg: Number(bookingData.luggage23kg ?? 0),
         luggage10kg: Number(bookingData.luggage10kg ?? 0),
         flightNumber: bookingData.flightNumber || "",
-        flightArrivalTime: bookingData.flightArrivalTime || "",
-        flightDepartureTime: bookingData.flightDepartureTime || "",
         specialRequests: bookingData.specialRequests || "",
         pickupAddress: bookingData.pickupAddress || paymentPickupAddress || "",
         dropoffAddress:
@@ -2861,68 +2814,6 @@ export default function PaymentPage() {
                                   </p>
                                 )}
                               </div>
-
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">
-                                  Hora de llegada{" "}
-                                  {bookingData?.tourDoc?.requirements
-                                    ?.requireFlightNumber
-                                    ? "(obligatorio)"
-                                    : "(opcional)"}
-                                </label>
-                                <Input
-                                  type="time"
-                                  placeholder="HH:MM"
-                                  className={
-                                    fieldErrors.flightArrivalTime
-                                      ? "border-destructive focus-visible:ring-destructive"
-                                      : ""
-                                  }
-                                  value={bookingData.flightArrivalTime || ""}
-                                  onChange={(e) =>
-                                    updateBookingField(
-                                      "flightArrivalTime",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                                {fieldErrors.flightArrivalTime && (
-                                  <p className="text-xs text-destructive mt-1">
-                                    {fieldErrors.flightArrivalTime}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">
-                                  Hora de salida{" "}
-                                  {bookingData?.tourDoc?.requirements
-                                    ?.requireFlightNumber
-                                    ? "(obligatorio)"
-                                    : "(opcional)"}
-                                </label>
-                                <Input
-                                  type="time"
-                                  placeholder="HH:MM"
-                                  className={
-                                    fieldErrors.flightDepartureTime
-                                      ? "border-destructive focus-visible:ring-destructive"
-                                      : ""
-                                  }
-                                  value={bookingData.flightDepartureTime || ""}
-                                  onChange={(e) =>
-                                    updateBookingField(
-                                      "flightDepartureTime",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                                {fieldErrors.flightDepartureTime && (
-                                  <p className="text-xs text-destructive mt-1">
-                                    {fieldErrors.flightDepartureTime}
-                                  </p>
-                                )}
-                              </div>
                             </div>
                           </div>
                         ) : (
@@ -2988,98 +2879,34 @@ export default function PaymentPage() {
                                 }}
                               />
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
-                              {/* Número de vuelo */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">
-                                  Número de Vuelo{" "}
-                                  {requireFlight
-                                    ? "(obligatorio)"
-                                    : "(opcional)"}
-                                </label>
-                                <Input
-                                  placeholder="AF1234, BA456, etc."
-                                  className={
-                                    fieldErrors.flightNumber
-                                      ? "border-destructive focus-visible:ring-destructive"
-                                      : ""
-                                  }
-                                  value={bookingData.flightNumber ?? ""}
-                                  onChange={(e) =>
-                                    updateBookingField(
-                                      "flightNumber",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                                {fieldErrors.flightNumber && (
-                                  <p className="text-xs text-destructive mt-1">
-                                    {fieldErrors.flightNumber}
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Hora de llegada */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">
-                                  Hora de llegada{" "}
-                                  {requireFlight
-                                    ? "(obligatorio)"
-                                    : "(opcional)"}
-                                </label>
-                                <Input
-                                  type="time"
-                                  placeholder="HH:MM"
-                                  className={
-                                    fieldErrors.flightArrivalTime
-                                      ? "border-destructive focus-visible:ring-destructive"
-                                      : ""
-                                  }
-                                  value={bookingData.flightArrivalTime || ""}
-                                  onChange={(e) =>
-                                    updateBookingField(
-                                      "flightArrivalTime",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                                {fieldErrors.flightArrivalTime && (
-                                  <p className="text-xs text-destructive mt-1">
-                                    {fieldErrors.flightArrivalTime}
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Hora de salida (NUEVO) */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium">
-                                  Hora de salida{" "}
-                                  {requireFlight
-                                    ? "(obligatorio)"
-                                    : "(opcional)"}
-                                </label>
-                                <Input
-                                  type="time"
-                                  placeholder="HH:MM"
-                                  className={
-                                    fieldErrors.flightDepartureTime
-                                      ? "border-destructive focus-visible:ring-destructive"
-                                      : ""
-                                  }
-                                  value={bookingData.flightDepartureTime || ""}
-                                  onChange={(e) =>
-                                    updateBookingField(
-                                      "flightDepartureTime",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                                {fieldErrors.flightDepartureTime && (
-                                  <p className="text-xs text-destructive mt-1">
-                                    {fieldErrors.flightDepartureTime}
-                                  </p>
-                                )}
-                              </div>
+                            {/* Número de vuelo */}
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium">
+                                Número de Vuelo{" "}
+                                {requireFlight
+                                  ? "(obligatorio)"
+                                  : "(opcional)"}
+                              </label>
+                              <Input
+                                placeholder="AF1234, BA456, etc."
+                                className={
+                                  fieldErrors.flightNumber
+                                    ? "border-destructive focus-visible:ring-destructive"
+                                    : ""
+                                }
+                                value={bookingData.flightNumber ?? ""}
+                                onChange={(e) =>
+                                  updateBookingField(
+                                    "flightNumber",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              {fieldErrors.flightNumber && (
+                                <p className="text-xs text-destructive mt-1">
+                                  {fieldErrors.flightNumber}
+                                </p>
+                              )}
                             </div>
                           </div>
                         )}
@@ -4369,10 +4196,6 @@ export default function PaymentPage() {
                             ) {
                               if (!bookingData.flightNumber)
                                 errors.flightNumber = "Requerido";
-                              if (!bookingData.flightArrivalTime)
-                                errors.flightArrivalTime = "Requerido";
-                              if (!bookingData.flightDepartureTime)
-                                errors.flightDepartureTime = "Requerido";
                             }
 
                             setFieldErrors(errors);
@@ -4388,9 +4211,7 @@ export default function PaymentPage() {
                                 contactEmail: "contactEmail",
                                 pickupAddress: "pickupAddress",
                                 dropoffAddress: "dropoffAddress",
-                                flightNumber: "flightNumber", // 👈
-                                flightArrivalTime: "flightArrivalTime", // 👈
-                                flightDepartureTime: "flightDepartureTime",
+                                flightNumber: "flightNumber",
                               };
                               const selector = `[data-field="${fieldMap[first] || first}"]`;
                               const el = document.querySelector(
@@ -4639,9 +4460,7 @@ export default function PaymentPage() {
                       {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
 
                       <p className="text-xs text-muted-foreground text-center">
-                        {isQuick
-                          ? "Después del pago podrás completar los datos faltantes para finalizar tu reserva."
-                          : "Al confirmar el pago, aceptas nuestros términos y condiciones de servicio. Recibirás una confirmación por email con todos los detalles de tu reserva."}
+                        Al confirmar el pago, aceptas nuestros términos y condiciones de servicio. Recibirás una confirmación por email con todos los detalles de tu reserva.
                       </p>
                     </div>
                   </CardContent>
@@ -5501,94 +5320,32 @@ export default function PaymentPage() {
                       </p>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {/* Número de vuelo */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium">
-                        Número de Vuelo{" "}
-                        {requireFlightModal ? "(obligatorio)" : "(opcional)"}
-                      </label>
-                      <Input
-                        placeholder="AF1234, BA456, etc."
-                        className={
-                          modalFieldErrors.flightNumber
-                            ? "border-destructive focus-visible:ring-destructive"
-                            : ""
-                        }
-                        value={modalForm.flightNumber || ""}
-                        onChange={(e) =>
-                          setModalForm((s: any) => ({
-                            ...s,
-                            flightNumber: e.target.value,
-                          }))
-                        }
-                      />
-                      {modalFieldErrors.flightNumber && (
-                        <p className="text-xs text-destructive mt-1">
-                          {modalFieldErrors.flightNumber}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Hora de llegada */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium">
-                        Hora de llegada{" "}
-                        {requireFlightModal ? "(obligatorio)" : "(opcional)"}
-                      </label>
-                      <Input
-                        data-modal-field="flightArrivalTime"
-                        type="time"
-                        placeholder="HH:MM"
-                        className={
-                          modalFieldErrors.flightArrivalTime
-                            ? "border-destructive focus-visible:ring-destructive"
-                            : ""
-                        }
-                        value={modalForm.flightArrivalTime || ""}
-                        onChange={(e) =>
-                          setModalForm((s: any) => ({
-                            ...s,
-                            flightArrivalTime: e.target.value,
-                          }))
-                        }
-                      />
-                      {modalFieldErrors.flightArrivalTime && (
-                        <p className="text-xs text-destructive mt-1">
-                          {modalFieldErrors.flightArrivalTime}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Hora de salida */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium">
-                        Hora de salida{" "}
-                        {requireFlightModal ? "(obligatorio)" : "(opcional)"}
-                      </label>
-                      <Input
-                        data-modal-field="flightDepartureTime"
-                        type="time"
-                        placeholder="HH:MM"
-                        className={
-                          modalFieldErrors.flightDepartureTime
-                            ? "border-destructive focus-visible:ring-destructive"
-                            : ""
-                        }
-                        value={modalForm.flightDepartureTime || ""}
-                        onChange={(e) =>
-                          setModalForm((s: any) => ({
-                            ...s,
-                            flightDepartureTime: e.target.value,
-                          }))
-                        }
-                      />
-                      {modalFieldErrors.flightDepartureTime && (
-                        <p className="text-xs text-destructive mt-1">
-                          {modalFieldErrors.flightDepartureTime}
-                        </p>
-                      )}
-                    </div>
+                  {/* Número de vuelo */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">
+                      Número de Vuelo{" "}
+                      {requireFlightModal ? "(obligatorio)" : "(opcional)"}
+                    </label>
+                    <Input
+                      placeholder="AF1234, BA456, etc."
+                      className={
+                        modalFieldErrors.flightNumber
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : ""
+                      }
+                      value={modalForm.flightNumber || ""}
+                      onChange={(e) =>
+                        setModalForm((s: any) => ({
+                          ...s,
+                          flightNumber: e.target.value,
+                        }))
+                      }
+                    />
+                    {modalFieldErrors.flightNumber && (
+                      <p className="text-xs text-destructive mt-1">
+                        {modalFieldErrors.flightNumber}
+                      </p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>

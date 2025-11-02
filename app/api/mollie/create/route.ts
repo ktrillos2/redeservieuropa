@@ -162,8 +162,6 @@ export async function POST(req: Request) {
           pickupAddress: src.pickupAddress || src.pickup || undefined,
           dropoffAddress: src.dropoffAddress || src.dropoff || undefined,
           flightNumber: src.flightNumber || src.numeroVuelo || undefined,
-          flightArrivalTime: src.flightArrivalTime || undefined,
-          flightDepartureTime: src.flightDepartureTime || undefined,
           ninos: src.ninos ?? undefined,
           ninosMenores9: src.ninosMenores9 ?? undefined,
           luggage23kg: Object.prototype.hasOwnProperty.call(src, 'luggage23kg')

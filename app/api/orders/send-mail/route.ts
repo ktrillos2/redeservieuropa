@@ -105,8 +105,6 @@ export async function POST(req: Request) {
       pickupAddress: s?.pickupAddress,
       dropoffAddress: s?.dropoffAddress,
       flightNumber: s?.flightNumber,
-      flightArrivalTime: s?.flightArrivalTime,
-      flightDepartureTime: s?.flightDepartureTime,
       luggage23kg: s?.luggage23kg,
       luggage10kg: s?.luggage10kg,
       ninos: s?.ninos,

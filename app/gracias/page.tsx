@@ -37,8 +37,6 @@ type Order = {
     pickupAddress?: string
     dropoffAddress?: string
     flightNumber?: string
-    flightArrivalTime?: string
-    flightDepartureTime?: string
     luggage23kg?: number
     luggage10kg?: number
     ninos?: number
@@ -363,16 +361,6 @@ export default function GraciasPage() {
                               {service.flightNumber && (
                                 <div><span className="text-muted-foreground">Vuelo:</span> {service.flightNumber}</div>
                               )}
-                              {service.flightArrivalTime && (
-                                <div>
-                                  <span className="text-muted-foreground">Hora llegada vuelo:</span> {service.flightArrivalTime}
-                                </div>
-                              )}
-                              {service.flightDepartureTime && (
-                                <div>
-                                  <span className="text-muted-foreground">Hora salida vuelo:</span> {service.flightDepartureTime}
-                                </div>
-                              )}
                               <div><span className="text-muted-foreground">Maletas 23kg:</span> {service.luggage23kg ?? 0}</div>
                               <div><span className="text-muted-foreground">Maletas 10kg:</span> {service.luggage10kg ?? 0}</div>
                               {service.notes && (
@@ -423,6 +411,13 @@ export default function GraciasPage() {
             {status === 'paid' && (
               <div className="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-400 text-yellow-800 rounded">
                 <b>¿No ves el correo de confirmación?</b> Revisa tu carpeta de SPAM o correo no deseado.
+              </div>
+            )}
+
+            {status === 'paid' && (
+              <div className="mt-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-800 rounded">
+                <p className="font-semibold mb-1">¿Necesitas hacer alguna modificación de la reserva?</p>
+                <p>Escríbenos al WhatsApp: <a href="https://wa.me/33695587787" className="underline font-semibold" target="_blank" rel="noopener noreferrer">+33 6 95 58 77 87</a></p>
               </div>
             )}
           </div>

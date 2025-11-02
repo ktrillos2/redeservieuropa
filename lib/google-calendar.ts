@@ -299,8 +299,6 @@ export function buildOrderEventPayload(order: any) {
   if (order?.service?.dropoffAddress) lines.push(`Destino: ${order.service.dropoffAddress}`)
   if (typeof order?.service?.passengers === 'number') lines.push(`Pasajeros: ${order.service.passengers}`)
   if (order?.service?.flightNumber) lines.push(`Vuelo: ${order.service.flightNumber}`)
-  if (order?.service?.flightArrivalTime) lines.push(`Hora llegada vuelo: ${order.service.flightArrivalTime}`)
-  if (order?.service?.flightDepartureTime) lines.push(`Hora salida vuelo: ${order.service.flightDepartureTime}`)
   if (order?.contact?.name) lines.push(`Cliente: ${order.contact.name}`)
   if (order?.contact?.phone) lines.push(`Teléfono: ${order.contact.phone}`)
   if (order?.contact?.email) lines.push(`Email: ${order.contact.email}`)

@@ -77,7 +77,7 @@ requirements?: { requireTime?: boolean; requireFlightNumber?: boolean }
 
 export async function getToursList(): Promise<TourDoc[]> {
   const res = await serverClient.fetch(TOURS_LIST_QUERY, {}, { cache: 'no-store', next: { revalidate: 0, tags: ['tours'] } })
-
+  
   return (res || []) as TourDoc[]
 }
 

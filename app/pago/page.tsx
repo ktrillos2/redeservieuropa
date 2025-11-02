@@ -290,6 +290,7 @@ export default function PaymentPage() {
   const [savedOriginOnLoad, setSavedOriginOnLoad] = useState<string | null>(
     null
   );
+  const [currentEditingItem, setCurrentEditingItem] = useState<any>(null);
   const [savedDestinationOnLoad, setSavedDestinationOnLoad] = useState<
     string | null
   >(null);
@@ -766,81 +767,98 @@ export default function PaymentPage() {
   };
 
   const openEditModal = async (item: any) => {
-    console.warn({ toursList, item });
-    const tipo: "tour" | "traslado" =
-      item?.tipo ||
-      (item?.tourId || item?.tourDoc || item?.selectedTourSlug
-        ? "tour"
-        : "traslado");
+  const tipo: "tour" | "traslado" =
+    item?.tipo ||
+    (item?.tourId || item?.tourDoc || item?.selectedTourSlug ? "tour" : "traslado");
 
-    // ——— Traslado: resolvemos transferDoc por la ruta actual del ítem ———
-    let transferDoc = item?.transferDoc;
-    let resolvedSelectedTourSlug = item?.selectedTourSlug || "";
+  let transferDoc = item?.transferDoc;
+  let resolvedSelectedTourSlug = item?.selectedTourSlug || "";
 
-    if (
-      !resolvedSelectedTourSlug &&
-      item?.tourDoc?._id &&
-      Array.isArray(toursList)
-    ) {
-      const matched = toursList.find((t) => t._id === item.tourDoc._id);
-      if (matched?.slug) {
-        resolvedSelectedTourSlug = matched.slug;
-      }
-    }
+  if (!resolvedSelectedTourSlug && item?.tourDoc?._id && Array.isArray(toursList)) {
+    const matched = toursList.find((t) => t._id === item.tourDoc._id);
+    if (matched?.slug) resolvedSelectedTourSlug = matched.slug;
+  }
 
-    setModalForm({
-      // identidad del ítem
+  // === Normaliza fuentes (item o transferDoc) ===
+  const requireFlightInfoFromItem =
+    item?.transferDoc?.requireFlightInfo ?? item?.requireFlightInfo;
+  const requireFlightNumberFromItem =
+    item?.transferDoc?.requireFlightNumber ?? item?.requireFlightNumber;
+  const requireFlightTimesFromItem =
+    item?.transferDoc?.requireFlightTimes ?? item?.requireFlightTimes;
+
+  setModalForm(prev => {
+    const origenResolved =
+      toIndexKey(transferDoc?.from) || item?.origen || prev.origen || "";
+
+    const destinoResolved =
+      toIndexKey(transferDoc?.to) || item?.destino || prev.destino || "";
+
+    return {
+      ...prev,
+
+      // Identidad
       id: item?.id,
       tipo,
 
-      // --- RUTA ORIGINAL (hidratar ambos pares) ---
-      // Prioriza las claves 'origen'/'destino' guardadas en el item;
-      // si no existen, cae a pickup/dropoff, y viceversa para mantener ambos campos visibles.
-      origen: toIndexKey(transferDoc?.from) || item.origen || "",
-      destino: toIndexKey(transferDoc?.to) || item.destino || "",
-      pickupAddress: item?.pickupAddress ?? item?.origen ?? "",
-      dropoffAddress: item?.dropoffAddress ?? item?.destino ?? "",
-      tipoTour: item?.tipoTour || item?.subtipoTour || "",
-      // tour/transfer docs
+      // Rutas
+      origen: origenResolved,
+      destino: destinoResolved,
+      pickupAddress: item?.pickupAddress ?? item?.origen ?? origenResolved,
+      dropoffAddress: item?.dropoffAddress ?? item?.destino ?? destinoResolved,
+
+      // Tours/Transfers
+      tipoTour: item?.tipoTour || item?.subtipoTour || prev.tipoTour || "",
       selectedTourSlug: resolvedSelectedTourSlug,
-      tourDoc: item?.tourDoc, // si es tour
-      transferDoc, // si es traslado
+      tourDoc: item?.tourDoc ?? prev.tourDoc,
+      transferDoc: transferDoc ?? prev.transferDoc,
 
-      // flags de vuelo (prioriza los del transferDoc)
-      requireFlightInfo: !!(
-        transferDoc?.requireFlightInfo ?? item?.requireFlightInfo
-      ),
-      requireFlightNumber: !!(
-        transferDoc?.requireFlightNumber ?? item?.requireFlightNumber
-      ),
-      requireFlightTimes: !!(
-        transferDoc?.requireFlightTimes ?? item?.requireFlightTimes
-      ),
+      // === Flight flags (misma prioridad en todos) ===
+      requireFlightInfo:
+        requireFlightInfoFromItem ??
+        transferDoc?.requireFlightInfo ??
+        prev.requireFlightInfo ??
+        false,
 
-      // resto de campos
-      date: item?.date || "",
-      time: item?.time || "",
-      passengers: String(item?.passengers ?? 1),
-      ninos: Number(item?.ninos ?? 0),
-      vehicle: item?.vehicle || "coche",
+      requireFlightNumber:
+        requireFlightNumberFromItem ??
+        transferDoc?.requireFlightNumber ??
+        prev.requireFlightNumber ??
+        false,
 
-      flightNumber: item?.flightNumber || "",
+      requireFlightTimes:
+        requireFlightTimesFromItem ??
+        transferDoc?.requireFlightTimes ??
+        prev.requireFlightTimes ??
+        false,
 
-      luggage23kg: Number(item?.luggage23kg ?? 0),
-      luggage10kg: Number(item?.luggage10kg ?? 0),
-      specialRequests: item?.specialRequests || "",
+      // Datos
+      date: item?.date || prev.date || "",
+      time: item?.time || prev.time || "",
+      passengers: String(item?.passengers ?? prev.passengers ?? 1),
+      ninos: Number(item?.ninos ?? prev.ninos ?? 0),
+      vehicle: item?.vehicle || prev.vehicle || "coche",
 
-      totalPrice: Number(item?.totalPrice ?? 0),
-      contactName: item?.contactName || "",
-      contactPhone: item?.contactPhone || "",
-      contactEmail: item?.contactEmail || "",
-    });
+      flightNumber: item?.flightNumber || prev.flightNumber || "",
 
-    // marca que estamos editando un ítem del carrito (no la reserva -1)
-    setModalEditingId(item?.id);
-    setModalStep(2);
-    setQuoteModalOpen(true);
-  };
+      luggage23kg: Number(item?.luggage23kg ?? prev.luggage23kg ?? 0),
+      luggage10kg: Number(item?.luggage10kg ?? prev.luggage10kg ?? 0),
+      specialRequests: item?.specialRequests || prev.specialRequests || "",
+
+      totalPrice: Number(item?.totalPrice ?? prev.totalPrice ?? 0),
+      contactName: item?.contactName || prev.contactName || "",
+      contactPhone: item?.contactPhone || prev.contactPhone || "",
+      contactEmail: item?.contactEmail || prev.contactEmail || "",
+    };
+  });
+
+  // 👉 Si quieres ver el valor real después del set:
+  // (no hay callback en useState, así que usa useEffect como arriba)
+
+  setModalEditingId(item?.id);
+  setModalStep(2);
+  setQuoteModalOpen(true);
+};
 
   // Calcular precio automático para traslados dentro del modal cuando cambian campos relevantes
   const computeModalPrice = (mf: any) => {
@@ -1195,7 +1213,7 @@ export default function PaymentPage() {
   };
 
   const handleModalSave = (isEdit = false) => {
-    console.warn("Guardando modal...", modalForm);
+
     const errs = validateModalForSave({ ...modalForm });
     if (modalRequiresFlight(modalForm, toursList)) {
       if (!modalForm.flightNumber?.trim()) errs.flightNumber = "Requerido";
@@ -1248,7 +1266,6 @@ export default function PaymentPage() {
 
   const validateModalForSave = (mf: any): Record<string, string> => {
     const errs: Record<string, string> = {};
-
     // comunes
     if (!mf.passengers || Number(mf.passengers) <= 0)
       errs.passengers = "Requerido";
@@ -1276,9 +1293,9 @@ export default function PaymentPage() {
   // Helper centralizado
   const modalTourRequiresFlight = (mf: any, tours: TourData[]): boolean => {
     if (mf?.tipo !== "tour") return false; // 👈 evita falsos positivos en traslados
-
-    if (mf?.tourDoc?.requirements?.requireFlightNumber) return true;
-    if (mf?.tourData?.requirements?.requireFlightNumber) return true;
+    console.warn('require',{mf,tours})
+    if (mf?.requirements?.requireFlightNumber) return true;
+    if (mf?.requirements?.requireFlightNumber) return true;
     if (mf?.requireFlightNumber) return true;
 
     try {
@@ -1296,6 +1313,7 @@ export default function PaymentPage() {
   };
 
   const modalRequiresFlight = (mf: any, tours: TourData[]): boolean => {
+   
     // 1) Tours: respeta requirements del tour (único caso donde puede ser obligatorio)
     if (modalTourRequiresFlight(mf, tours)) return true;
 
@@ -1838,28 +1856,28 @@ export default function PaymentPage() {
     );
   }
   const requireFlight =
-    bookingData?.tourDoc?.requirements?.requireFlightNumber === true ||
-    bookingData?.tourData?.requirements?.requireFlightNumber === true ||
+    bookingData?.requireFlightNumber === true ||
     bookingData?.requireFlightInfo === true;
 
   // ¿Vuelo obligatorio dentro del MODAL?
   const requireFlightModal =
-    bookingData?.tourDoc?.requirements?.requireFlightNumber === true ||
-    bookingData?.tourData?.requirements?.requireFlightNumber === true ||
-    (() => {
-      try {
-        const sel = Array.isArray(toursList)
-          ? toursList.find(
-              (t) =>
-                (t.slug || t.title) === modalForm.selectedTourSlug ||
-                t.title === modalForm.selectedTourSlug
-            )
-          : null;
-        return sel?.requirements?.requireFlightNumber === true;
-      } catch {
-        return false;
-      }
-    })();
+  bookingData?.requireFlightNumber === true ||
+  bookingData?.requireFlightNumber === true ||
+  (() => {
+    try {
+      const sel = Array.isArray(toursList)
+      ? toursList.find(
+        (t) =>
+          (t.slug || t.title) === modalForm.selectedTourSlug ||
+        t.title === modalForm.selectedTourSlug
+      )
+      : null;
+      return sel?.requirements?.requireFlightNumber === true;
+    } catch {
+      return false;
+    }
+  })();
+ 
 
   if (!bookingData) {
     return (
@@ -2292,114 +2310,6 @@ export default function PaymentPage() {
     0,
     Number((combinedTotal - amountNow).toFixed(2))
   );
-  // Añadir el servicio/quote actual al carrito y mantener al usuario en la misma página
-  const addCurrentToCart = () => {
-    if (!bookingData) return;
-    try {
-      const safeOrigen =
-        bookingData.origen ||
-        bookingData.pickupAddress ||
-        paymentPickupAddress ||
-        "";
-      const safeDestino =
-        bookingData.destino ||
-        bookingData.dropoffAddress ||
-        paymentDropoffAddress ||
-        "";
-
-      const isTourType = bookingData.isEvent
-        ? true
-        : Boolean(bookingData.tourId);
-      const primaryLabel = isTourType
-        ? "Tour"
-        : bookingData?.transferDoc?.title ||
-          bookingData?.transferData?.title ||
-          "Traslado";
-      let secondaryLabel = "";
-      if (isTourType) {
-        const name =
-          bookingData?.tourData?.title ||
-          (() => {
-            try {
-              if (bookingData?.selectedTourSlug && Array.isArray(toursList)) {
-                const t = toursList.find(
-                  (x) =>
-                    x.slug === bookingData.selectedTourSlug ||
-                    x.title === bookingData.selectedTourSlug
-                );
-                return t?.title;
-              }
-              return undefined;
-            } catch {
-              return undefined;
-            }
-          })() ||
-          bookingData?.tourId ||
-          "Tour";
-        secondaryLabel = truncate(name, 30);
-      } else {
-        const originLabel = safeOrigen ? safeOrigen : "";
-        const destLabel = safeDestino ? safeDestino : "";
-        const route =
-          originLabel || destLabel
-            ? `${originLabel}${originLabel && destLabel ? " → " : ""}${destLabel}`
-            : "Traslado";
-        secondaryLabel = truncate(route, 30);
-      }
-
-      const item = {
-        id: Date.now(),
-        tipo:
-          bookingData.isEvent ||
-          bookingData.tipoReserva === "tour" ||
-          bookingData.tourId ||
-          bookingData.tourData ||
-          bookingData.selectedTourSlug
-            ? "tour"
-            : "traslado",
-        serviceLabel: primaryLabel,
-        serviceSubLabel: secondaryLabel,
-        origen: safeOrigen,
-        destino: safeDestino,
-        luggage23kg: Number(bookingData.luggage23kg ?? 0),
-        luggage10kg: Number(bookingData.luggage10kg ?? 0),
-        flightNumber: bookingData.flightNumber || "",
-        specialRequests: bookingData.specialRequests || "",
-        pickupAddress: bookingData.pickupAddress || paymentPickupAddress || "",
-        dropoffAddress:
-          bookingData.dropoffAddress || paymentDropoffAddress || "",
-        date: bookingData.date || bookingData.fecha || "",
-        time: bookingData.time || bookingData.hora || "",
-        passengers: Number(
-          bookingData.passengers || bookingData.pasajeros || 1
-        ),
-        vehicle:
-          bookingData.vehicle ||
-          bookingData.vehiculo ||
-          bookingData.vehicleType ||
-          "",
-        categoriaTour:
-          bookingData.categoriaTour || bookingData.tourCategory || "",
-        subtipoTour: bookingData.subtipoTour || bookingData.tourSubtype || "",
-        totalPrice: Number(bookingData.totalPrice || total || 0),
-      };
-
-      const updated = [...carritoState, item];
-      localStorage.setItem("carritoCotizaciones", JSON.stringify(updated));
-      setCarritoState(updated);
-
-      try {
-        toast({
-          title: "Añadido al carrito",
-          description:
-            "Tu cotización se añadió al carrito. Puedes continuar cotizando o pagar todo junto.",
-        });
-      } catch {}
-    } catch (e) {
-      console.error("No se pudo agregar al carrito", e);
-      alert("No se pudo agregar al carrito. Intenta nuevamente.");
-    }
-  };
 
   return (
     <main className="min-h-screen">

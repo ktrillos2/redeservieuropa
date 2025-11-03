@@ -2580,18 +2580,88 @@ export default function PaymentPage() {
                               data-field="date"
                               className={`w-40 ${fieldErrors.date ? "border-destructive focus-visible:ring-destructive" : ""}`}
                               value={bookingData.date || ""}
-                              onChange={(e) =>
-                                updateBookingField("date", e.target.value)
-                              }
+                              onChange={(e) => {
+                                const selectedDate = e.target.value;
+                                
+                                // Primero actualizar el campo
+                                updateBookingField("date", selectedDate);
+                                
+                                // Validar que la fecha sea mayor o igual a hoy (permite hoy)
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const selected = new Date(selectedDate);
+                                selected.setHours(0, 0, 0, 0);
+                                
+                                if (selected.getTime() < today.getTime()) {
+                                  setFieldErrors((f) => ({
+                                    ...f,
+                                    date: "La fecha debe ser hoy o posterior"
+                                  }));
+                                  return;
+                                }
+                                
+                                // Si hay hora seleccionada, validar combinación fecha+hora
+                                if (bookingData.time) {
+                                  const now = new Date();
+                                  const selectedDateTime = new Date(`${selectedDate}T${bookingData.time}`);
+                                  const minTime = new Date(now.getTime() + 45 * 60 * 1000);
+                                  
+                                  if (selectedDateTime <= minTime) {
+                                    setFieldErrors((f) => ({
+                                      ...f,
+                                      date: "La fecha y hora deben ser al menos 45 min después",
+                                      time: "La hora debe ser al menos 45 min después"
+                                    }));
+                                  } else {
+                                    setFieldErrors((f) => {
+                                      const c = { ...f };
+                                      delete c.date;
+                                      delete c.time;
+                                      return c;
+                                    });
+                                  }
+                                } else {
+                                  // Si no hay hora, solo limpiar el error de fecha
+                                  setFieldErrors((f) => {
+                                    const c = { ...f };
+                                    delete c.date;
+                                    return c;
+                                  });
+                                }
+                              }}
                             />
                             <Input
                               type="time"
                               data-field="time"
                               className={`w-full max-w-xs ${fieldErrors.time ? "border-destructive focus-visible:ring-destructive" : ""}`}
                               value={bookingData.time || ""}
-                              onChange={(e) =>
-                                updateBookingField("time", e.target.value)
-                              }
+                              onChange={(e) => {
+                                const selectedTime = e.target.value;
+                                const selectedDate = bookingData.date;
+                                
+                                // Validar que la hora sea al menos 45 minutos después de ahora
+                                if (selectedDate && selectedTime) {
+                                  const now = new Date();
+                                  const selected = new Date(`${selectedDate}T${selectedTime}`);
+                                  const minTime = new Date(now.getTime() + 45 * 60 * 1000);
+                                  
+                                  if (selected <= minTime) {
+                                    setFieldErrors((f) => ({
+                                      ...f,
+                                      time: "La hora debe ser al menos 45 minutos después de la hora actual"
+                                    }));
+                                    return;
+                                  }
+                                }
+                                
+                                setFieldErrors((f) => {
+                                  const c = { ...f };
+                                  delete c.time;
+                                  return c;
+                                });
+                                
+                                updateBookingField("time", selectedTime);
+                              }}
                             />
                           </div>
                         </div>

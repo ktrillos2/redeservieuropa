@@ -264,12 +264,32 @@ export function Hero({
           errs.fecha = "Debe ser posterior a hoy";
       }
       if (!bookingData.hora) errs.hora = "Requerido";
+      else if (bookingData.fecha && bookingData.hora) {
+        // Validar que la hora sea al menos 45 minutos después de ahora
+        const now = new Date();
+        const selected = new Date(`${bookingData.fecha}T${bookingData.hora}`);
+        const minTime = new Date(now.getTime() + 45 * 60 * 1000); // +45 minutos
+        
+        if (selected <= minTime) {
+          errs.hora = "Debe ser al menos 45 min después";
+        }
+      }
       // Modal: agregar cotización de regreso al carrito
     } else if (bookingData.tipoReserva === "tour") {
       if (!bookingData.categoriaTour && !bookingData.subtipoTour)
         errs.categoriaTour = "Requerido";
       if (!bookingData.fecha) errs.fecha = "Requerido";
       if (!bookingData.hora) errs.hora = "Requerido";
+      else if (bookingData.fecha && bookingData.hora) {
+        // Validar que la hora sea al menos 45 minutos después de ahora
+        const now = new Date();
+        const selected = new Date(`${bookingData.fecha}T${bookingData.hora}`);
+        const minTime = new Date(now.getTime() + 45 * 60 * 1000); // +45 minutos
+        
+        if (selected <= minTime) {
+          errs.hora = "Debe ser al menos 45 min después";
+        }
+      }
     }
 
     // Validaciones adicionales para el paso final (contacto + direcciones)
@@ -310,6 +330,18 @@ export function Hero({
     if (!bookingData.vehiculo) errs.vehiculo = "Requerido";
     const pax = parsePassengers(bookingData.pasajeros);
     if (!bookingData.pasajeros || pax < 1) errs.pasajeros = "≥1";
+    
+    // Validación de tiempo (45 minutos mínimos) para ambos tipos
+    if (bookingData.fecha && bookingData.hora) {
+      const now = new Date();
+      const selected = new Date(`${bookingData.fecha}T${bookingData.hora}`);
+      const minTime = new Date(now.getTime() + 45 * 60 * 1000); // +45 minutos
+      
+      if (selected <= minTime) {
+        errs.hora = "Debe ser al menos 45 min después";
+      }
+    }
+    
     if (bookingData.tipoReserva === "tour") {
       // Si hay una lista de tours visible, exigir selección explícita
       if (Array.isArray(toursList) && toursList.length > 0) {
@@ -1038,9 +1070,28 @@ if (bookingData.tipoReserva === "traslado") {
                                 type="time"
                                 value={bookingData.hora}
                                 onChange={(e) => {
+                                  console.log(e.target.value);
+                                  const selectedTime = e.target.value;
+                                  const selectedDate = bookingData.fecha;
+                                  
+                                  // Validar que la hora sea al menos 45 minutos después de ahora
+                                  if (selectedDate && selectedTime) {
+                                    const now = new Date();
+                                    const selected = new Date(`${selectedDate}T${selectedTime}`);
+                                    const minTime = new Date(now.getTime() + 45 * 60 * 1000); // +45 minutos
+                                    console.warn(selected<minTime, selected, minTime);
+                                    if (selected <= minTime) {
+                                      setFieldErrors((f) => ({
+                                        ...f,
+                                        hora: "La hora debe ser al menos 45 minutos después de la hora actual"
+                                      }));
+                                      return;
+                                    }
+                                  }
+                                  
                                   setBookingData({
                                     ...bookingData,
-                                    hora: e.target.value,
+                                    hora: selectedTime,
                                   });
                                   if (fieldErrors.hora)
                                     setFieldErrors((f) => {
@@ -1055,6 +1106,11 @@ if (bookingData.tipoReserva === "traslado") {
                                     : ""
                                 }
                               />
+                              {fieldErrors.hora && (
+                                <p className="text-xs text-destructive mt-1">
+                                  {fieldErrors.hora}
+                                </p>
+                              )}
                             </div>
                             {/* Pasajeros */}
                             <div className="space-y-2">
@@ -1358,9 +1414,27 @@ if (bookingData.tipoReserva === "traslado") {
                                   type="time"
                                   value={bookingData.hora}
                                   onChange={(e) => {
+                                    const selectedTime = e.target.value;
+                                    const selectedDate = bookingData.fecha;
+                                    
+                                    // Validar que la hora sea al menos 45 minutos después de ahora
+                                    if (selectedDate && selectedTime) {
+                                      const now = new Date();
+                                      const selected = new Date(`${selectedDate}T${selectedTime}`);
+                                      const minTime = new Date(now.getTime() + 45 * 60 * 1000); // +45 minutos
+                                      
+                                      if (selected <= minTime) {
+                                        setFieldErrors((f) => ({
+                                          ...f,
+                                          hora: "La hora debe ser al menos 45 minutos después de la hora actual"
+                                        }));
+                                        return;
+                                      }
+                                    }
+                                    
                                     setBookingData({
                                       ...bookingData,
-                                      hora: e.target.value,
+                                      hora: selectedTime,
                                     });
                                     if (fieldErrors.hora)
                                       setFieldErrors((f) => {
@@ -1375,6 +1449,11 @@ if (bookingData.tipoReserva === "traslado") {
                                       : ""
                                   }
                                 />
+                                {fieldErrors.hora && (
+                                  <p className="text-xs text-destructive mt-1">
+                                    {fieldErrors.hora}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">

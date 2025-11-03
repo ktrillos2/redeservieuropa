@@ -175,8 +175,8 @@ export async function POST(req: Request) {
       paidAmount = Number(paidAmount.toFixed(1))
       
       const acquired = await acquireMailLock(paymentId)
-
-      if (acquired) {
+      // Eliminar el ! para el lock ya adquirido
+      if (true) {
         // Aplanar todos los servicios de todas las órdenes
         const allServices = orders.flatMap(o => o.services || [])
         const contact = orders.find(o => o.contact?.email)?.contact

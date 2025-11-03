@@ -116,33 +116,58 @@ export default function GraciasPage() {
   const ordersFromBundle = (b: any): Order[] => {
     if (!b || !Array.isArray(b.items)) return []
     
+    console.log('📦 Bundle recibido:', b);
+    console.log('📋 Items:', b.items);
+    
     // Convertir todos los items a servicios
-    const allServices = b.items.map((it: any) => ({
-      type: it?.tipo === 'tour' ? 'tour' : 'traslado',
-      title:
-        it?.label ||
-        it?.serviceLabel ||
-        it?.serviceSubLabel ||
-        (it?.tipo === 'tour' ? 'Tour' : 'Traslado'),
-      date: it?.date,
-      time: it?.time,
-      passengers: Number(it?.passengers ?? 0),
-      pickupAddress: it?.pickupAddress,
-      dropoffAddress: it?.dropoffAddress,
-      flightNumber: it?.flightNumber,
-      flightArrivalTime: it?.flightArrivalTime,
-      flightDepartureTime: it?.flightDepartureTime,
-      luggage23kg: Number(it?.luggage23kg ?? 0),
-      luggage10kg: Number(it?.luggage10kg ?? 0),
-      ninos: Number(it?.ninos ?? 0),
-      isNightTime: !!it?.isNightTime,
-      totalPrice: Number(it?.totalPrice || 0),
-      payFullNow: !!b?.payFullNow,
-      depositPercent: b?.payFullNow
-        ? 100
-        : (it?.tipo === 'tour' ? 20 : 10),
-      notes: it?.specialRequests,
-    }))
+    const allServices = b.items.map((it: any) => {
+      // Determinar si es tour o traslado
+      const isTour = Boolean(
+        it.isEvent ||
+        it.quickType === 'tour' ||
+        it.isTourQuick === true ||
+        it.tipoReserva === 'tour' ||
+        it.tourId ||
+        it.tourData ||
+        it.selectedTourSlug
+      );
+      
+      console.log('🔍 Item procesado:', {
+        isTour,
+        transferTitle: it?.transferTitle,
+        label: it?.label,
+        tourTitle: it?.tourData?.title,
+      });
+      
+      return {
+        type: isTour ? 'tour' : 'traslado',
+        title:
+          it?.transferTitle || // 👈 PRIMERO: Usar transferTitle que ya viene formateado
+          it?.tourData?.title || // Para tours
+          it?.label ||
+          it?.serviceLabel ||
+          it?.serviceSubLabel ||
+          (isTour ? 'Tour' : 'Traslado'),
+        date: it?.date || it?.fecha,
+        time: it?.time || it?.hora,
+        passengers: Number(it?.passengers ?? it?.pasajeros ?? 0),
+        pickupAddress: it?.pickupAddress || it?.paymentPickupAddress || it?.origen,
+        dropoffAddress: it?.dropoffAddress || it?.paymentDropoffAddress || it?.destino,
+        flightNumber: it?.flightNumber,
+        flightArrivalTime: it?.flightArrivalTime,
+        flightDepartureTime: it?.flightDepartureTime,
+        luggage23kg: Number(it?.luggage23kg ?? 0),
+        luggage10kg: Number(it?.luggage10kg ?? 0),
+        ninos: Number(it?.ninos ?? 0),
+        isNightTime: !!it?.isNightTime,
+        totalPrice: Number(it?.totalPrice || 0),
+        payFullNow: !!it?.payFullNow || !!b?.payFullNow,
+        depositPercent: (it?.payFullNow || b?.payFullNow)
+          ? 100
+          : (isTour ? 20 : 10),
+        notes: it?.specialRequests,
+      };
+    });
 
     // Retornar UNA orden con todos los servicios
     return [{

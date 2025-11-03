@@ -1509,6 +1509,7 @@ export default function PaymentPage() {
   }, [bookingData?.passengers, bookingData?.pasajeros, bookingData?.ninos]);
 
   const updateBookingField = (key: string, value: any) => {
+    console.warn('updateBookingField',{key,value})
     setBookingData((prev: any) => {
       const next: any = { ...prev, [key]: value };
 
@@ -2680,6 +2681,7 @@ export default function PaymentPage() {
                                 }
                                 value={paymentDropoffAddress}
                                 onChange={(e) => {
+                                  
                                   setPaymentDropoffAddress(e.target.value);
                                   updateBookingField(
                                     "dropoffAddress",
@@ -2779,7 +2781,12 @@ export default function PaymentPage() {
                                 }
                                 value={paymentDropoffAddress}
                                 onChange={(e) => {
+                                  console.log('entro')
                                   setPaymentDropoffAddress(e.target.value);
+                                   updateBookingField(
+                                    "dropoffAddress",
+                                    e.target.value
+                                  );
                                   if (fieldErrors.dropoffAddress)
                                     setFieldErrors((f) => {
                                       const c = { ...f };
@@ -3909,25 +3916,36 @@ export default function PaymentPage() {
                                     </div>
                                   ) : (
                                     <div className="text-xs text-muted-foreground">
-                                      {/* Preferimos siempre lo que viene del transferDoc */}
-                                      {it.transferDoc?.from ||
-                                        it.origen ||
-                                        it.pickupAddress ||
-                                        ""}
+                                      {/* Preferimos siempre lo que viene del transferDoc, formateado */}
+                                      {(() => {
+                                        const formatLocation = (text: string) => {
+                                          return text
+                                            .replace(/-/g, ' ')
+                                            .split(' ')
+                                            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                                            .join(' ');
+                                        };
+                                        
+                                        const from = it.transferDoc?.from 
+                                          ? formatLocation(it.transferDoc.from)
+                                          : it.origen 
+                                          ? formatLocation(it.origen)
+                                          : it.pickupAddress || "";
+                                        
+                                        const to = it.transferDoc?.to 
+                                          ? formatLocation(it.transferDoc.to)
+                                          : it.destino 
+                                          ? formatLocation(it.destino)
+                                          : it.dropoffAddress || "";
 
-                                      {(it.transferDoc?.from ||
-                                        it.origen ||
-                                        it.pickupAddress) &&
-                                      (it.transferDoc?.to ||
-                                        it.destino ||
-                                        it.dropoffAddress)
-                                        ? " → "
-                                        : ""}
-
-                                      {it.transferDoc?.to ||
-                                        it.destino ||
-                                        it.dropoffAddress ||
-                                        ""}
+                                        return (
+                                          <>
+                                            {from}
+                                            {from && to ? " → " : ""}
+                                            {to}
+                                          </>
+                                        );
+                                      })()}
                                     </div>
                                   )}
 
@@ -4204,10 +4222,32 @@ export default function PaymentPage() {
                                 bookingData?.destino ||
                                 "";
 
+                              // Construir título del traslado desde transferDoc.from y transferDoc.to
+                              let transferTitle = "";
+                              if (!isTourCurrent && bookingData?.transferDoc) {
+                                // Función para formatear: quitar guiones y capitalizar primera letra de cada palabra
+                                const formatLocation = (text: string) => {
+                                  return text
+                                    .replace(/-/g, ' ')
+                                    .split(' ')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                                    .join(' ');
+                                };
+                                
+                                const from = bookingData.transferDoc.from ? formatLocation(bookingData.transferDoc.from) : "";
+                                const to = bookingData.transferDoc.to ? formatLocation(bookingData.transferDoc.to) : "";
+                                
+                                if (from && to) {
+                                  transferTitle = `${from} → ${to}`;
+                                } else if (from || to) {
+                                  transferTitle = from || to;
+                                }
+                              }
+
                               // Descripción base (single)
                               const descriptionSingle = isTourCurrent
                                 ? `Reserva Tour ${tourName || `${originPretty}${originPretty && destPretty ? " → " : ""}${destPretty}`}`
-                                : `Reserva Traslado ${originPretty}${originPretty && destPretty ? " → " : ""}${destPretty}`;
+                                : `Reserva Traslado ${transferTitle || `${originPretty}${originPretty && destPretty ? " → " : ""}${destPretty}`}`;
 
                               // Descripción final (combinado o single)
                               const description = cartActive
@@ -4218,17 +4258,63 @@ export default function PaymentPage() {
 
                               // Ítems del carrito para enviar (solo si hay)
                               const carritoForSubmit = cartActive
-                                ? (body.items || []).map((it: any) => ({
-                                    ...it,
-                                    contactName: body.contact?.name,
-                                    contactPhone: body.contact?.phone,
-                                    contactEmail: body.contact?.email,
-                                    referralSource:
-                                      bookingData?.referralSource ||
-                                      it.referralSource ||
-                                      "",
-                                    payFullNow: body.payFullNow,
-                                  }))
+                                ? (body.items || []).map((it: any) => {
+                                    // Construir título del traslado para cada item si es traslado
+                                    let itemTransferTitle = "";
+                                    const isItemTour = Boolean(
+                                      it.isEvent ||
+                                      it.quickType === "tour" ||
+                                      it.isTourQuick === true ||
+                                      it.tipoReserva === "tour" ||
+                                      it.tourId ||
+                                      it.tourData ||
+                                      it.selectedTourSlug
+                                    );
+                                    
+                                    if (!isItemTour) {
+                                      // Función para formatear: quitar guiones y capitalizar primera letra de cada palabra
+                                      const formatLocation = (text: string) => {
+                                        return text
+                                          .replace(/-/g, ' ')
+                                          .split(' ')
+                                          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                                          .join(' ');
+                                      };
+                                      
+                                      // Preferir transferDoc si existe, sino usar origen/destino
+                                      const from = it.transferDoc?.from 
+                                        ? formatLocation(it.transferDoc.from)
+                                        : it.origen 
+                                        ? formatLocation(it.origen)
+                                        : "";
+                                      
+                                      const to = it.transferDoc?.to 
+                                        ? formatLocation(it.transferDoc.to)
+                                        : it.destino 
+                                        ? formatLocation(it.destino)
+                                        : "";
+
+                                      if (from && to) {
+                                        itemTransferTitle = `${from} → ${to}`;
+                                      } else if (from || to) {
+                                        itemTransferTitle = from || to;
+                                      }
+                                    }
+                                    
+                                    return {
+                                      ...it,
+                                      contactName: body.contact?.name,
+                                      contactPhone: body.contact?.phone,
+                                      contactEmail: body.contact?.email,
+                                      referralSource:
+                                        bookingData?.referralSource ||
+                                        it.referralSource ||
+                                        "",
+                                      payFullNow: body.payFullNow,
+                                      // Agregar título del traslado si se encontró
+                                      ...(itemTransferTitle && !isItemTour ? { transferTitle: itemTransferTitle } : {}),
+                                    };
+                                  })
                                 : [];
 
                               // Reserva actual (fuera del carrito, como en tu backend actual)
@@ -4239,7 +4325,10 @@ export default function PaymentPage() {
                                 paymentPickupAddress,
                                 paymentDropoffAddress,
                                 payFullNow: body.payFullNow,
+                                // Agregar título del traslado si se encontró
+                                ...(transferTitle && !isTourCurrent ? { transferTitle } : {}),
                               };
+                              
 
                               // ==== 3) Crear pago en backend ====
                               const res = await fetch("/api/mollie/create", {
@@ -4298,6 +4387,25 @@ export default function PaymentPage() {
                                     "lastPaymentId",
                                     String(json.id)
                                   );
+                              } catch {}
+
+                              // Guardar payload completo para /gracias (con transferTitle incluido)
+                              try {
+                                const checkoutPayload = {
+                                  items: cartActive 
+                                    ? carritoForSubmit 
+                                    : [bookingForSubmit],
+                                  contact: body.contact,
+                                  payFullNow: body.payFullNow,
+                                  paymentMethod: body.paymentMethod,
+                                  amountNow,
+                                  combinedTotal,
+                                  combinedDepositSum,
+                                };
+                                localStorage.setItem(
+                                  "lastCheckoutPayload",
+                                  JSON.stringify(checkoutPayload)
+                                );
                               } catch {}
 
                               const url = json?.checkoutUrl;

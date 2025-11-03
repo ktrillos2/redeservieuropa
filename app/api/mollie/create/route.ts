@@ -100,6 +100,13 @@ export async function POST(req: Request) {
 
       // Helper para construir objeto de servicio
       const buildServiceObject = (src: any) => {
+        console.log('🔍 [buildServiceObject] Datos recibidos:', {
+          transferTitle: src?.transferTitle,
+          serviceLabel: src?.serviceLabel,
+          pickupAddress: src?.pickupAddress,
+          dropoffAddress: src?.dropoffAddress,
+        });
+        
         const isTour =
           !!src?.tourId ||
           !!src?.tourDoc ||
@@ -116,7 +123,9 @@ export async function POST(req: Request) {
           src?.tourTitle ||
           (typeof src?.selectedTourSlug === 'string' ? src.selectedTourSlug : undefined)
 
+        // 👇 Usar transferTitle si viene del frontend (ya formateado)
         const trasladoTitle =
+          src?.transferTitle || // 👈 PRIMERO: usar transferTitle que viene formateado desde el frontend
           src?.serviceLabel ||
           `${src?.pickupAddress || ''}${src?.pickupAddress && src?.dropoffAddress ? ' → ' : ''}${src?.dropoffAddress || ''}`
 

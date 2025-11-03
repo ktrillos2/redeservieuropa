@@ -121,6 +121,7 @@ export async function POST(req: Request) {
         })
         
         try {
+          
           const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}:${idx}`)
           if (evt?.id) {
             console.log('[webhook] event created', { 
@@ -147,6 +148,13 @@ export async function POST(req: Request) {
 
     const contact = orders.find(o => o.contact?.email)?.contact
     const services = orders.flatMap(o => o.services || [])
+      console.log({
+          mollieId: paymentId,
+          amount: paidAmount,
+          currency: 'EUR',
+          contact,
+          services,
+        })
 
     const adminHtml = renderAdminNewServicesEmailMulti({
   mollieId: paymentId,
@@ -166,7 +174,7 @@ export async function POST(req: Request) {
           services,
         })
       : null
-
+      
     await sendMail({
       to: ['redeservieuropa@gmail.com'],
       bcc: 'info@redeservieuropa.com',

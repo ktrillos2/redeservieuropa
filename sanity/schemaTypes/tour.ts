@@ -230,13 +230,6 @@ export default defineType({
       description: 'Indica si este tour requiere datos obligatorios al reservar.',
       fields: [
         defineField({
-          name: 'requireTime',
-          title: 'Requiere hora obligatoria',
-          type: 'boolean',
-          initialValue: false,
-          description: 'Activa si el cliente debe seleccionar una hora para este tour.',
-        }),
-        defineField({
           name: 'requireFlightNumber',
           title: 'Requiere número de vuelo',
           type: 'boolean',

@@ -146,7 +146,7 @@
     services?: Array<{
       type?: string; title?: string; date?: string; time?: string;
       totalPrice?: number; pickupAddress?: string; dropoffAddress?: string;
-      passengers?: number; payFullNow?: boolean; depositPercent?: number | null
+      passengers?: number; ninos?: number; ninosMenores9?: string; payFullNow?: boolean; depositPercent?: number | null
     }>
   }) {
     const services = params.services || []
@@ -161,7 +161,7 @@
           <b>[${tag}]</b> ${escapeHtml(s.title || 'Reserva')}<br/>
           <b>Fecha:</b> ${escapeHtml(s.date || '\u2014')} ${escapeHtml(s.time || '')}<br/>
           <b>Recogida:</b> ${escapeHtml(s.pickupAddress || '\u2014')} • <b>Destino:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
-          <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}<br/>
+          <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}${typeof s.ninos === 'number' && s.ninos > 0 ? ` (${s.ninos} niños)` : ''}${s.ninosMenores9 ? ` • <b>Edades de los niños:</b> ${escapeHtml(s.ninosMenores9)}` : ''}<br/>
           <b>Total:</b> ${total.toFixed(2)} € • <b>${percent === 100 ? 'Pagado' : `Pagado (${percent}%)`}:</b> ${paidNow.toFixed(1)} €
         </li>
       `
@@ -199,7 +199,7 @@
       totalPrice?: number; pickupAddress?: string; dropoffAddress?: string;
       flightNumber?: string;
       luggage23kg?: number; luggage10kg?: number;
-      passengers?: number; payFullNow?: boolean; depositPercent?: number | null
+      passengers?: number; ninos?: number; ninosMenores9?: string; payFullNow?: boolean; depositPercent?: number | null
     }>
   }) {
     const services = params.services || []
@@ -232,7 +232,7 @@
           <b>Recogida:</b> ${escapeHtml(s.pickupAddress || '\u2014')} • <b>Destino:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
           ${flightLine ? `${flightLine}<br/>` : ''}
           ${luggageLine ? `${luggageLine}<br/>` : ''}
-          <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}<br/>
+          <b>Pasajeros:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}${typeof s.ninos === 'number' && s.ninos > 0 ? ` (${s.ninos} niños)` : ''}${s.ninosMenores9 ? ` • <b>Menores de 9 años:</b> ${escapeHtml(s.ninosMenores9)}` : ''}<br/>
           <b>Total:</b> ${total.toFixed(2)} € • <b>${percent === 100 ? 'Pagado' : `Pagado (${percent}%)`}:</b> ${paidNow.toFixed(1)} €
         </li>
       `

@@ -27,6 +27,7 @@ export async function GET(req: Request) {
         luggage23kg,
         luggage10kg,
         ninos,
+        ninosMenores9,
         isNightTime,
         totalPrice,
         notes,

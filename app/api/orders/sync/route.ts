@@ -88,7 +88,7 @@ export async function POST(req: Request) {
           type,title,date,time,totalPrice,passengers,
           pickupAddress,dropoffAddress,
           flightNumber,
-          luggage23kg,luggage10kg,ninos,isNightTime,
+          luggage23kg,luggage10kg,ninos,ninosMenores9,isNightTime,
           payFullNow,depositPercent
         },
         payment{status,method,requestedMethod,currency,payFullNow,depositPercent},
@@ -246,7 +246,7 @@ export async function PUT(req: Request) {
       type,title,date,time,totalPrice,passengers,
       pickupAddress,dropoffAddress,
       flightNumber,
-      luggage23kg,luggage10kg,ninos,isNightTime,
+      luggage23kg,luggage10kg,ninos,ninosMenores9,isNightTime,
       payFullNow,depositPercent
     },
     payment{method,requestedMethod,currency,payFullNow,depositPercent},

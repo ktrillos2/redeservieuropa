@@ -2519,71 +2519,50 @@ export default function PaymentPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          {/* Selector para niños menores de 9 años, igual estilo que el principal */}
+                          {/* Input para niños menores de 9 años */}
                           {Number(bookingData.ninos || 0) > 0 && (
-                            <>
-                              <div className="flex items-center gap-2  mt-2">
-                                <span className="text-sm flex items-center gap-1">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-4 w-4 text-accent"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <circle
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      fill="none"
-                                    />
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 8v4m0 4h.01"
-                                    />
-                                  </svg>
-                                  Menores de 9 años
-                                </span>
-                                <Select
-                                  value={String(bookingData.ninosMenores9 ?? 0)}
-                                  onValueChange={(value) =>
-                                    updateBookingField(
-                                      "ninosMenores9",
-                                      Number(value)
-                                    )
-                                  }
+                            <div className="flex items-center gap-2 ml-4">
+                              <span className="text-sm flex items-center gap-1">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4 text-accent"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
                                 >
-                                  <SelectTrigger
-                                    data-field="ninosMenores9"
-                                    className={
-                                      "w-20 cursor-pointer " +
-                                      (fieldErrors.ninosMenores9
-                                        ? "border-destructive focus-visible:ring-destructive"
-                                        : "")
-                                    }
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-h-72">
-                                    {Array.from(
-                                      {
-                                        length:
-                                          Number(bookingData.ninos || 0) + 1,
-                                      },
-                                      (_, i) => (
-                                        <SelectItem key={i} value={String(i)}>
-                                          {i}
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </>
+                                  <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    fill="none"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8v4m0 4h.01"
+                                  />
+                                </svg>
+                                Edades de los niños
+                              </span>
+                              <Input
+                                type="text"
+                                placeholder="Ej: 2 niños de 3 y 7 años"
+                                data-field="ninosMenores9"
+                                className={
+                                  "w-32 " +
+                                  (fieldErrors.ninosMenores9
+                                    ? "border-destructive focus-visible:ring-destructive"
+                                    : "")
+                                }
+                                value={bookingData.ninosMenores9 ?? ""}
+                                onChange={(e) => {
+                                  updateBookingField("ninosMenores9", e.target.value);
+                                }}
+                              />
+                            </div>
                           )}
                         </div>
                         {fieldErrors.passengers && (
@@ -4311,6 +4290,7 @@ export default function PaymentPage() {
                                         it.referralSource ||
                                         "",
                                       payFullNow: body.payFullNow,
+                                      ninosMenores9: it.ninosMenores9 || "",
                                       // Agregar título del traslado si se encontró
                                       ...(itemTransferTitle && !isItemTour ? { transferTitle: itemTransferTitle } : {}),
                                     };
@@ -4325,11 +4305,11 @@ export default function PaymentPage() {
                                 paymentPickupAddress,
                                 paymentDropoffAddress,
                                 payFullNow: body.payFullNow,
+                                ninosMenores9: bookingData?.ninosMenores9 || "",
                                 // Agregar título del traslado si se encontró
                                 ...(transferTitle && !isTourCurrent ? { transferTitle } : {}),
                               };
                               
-
                               // ==== 3) Crear pago en backend ====
                               const res = await fetch("/api/mollie/create", {
                                 method: "POST",

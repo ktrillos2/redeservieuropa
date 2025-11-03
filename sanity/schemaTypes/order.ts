@@ -124,14 +124,14 @@ export default defineType({
           defineField({ name: 'luggage10kg', title: 'Maletas 10kg', type: 'number' }),
           defineField({
             name: 'ninos',
-            title: 'Niños (0-12)',
+            title: 'Niños',
             type: 'number',
             validation: (r) => r.min(0)
           }),
           defineField({
             name: 'ninosMenores9',
-            title: 'Niños menores de 9 años',
-            type: 'number',
+            title: 'Edades de los niños',
+            type: 'string',
             validation: (r) => r.min(0)
           }),
 

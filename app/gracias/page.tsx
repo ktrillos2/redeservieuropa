@@ -40,6 +40,7 @@ type Order = {
     luggage23kg?: number
     luggage10kg?: number
     ninos?: number
+    ninosMenores9?: string
     isNightTime?: boolean
     totalPrice?: number
     notes?: string
@@ -138,6 +139,8 @@ export default function GraciasPage() {
         label: it?.label,
         tourTitle: it?.tourData?.title,
       });
+
+      console.log(it)
       
       return {
         type: isTour ? 'tour' : 'traslado',
@@ -159,6 +162,7 @@ export default function GraciasPage() {
         luggage23kg: Number(it?.luggage23kg ?? 0),
         luggage10kg: Number(it?.luggage10kg ?? 0),
         ninos: Number(it?.ninos ?? 0),
+        ninosMenores9: it?.ninosMenores9 || '',
         isNightTime: !!it?.isNightTime,
         totalPrice: Number(it?.totalPrice || 0),
         payFullNow: !!it?.payFullNow || !!b?.payFullNow,
@@ -280,7 +284,6 @@ export default function GraciasPage() {
     (orders && orders.length > 0)
       ? orders
       : (bundleFallback ? ordersFromBundle(bundleFallback) : null)
-
   const title = status === 'paid' ? '¡Pago confirmado!' : '¡Gracias!'
   const desc = status === 'paid'
     ? 'Hemos recibido tu pago correctamente. En breve recibirás un correo con los detalles de tu reserva.'
@@ -376,6 +379,11 @@ export default function GraciasPage() {
                               <div><span className="text-muted-foreground">Hora:</span> {service.time || '—'}</div>
                               <div><span className="text-muted-foreground">Pasajeros:</span> {service.passengers ?? '—'}</div>
                               <div><span className="text-muted-foreground">Niños:</span> {service.ninos ?? 0}</div>
+                              {service.ninosMenores9 && (
+                                <div className="sm:col-span-2">
+                                  <span className="text-muted-foreground">Edades de los niños:</span> {service.ninosMenores9}
+                                </div>
+                              )}
 
                               {service.pickupAddress && (
                                 <div><span className="text-muted-foreground">Recogida:</span> {service.pickupAddress}</div>

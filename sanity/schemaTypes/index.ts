@@ -13,6 +13,7 @@ import transfersSectionContent from './transfersSection'
 import order from './order'
 import whatsappTemplate from './whatsappTemplate'
 import messageUser from './messageUser'
+import translation from './translation'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
@@ -35,5 +36,6 @@ export const schema: { types: SchemaTypeDefinition[] } = {
      order,
      whatsappTemplate,
      messageUser,
+     translation,
   ],
 }

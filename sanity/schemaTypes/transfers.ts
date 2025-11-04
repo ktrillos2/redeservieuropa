@@ -115,7 +115,46 @@ export default defineType({
       title: 'Orden',
       type: 'number',
       description: 'Para ordenar manualmente (menor primero)'
-    })
+    }),
+
+    // ✅ TRADUCCIONES
+    defineField({
+      name: 'translations',
+      title: 'Traducciones',
+      type: 'object',
+      description: 'Traducciones del traslado a otros idiomas',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        // INGLÉS
+        defineField({
+          name: 'en',
+          title: 'English',
+          type: 'object',
+          options: { collapsible: true, collapsed: true },
+          fields: [
+            defineField({ name: 'from', title: 'From', type: 'string' }),
+            defineField({ name: 'to', title: 'To', type: 'string' }),
+            defineField({ name: 'briefInfo', title: 'Brief Info', type: 'text', rows: 4 }),
+            defineField({ name: 'description', title: 'Description', type: 'text' }),
+            defineField({ name: 'duration', title: 'Duration', type: 'string' }),
+          ],
+        }),
+        // FRANCÉS
+        defineField({
+          name: 'fr',
+          title: 'Français',
+          type: 'object',
+          options: { collapsible: true, collapsed: true },
+          fields: [
+            defineField({ name: 'from', title: 'Depuis', type: 'string' }),
+            defineField({ name: 'to', title: 'Vers', type: 'string' }),
+            defineField({ name: 'briefInfo', title: 'Info brève', type: 'text', rows: 4 }),
+            defineField({ name: 'description', title: 'Description', type: 'text' }),
+            defineField({ name: 'duration', title: 'Durée', type: 'string' }),
+          ],
+        }),
+      ],
+    }),
   ],
   preview: {
     select: { from: 'from', to: 'to', priceP4: 'priceP4', priceP8: 'priceP8' },

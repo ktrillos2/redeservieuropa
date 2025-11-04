@@ -96,6 +96,186 @@ export default defineType({
         ]}),
       ],
     }),
+    
+    // TRADUCCIONES
+    defineField({
+      name: 'translations',
+      title: 'Traducciones',
+      type: 'object',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        // INGLÉS
+        {
+          name: 'en',
+          title: 'English',
+          type: 'object',
+          options: { collapsible: true, collapsed: true },
+          fields: [
+            { name: 'title', title: 'Title', type: 'string' },
+            { name: 'highlight', title: 'Highlight Text', type: 'string' },
+            {
+              name: 'description',
+              title: 'Description',
+              type: 'array',
+              of: [{ type: 'block' }],
+            },
+            {
+              name: 'primaryCta',
+              title: 'Primary CTA',
+              type: 'object',
+              fields: [
+                { name: 'label', title: 'Label', type: 'string' },
+              ],
+            },
+            {
+              name: 'secondaryCta',
+              title: 'Secondary CTA',
+              type: 'object',
+              fields: [
+                { name: 'label', title: 'Label', type: 'string' },
+              ],
+            },
+            {
+              name: 'bookingForm',
+              title: 'Booking Form',
+              type: 'object',
+              fields: [
+                { name: 'title', title: 'Form Title', type: 'string' },
+                { name: 'ctaLabel', title: 'Button Label', type: 'string' },
+                {
+                  name: 'typePicker',
+                  title: 'Type Picker',
+                  type: 'object',
+                  fields: [
+                    { name: 'label', title: 'Label', type: 'string' },
+                    { name: 'trasladoLabel', title: 'Transfer Label', type: 'string' },
+                    { name: 'tourLabel', title: 'Tour Label', type: 'string' },
+                  ],
+                },
+                { name: 'originField', title: 'Origin Field', type: 'object', fields: [
+                  { name: 'label', title: 'Label', type: 'string' },
+                ]},
+                { name: 'destinationField', title: 'Destination Field', type: 'object', fields: [
+                  { name: 'label', title: 'Label', type: 'string' },
+                ]},
+                { name: 'dateField', title: 'Date Field', type: 'object', fields: [
+                  { name: 'label', title: 'Label', type: 'string' },
+                ]},
+                { name: 'timeField', title: 'Time Field', type: 'object', fields: [
+                  { name: 'label', title: 'Label', type: 'string' },
+                ]},
+                { name: 'passengersField', title: 'Passengers Field', type: 'object', fields: [
+                  { name: 'label', title: 'Label', type: 'string' },
+                  { name: 'singular', title: 'Singular', type: 'string' },
+                  { name: 'plural', title: 'Plural', type: 'string' },
+                ]},
+                { name: 'vehicleField', title: 'Vehicle Field', type: 'object', fields: [
+                  { name: 'label', title: 'Label', type: 'string' },
+                  { name: 'labelCoche', title: 'Car Label', type: 'string' },
+                  { name: 'labelMinivan', title: 'Minivan Label', type: 'string' },
+                  { name: 'labelVan', title: 'Van Label', type: 'string' },
+                ]},
+                { name: 'flightNumberField', title: 'Flight Number Field', type: 'object', fields: [
+                  { name: 'label', title: 'Label', type: 'string' },
+                  { name: 'placeholder', title: 'Placeholder', type: 'string' },
+                ]},
+                { name: 'notes', title: 'Notes', type: 'object', fields: [
+                  { name: 'minivan6', title: 'Minivan 6 pax Note', type: 'string' },
+                  { name: 'minivan5', title: 'Minivan 5 pax Note', type: 'string' },
+                  { name: 'nightChargeNote', title: 'Night Charge Note', type: 'string' },
+                  { name: 'surchargeFootnote', title: 'Surcharge Footnote', type: 'string' },
+                ]},
+              ],
+            },
+          ],
+        },
+        // FRANCÉS
+        {
+          name: 'fr',
+          title: 'Français',
+          type: 'object',
+          options: { collapsible: true, collapsed: true },
+          fields: [
+            { name: 'title', title: 'Titre', type: 'string' },
+            { name: 'highlight', title: 'Texte en évidence', type: 'string' },
+            {
+              name: 'description',
+              title: 'Description',
+              type: 'array',
+              of: [{ type: 'block' }],
+            },
+            {
+              name: 'primaryCta',
+              title: 'CTA Principal',
+              type: 'object',
+              fields: [
+                { name: 'label', title: 'Libellé', type: 'string' },
+              ],
+            },
+            {
+              name: 'secondaryCta',
+              title: 'CTA Secondaire',
+              type: 'object',
+              fields: [
+                { name: 'label', title: 'Libellé', type: 'string' },
+              ],
+            },
+            {
+              name: 'bookingForm',
+              title: 'Formulaire de Réservation',
+              type: 'object',
+              fields: [
+                { name: 'title', title: 'Titre du Formulaire', type: 'string' },
+                { name: 'ctaLabel', title: 'Libellé du Bouton', type: 'string' },
+                {
+                  name: 'typePicker',
+                  title: 'Sélecteur de Type',
+                  type: 'object',
+                  fields: [
+                    { name: 'label', title: 'Libellé', type: 'string' },
+                    { name: 'trasladoLabel', title: 'Libellé Transfert', type: 'string' },
+                    { name: 'tourLabel', title: 'Libellé Tour', type: 'string' },
+                  ],
+                },
+                { name: 'originField', title: 'Champ Origine', type: 'object', fields: [
+                  { name: 'label', title: 'Libellé', type: 'string' },
+                ]},
+                { name: 'destinationField', title: 'Champ Destination', type: 'object', fields: [
+                  { name: 'label', title: 'Libellé', type: 'string' },
+                ]},
+                { name: 'dateField', title: 'Champ Date', type: 'object', fields: [
+                  { name: 'label', title: 'Libellé', type: 'string' },
+                ]},
+                { name: 'timeField', title: 'Champ Heure', type: 'object', fields: [
+                  { name: 'label', title: 'Libellé', type: 'string' },
+                ]},
+                { name: 'passengersField', title: 'Champ Passagers', type: 'object', fields: [
+                  { name: 'label', title: 'Libellé', type: 'string' },
+                  { name: 'singular', title: 'Singulier', type: 'string' },
+                  { name: 'plural', title: 'Pluriel', type: 'string' },
+                ]},
+                { name: 'vehicleField', title: 'Champ Véhicule', type: 'object', fields: [
+                  { name: 'label', title: 'Libellé', type: 'string' },
+                  { name: 'labelCoche', title: 'Libellé Voiture', type: 'string' },
+                  { name: 'labelMinivan', title: 'Libellé Minivan', type: 'string' },
+                  { name: 'labelVan', title: 'Libellé Van', type: 'string' },
+                ]},
+                { name: 'flightNumberField', title: 'Champ Numéro de Vol', type: 'object', fields: [
+                  { name: 'label', title: 'Libellé', type: 'string' },
+                  { name: 'placeholder', title: 'Placeholder', type: 'string' },
+                ]},
+                { name: 'notes', title: 'Notes', type: 'object', fields: [
+                  { name: 'minivan6', title: 'Note Minivan 6 pax', type: 'string' },
+                  { name: 'minivan5', title: 'Note Minivan 5 pax', type: 'string' },
+                  { name: 'nightChargeNote', title: 'Note Supplément de Nuit', type: 'string' },
+                  { name: 'surchargeFootnote', title: 'Note de Bas de Page Supplément', type: 'string' },
+                ]},
+              ],
+            },
+          ],
+        },
+      ],
+    }),
   ],
   preview: { select: { title: 'title', subtitle: 'highlight', media: 'backgroundImage' } },
 })

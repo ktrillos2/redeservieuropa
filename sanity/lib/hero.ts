@@ -15,6 +15,24 @@ export type HeroDoc = {
   primaryCta?: { label?: string; href?: string; internalHref?: string; external?: boolean }
   secondaryCta?: { label?: string; href?: string; internalHref?: string; external?: boolean }
   bookingForm?: any
+  translations?: {
+    en?: {
+      title?: string
+      highlight?: string
+      description?: any
+      primaryCta?: { label?: string }
+      secondaryCta?: { label?: string }
+      bookingForm?: any
+    }
+    fr?: {
+      title?: string
+      highlight?: string
+      description?: any
+      primaryCta?: { label?: string }
+      secondaryCta?: { label?: string }
+      bookingForm?: any
+    }
+  }
 }
 
 export async function ensureAndGetHero(): Promise<HeroDoc> {

@@ -1,0 +1,175 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "search": "Buscar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "currency": "€",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "home": {
+    "hero": {
+      "title": "Descubre Europa con Comodidad",
+      "subtitle": "Tours privados y transfers de alta calidad",
+      "cta": "Explorar servicios"
+    },
+    "services": {
+      "title": "Nuestros Servicios",
+      "subtitle": "Experiencias personalizadas para tu viaje",
+      "tours": {
+        "title": "Tours Privados",
+        "description": "Explora los mejores destinos con guías expertos"
+      },
+      "transfers": {
+        "title": "Transfers",
+        "description": "Traslados cómodos y seguros"
+      },
+      "events": {
+        "title": "Eventos Especiales",
+        "description": "Organización de eventos únicos"
+      }
+    },
+    "testimonials": {
+      "title": "Lo que dicen nuestros clientes",
+      "subtitle": "Experiencias reales de viajeros satisfechos"
+    },
+    "contact": {
+      "title": "Contáctanos",
+      "subtitle": "Estamos aquí para ayudarte",
+      "name": "Nombre",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "message": "Mensaje",
+      "send": "Enviar mensaje",
+      "success": "Mensaje enviado correctamente",
+      "error": "Error al enviar el mensaje"
+    },
+    "footer": {
+      "about": "Sobre nosotros",
+      "services": "Servicios",
+      "contact": "Contacto",
+      "legal": "Legal",
+      "privacy": "Política de privacidad",
+      "terms": "Términos y condiciones",
+      "cookies": "Política de cookies",
+      "copyright": "© 2025 Redeservi Europa. Todos los derechos reservados."
+    }
+  },
+  "checkout": {
+    "title": "Finalizar Reserva",
+    "summary": "Resumen de tu reserva",
+    "contact": {
+      "title": "Información de contacto",
+      "name": "Nombre completo",
+      "namePlaceholder": "Ej: Juan Pérez",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "tu@email.com",
+      "phone": "Teléfono",
+      "phonePlaceholder": "+34 600 000 000",
+      "referral": "¿Cómo nos conociste?",
+      "referralPlaceholder": "Selecciona una opción"
+    },
+    "service": {
+      "type": "Tipo",
+      "date": "Fecha",
+      "time": "Hora",
+      "passengers": "Pasajeros",
+      "children": "Niños",
+      "childrenAges": "Edades de los niños",
+      "pickup": "Recogida",
+      "dropoff": "Destino",
+      "flight": "Número de vuelo",
+      "luggage23kg": "Maletas 23kg",
+      "luggage10kg": "Maletas 10kg",
+      "notes": "Notas adicionales",
+      "total": "Total del servicio",
+      "deposit": "Pagar ahora",
+      "remaining": "Saldo pendiente",
+      "edit": "Editar servicio",
+      "remove": "Eliminar servicio"
+    },
+    "payment": {
+      "title": "Método de pago",
+      "method": "Selecciona método de pago",
+      "ideal": "iDEAL",
+      "card": "Tarjeta de crédito/débito",
+      "bancontact": "Bancontact",
+      "paypal": "PayPal",
+      "total": "Total a pagar",
+      "depositInfo": "Pagas el {{percent}}% ahora, el resto se paga en destino",
+      "processing": "Procesando pago...",
+      "continue": "Continuar al pago"
+    },
+    "validation": {
+      "nameRequired": "El nombre es obligatorio",
+      "emailRequired": "El email es obligatorio",
+      "emailInvalid": "Email no válido",
+      "phoneRequired": "El teléfono es obligatorio",
+      "dateRequired": "La fecha es obligatoria",
+      "timeRequired": "La hora es obligatoria",
+      "passengersMin": "Mínimo 1 pasajero",
+      "paymentMethodRequired": "Selecciona un método de pago"
+    },
+    "cart": {
+      "empty": "Tu carrito está vacío",
+      "addService": "Añadir servicio",
+      "total": "Total",
+      "itemCount": "{{count}} servicio",
+      "itemCount_plural": "{{count}} servicios"
+    }
+  },
+  "thanks": {
+    "title": "¡Gracias por tu reserva!",
+    "titlePending": "Pago pendiente",
+    "description": "Hemos recibido tu pago correctamente. En breve recibirás un correo con los detalles de tu reserva.",
+    "descriptionPending": "Si cerraste el checkout o el pago aún está en proceso, te contactaremos para confirmar el estado.",
+    "payment": {
+      "title": "Pago",
+      "provider": "Proveedor",
+      "status": "Estado",
+      "amountPaid": "Importe pagado",
+      "amountTotal": "Importe total",
+      "currency": "Moneda",
+      "method": "Método solicitado",
+      "reference": "Referencia"
+    },
+    "contact": {
+      "title": "Contacto",
+      "name": "Nombre",
+      "phone": "Teléfono",
+      "email": "Email",
+      "referral": "¿Dónde nos conociste?"
+    },
+    "services": {
+      "title": "Servicios contratados",
+      "type": "Tipo",
+      "date": "Fecha",
+      "time": "Hora",
+      "passengers": "Pasajeros",
+      "children": "Niños",
+      "childrenAges": "Edades de los niños",
+      "pickup": "Recogida",
+      "dropoff": "Destino",
+      "flight": "Vuelo",
+      "luggage23kg": "Maletas 23kg",
+      "luggage10kg": "Maletas 10kg",
+      "notes": "Notas",
+      "total": "Total del servicio",
+      "paid": "Pagado ahora ({{percent}}%)",
+      "remaining": "Saldo pendiente"
+    },
+    "noPaymentId": "No se encontró lastPaymentId en el navegador.",
+    "noPaymentIdDescription": "Si volviste directamente a esta página sin pasar por el checkout, no podremos recuperar el pedido.",
+    "backToHome": "Volver al inicio"
+  }
+}

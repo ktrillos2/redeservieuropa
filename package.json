@@ -20,6 +20,7 @@
     "seed:sanity:contact-section": "tsx scripts/seed-contact-section.ts",
     "seed:sanity:footer-section": "tsx scripts/seed-footer-section.ts",
     "seed:sanity:orders": "tsx scripts/seed-orders.ts",
+    "seed:translations": "tsx scripts/seed-translations.ts",
     "hash:pwd": "tsx scripts/gen-bcrypt-hash.ts",
     "import:transfers": "tsx scripts/import-transfers.ts",
     "import:tours": "tsx scripts/import-tours.ts"

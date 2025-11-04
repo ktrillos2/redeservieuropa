@@ -1,0 +1,175 @@
+{
+  "common": {
+    "loading": "Laden...",
+    "error": "Fehler",
+    "close": "Schließen",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "save": "Speichern",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "search": "Suchen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Zurück",
+    "submit": "Senden",
+    "currency": "€",
+    "yes": "Ja",
+    "no": "Nein"
+  },
+  "home": {
+    "hero": {
+      "title": "Entdecken Sie Europa in Komfort",
+      "subtitle": "Private Touren und hochwertige Transfers",
+      "cta": "Dienstleistungen entdecken"
+    },
+    "services": {
+      "title": "Unsere Dienstleistungen",
+      "subtitle": "Personalisierte Erlebnisse für Ihre Reise",
+      "tours": {
+        "title": "Private Touren",
+        "description": "Erkunden Sie die besten Reiseziele mit fachkundigen Führern"
+      },
+      "transfers": {
+        "title": "Transfers",
+        "description": "Bequeme und sichere Transfers"
+      },
+      "events": {
+        "title": "Besondere Veranstaltungen",
+        "description": "Organisation einzigartiger Veranstaltungen"
+      }
+    },
+    "testimonials": {
+      "title": "Was unsere Kunden sagen",
+      "subtitle": "Echte Erfahrungen zufriedener Reisender"
+    },
+    "contact": {
+      "title": "Kontaktieren Sie uns",
+      "subtitle": "Wir sind hier, um Ihnen zu helfen",
+      "name": "Name",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "message": "Nachricht",
+      "send": "Nachricht senden",
+      "success": "Nachricht erfolgreich gesendet",
+      "error": "Fehler beim Senden der Nachricht"
+    },
+    "footer": {
+      "about": "Über uns",
+      "services": "Dienstleistungen",
+      "contact": "Kontakt",
+      "legal": "Rechtliches",
+      "privacy": "Datenschutzrichtlinie",
+      "terms": "Allgemeine Geschäftsbedingungen",
+      "cookies": "Cookie-Richtlinie",
+      "copyright": "© 2025 Redeservi Europa. Alle Rechte vorbehalten."
+    }
+  },
+  "checkout": {
+    "title": "Buchung abschließen",
+    "summary": "Ihre Buchungsübersicht",
+    "contact": {
+      "title": "Kontaktinformationen",
+      "name": "Vollständiger Name",
+      "namePlaceholder": "Z.B: Max Mustermann",
+      "email": "E-Mail",
+      "emailPlaceholder": "ihre@email.com",
+      "phone": "Telefon",
+      "phonePlaceholder": "+34 600 000 000",
+      "referral": "Wie haben Sie von uns erfahren?",
+      "referralPlaceholder": "Wählen Sie eine Option"
+    },
+    "service": {
+      "type": "Typ",
+      "date": "Datum",
+      "time": "Uhrzeit",
+      "passengers": "Passagiere",
+      "children": "Kinder",
+      "childrenAges": "Alter der Kinder",
+      "pickup": "Abholung",
+      "dropoff": "Ziel",
+      "flight": "Flugnummer",
+      "luggage23kg": "Gepäck 23kg",
+      "luggage10kg": "Gepäck 10kg",
+      "notes": "Zusätzliche Notizen",
+      "total": "Service gesamt",
+      "deposit": "Jetzt bezahlen",
+      "remaining": "Verbleibender Betrag",
+      "edit": "Service bearbeiten",
+      "remove": "Service entfernen"
+    },
+    "payment": {
+      "title": "Zahlungsmethode",
+      "method": "Zahlungsmethode wählen",
+      "ideal": "iDEAL",
+      "card": "Kredit-/Debitkarte",
+      "bancontact": "Bancontact",
+      "paypal": "PayPal",
+      "total": "Zu zahlender Betrag",
+      "depositInfo": "Sie zahlen {{percent}}% jetzt, der Rest wird am Zielort bezahlt",
+      "processing": "Zahlung wird bearbeitet...",
+      "continue": "Zur Zahlung fortfahren"
+    },
+    "validation": {
+      "nameRequired": "Name ist erforderlich",
+      "emailRequired": "E-Mail ist erforderlich",
+      "emailInvalid": "Ungültige E-Mail",
+      "phoneRequired": "Telefon ist erforderlich",
+      "dateRequired": "Datum ist erforderlich",
+      "timeRequired": "Uhrzeit ist erforderlich",
+      "passengersMin": "Mindestens 1 Passagier",
+      "paymentMethodRequired": "Wählen Sie eine Zahlungsmethode"
+    },
+    "cart": {
+      "empty": "Ihr Warenkorb ist leer",
+      "addService": "Service hinzufügen",
+      "total": "Gesamt",
+      "itemCount": "{{count}} Service",
+      "itemCount_plural": "{{count}} Services"
+    }
+  },
+  "thanks": {
+    "title": "Vielen Dank für Ihre Buchung!",
+    "titlePending": "Zahlung ausstehend",
+    "description": "Wir haben Ihre Zahlung erfolgreich erhalten. Sie erhalten in Kürze eine E-Mail mit Ihren Buchungsdetails.",
+    "descriptionPending": "Wenn Sie den Checkout geschlossen haben oder die Zahlung noch in Bearbeitung ist, werden wir Sie kontaktieren, um den Status zu bestätigen.",
+    "payment": {
+      "title": "Zahlung",
+      "provider": "Anbieter",
+      "status": "Status",
+      "amountPaid": "Gezahlter Betrag",
+      "amountTotal": "Gesamtbetrag",
+      "currency": "Währung",
+      "method": "Angeforderte Methode",
+      "reference": "Referenz"
+    },
+    "contact": {
+      "title": "Kontakt",
+      "name": "Name",
+      "phone": "Telefon",
+      "email": "E-Mail",
+      "referral": "Wie haben Sie uns gefunden?"
+    },
+    "services": {
+      "title": "Gebuchte Services",
+      "type": "Typ",
+      "date": "Datum",
+      "time": "Uhrzeit",
+      "passengers": "Passagiere",
+      "children": "Kinder",
+      "childrenAges": "Alter der Kinder",
+      "pickup": "Abholung",
+      "dropoff": "Ziel",
+      "flight": "Flug",
+      "luggage23kg": "Gepäck 23kg",
+      "luggage10kg": "Gepäck 10kg",
+      "notes": "Notizen",
+      "total": "Service gesamt",
+      "paid": "Jetzt bezahlt ({{percent}}%)",
+      "remaining": "Verbleibender Betrag"
+    },
+    "noPaymentId": "Keine lastPaymentId im Browser gefunden.",
+    "noPaymentIdDescription": "Wenn Sie direkt zu dieser Seite zurückgekehrt sind, ohne den Checkout zu durchlaufen, können wir die Bestellung nicht abrufen.",
+    "backToHome": "Zurück zur Startseite"
+  }
+}

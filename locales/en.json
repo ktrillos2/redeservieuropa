@@ -1,0 +1,175 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "currency": "€",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "home": {
+    "hero": {
+      "title": "Discover Europe in Comfort",
+      "subtitle": "Private tours and high-quality transfers",
+      "cta": "Explore services"
+    },
+    "services": {
+      "title": "Our Services",
+      "subtitle": "Personalized experiences for your journey",
+      "tours": {
+        "title": "Private Tours",
+        "description": "Explore the best destinations with expert guides"
+      },
+      "transfers": {
+        "title": "Transfers",
+        "description": "Comfortable and safe transportation"
+      },
+      "events": {
+        "title": "Special Events",
+        "description": "Unique event organization"
+      }
+    },
+    "testimonials": {
+      "title": "What our clients say",
+      "subtitle": "Real experiences from satisfied travelers"
+    },
+    "contact": {
+      "title": "Contact Us",
+      "subtitle": "We're here to help you",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "message": "Message",
+      "send": "Send message",
+      "success": "Message sent successfully",
+      "error": "Error sending message"
+    },
+    "footer": {
+      "about": "About us",
+      "services": "Services",
+      "contact": "Contact",
+      "legal": "Legal",
+      "privacy": "Privacy policy",
+      "terms": "Terms and conditions",
+      "cookies": "Cookie policy",
+      "copyright": "© 2025 Redeservi Europa. All rights reserved."
+    }
+  },
+  "checkout": {
+    "title": "Complete Booking",
+    "summary": "Your booking summary",
+    "contact": {
+      "title": "Contact information",
+      "name": "Full name",
+      "namePlaceholder": "E.g: John Doe",
+      "email": "Email",
+      "emailPlaceholder": "your@email.com",
+      "phone": "Phone",
+      "phonePlaceholder": "+34 600 000 000",
+      "referral": "How did you hear about us?",
+      "referralPlaceholder": "Select an option"
+    },
+    "service": {
+      "type": "Type",
+      "date": "Date",
+      "time": "Time",
+      "passengers": "Passengers",
+      "children": "Children",
+      "childrenAges": "Children's ages",
+      "pickup": "Pickup",
+      "dropoff": "Drop-off",
+      "flight": "Flight number",
+      "luggage23kg": "Luggage 23kg",
+      "luggage10kg": "Luggage 10kg",
+      "notes": "Additional notes",
+      "total": "Service total",
+      "deposit": "Pay now",
+      "remaining": "Remaining balance",
+      "edit": "Edit service",
+      "remove": "Remove service"
+    },
+    "payment": {
+      "title": "Payment method",
+      "method": "Select payment method",
+      "ideal": "iDEAL",
+      "card": "Credit/debit card",
+      "bancontact": "Bancontact",
+      "paypal": "PayPal",
+      "total": "Total to pay",
+      "depositInfo": "You pay {{percent}}% now, the rest is paid at destination",
+      "processing": "Processing payment...",
+      "continue": "Continue to payment"
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email",
+      "phoneRequired": "Phone is required",
+      "dateRequired": "Date is required",
+      "timeRequired": "Time is required",
+      "passengersMin": "Minimum 1 passenger",
+      "paymentMethodRequired": "Select a payment method"
+    },
+    "cart": {
+      "empty": "Your cart is empty",
+      "addService": "Add service",
+      "total": "Total",
+      "itemCount": "{{count}} service",
+      "itemCount_plural": "{{count}} services"
+    }
+  },
+  "thanks": {
+    "title": "Thank you for your booking!",
+    "titlePending": "Payment pending",
+    "description": "We have received your payment successfully. You will receive an email shortly with your booking details.",
+    "descriptionPending": "If you closed the checkout or the payment is still processing, we will contact you to confirm the status.",
+    "payment": {
+      "title": "Payment",
+      "provider": "Provider",
+      "status": "Status",
+      "amountPaid": "Amount paid",
+      "amountTotal": "Total amount",
+      "currency": "Currency",
+      "method": "Requested method",
+      "reference": "Reference"
+    },
+    "contact": {
+      "title": "Contact",
+      "name": "Name",
+      "phone": "Phone",
+      "email": "Email",
+      "referral": "How did you find us?"
+    },
+    "services": {
+      "title": "Booked services",
+      "type": "Type",
+      "date": "Date",
+      "time": "Time",
+      "passengers": "Passengers",
+      "children": "Children",
+      "childrenAges": "Children's ages",
+      "pickup": "Pickup",
+      "dropoff": "Drop-off",
+      "flight": "Flight",
+      "luggage23kg": "Luggage 23kg",
+      "luggage10kg": "Luggage 10kg",
+      "notes": "Notes",
+      "total": "Service total",
+      "paid": "Paid now ({{percent}}%)",
+      "remaining": "Remaining balance"
+    },
+    "noPaymentId": "No lastPaymentId found in browser.",
+    "noPaymentIdDescription": "If you returned directly to this page without going through checkout, we won't be able to retrieve the order.",
+    "backToHome": "Back to home"
+  }
+}

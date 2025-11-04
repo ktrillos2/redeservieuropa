@@ -220,6 +220,89 @@ export default defineType({
       options: { hotspot: true },
     }),
 
+    // ✅ TRADUCCIONES
+    defineField({
+      name: 'translations',
+      title: 'Traducciones',
+      type: 'object',
+      description: 'Traducciones del tour a otros idiomas',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        // INGLÉS
+        defineField({
+          name: 'en',
+          title: 'English',
+          type: 'object',
+          options: { collapsible: true, collapsed: true },
+          fields: [
+            defineField({ name: 'title', title: 'Title', type: 'string' }),
+            defineField({ name: 'summary', title: 'Summary', type: 'text', rows: 3 }),
+            defineField({
+              name: 'description',
+              title: 'Description',
+              type: 'array',
+              of: [{ type: 'block' }],
+            }),
+            defineField({
+              name: 'features',
+              title: 'Features',
+              type: 'array',
+              of: [{ type: 'string' }],
+            }),
+            defineField({
+              name: 'includes',
+              title: 'Includes',
+              type: 'array',
+              of: [{ type: 'string' }],
+            }),
+            defineField({
+              name: 'visitedPlaces',
+              title: 'Visited Places',
+              type: 'array',
+              of: [{ type: 'string' }],
+            }),
+            defineField({ name: 'notes', title: 'Notes', type: 'text', rows: 2 }),
+          ],
+        }),
+        // FRANCÉS
+        defineField({
+          name: 'fr',
+          title: 'Français',
+          type: 'object',
+          options: { collapsible: true, collapsed: true },
+          fields: [
+            defineField({ name: 'title', title: 'Titre', type: 'string' }),
+            defineField({ name: 'summary', title: 'Résumé', type: 'text', rows: 3 }),
+            defineField({
+              name: 'description',
+              title: 'Description',
+              type: 'array',
+              of: [{ type: 'block' }],
+            }),
+            defineField({
+              name: 'features',
+              title: 'Caractéristiques',
+              type: 'array',
+              of: [{ type: 'string' }],
+            }),
+            defineField({
+              name: 'includes',
+              title: 'Inclus',
+              type: 'array',
+              of: [{ type: 'string' }],
+            }),
+            defineField({
+              name: 'visitedPlaces',
+              title: 'Lieux visités',
+              type: 'array',
+              of: [{ type: 'string' }],
+            }),
+            defineField({ name: 'notes', title: 'Notes', type: 'text', rows: 2 }),
+          ],
+        }),
+      ],
+    }),
+
     defineField({ name: 'orderRank', title: 'Orden de aparición', type: 'string' }),
 
     // ✅ NUEVA SECCIÓN: Requerimientos de reserva

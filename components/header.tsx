@@ -14,6 +14,8 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu"
 import { ChevronDown, ChevronUp, ShoppingCart } from "lucide-react"
+import { LanguageSwitcher } from "@/components/language-switcher"
+import { useTranslation } from "@/contexts/i18n-context"
 
 const MenuIcon = () => (
   <svg
@@ -61,6 +63,7 @@ export function Header({
   tours?: Array<{ _id: string; title: string; slug: string }>
   transfers?: Array<{ _id: string; from: string; to: string; slug?: string | { current: string } }>
 }) {
+  const { t } = useTranslation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -188,7 +191,7 @@ export function Header({
                 onPointerLeave={scheduleClose}
                 className={`px-4 py-2 rounded-lg transition-colors hover:bg-accent/15 cursor-pointer font-bold ${useDarkText ? "text-black" : "!text-white"}`}
               >
-                Servicios
+                {t('header.services')}
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
@@ -212,7 +215,7 @@ export function Header({
                         }}
                         className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
                       >
-                        <span>Traslados</span>
+                        <span>{t('header.transfers')}</span>
                         {transfersOpen ? (
                           <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
                         ) : (
@@ -253,7 +256,7 @@ export function Header({
                         }}
                         className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
                       >
-                        <span>Tours</span>
+                        <span>{t('header.tours')}</span>
                         {toursOpen ? (
                           <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
                         ) : (
@@ -289,11 +292,15 @@ export function Header({
             </DropdownMenu>
             {/* Enlace principal 'Traslados' removido: permanece dentro del submenú Servicios */}
             <Link href="#testimonios" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
-              Testimonios
+              {t('header.testimonials')}
             </Link>
             <Link href="#contacto" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
-              Contacto
+              {t('header.contact')}
             </Link>
+            {/* Selector de idioma (desktop) */}
+            <div className={useDarkText ? "text-black" : "text-white"}>
+              <LanguageSwitcher />
+            </div>
             {/* Icono de carrito persistente (desktop) */}
             <Link
               href="/pago"
@@ -322,7 +329,7 @@ export function Header({
                 onClick={() => setIsServicesOpenMobile((v) => !v)}
                 className="text-left text-black transition-colors drop-shadow-lg hover:bg-accent/10 rounded-md px-3 py-2.5 text-base font-semibold"
               >
-                Servicios {isServicesOpenMobile ? "▲" : "▼"}
+                {t('header.services')} {isServicesOpenMobile ? "▲" : "▼"}
               </button>
               {isServicesOpenMobile && (
                 <div className="pl-4 space-y-4 text-sm font-display">
@@ -330,7 +337,7 @@ export function Header({
                   {transfers.length > 0 && (
                     <div>
                       <div className="font-bold mb-2 text-base text-black">
-                        Traslados
+                        {t('header.transfers')}
                       </div>
                       <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
                         {transfers.map((transfer) => {
@@ -355,7 +362,7 @@ export function Header({
                   {tours.length > 0 && (
                     <div>
                       <div className="font-bold mb-2 text-base text-black">
-                        Tours
+                        {t('header.tours')}
                       </div>
                       <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
                         {tours.map((tour) => (
@@ -387,14 +394,18 @@ export function Header({
                 href="#testimonios"
                 className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
               >
-                Testimonios
+                {t('header.testimonials')}
               </Link>
               <Link
                 href="#contacto"
                 className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
               >
-                Contacto
+                {t('header.contact')}
               </Link>
+              {/* Selector de idioma (móvil) */}
+              <div className="px-3 py-2">
+                <LanguageSwitcher />
+              </div>
               {/* Icono de carrito de compras (móvil) */}
               <Link
                 href="/pago"
@@ -403,7 +414,7 @@ export function Header({
                 prefetch={false}
               >
                 <ShoppingCart className="size-5" />
-                <span>Mi Cotización</span>
+                <span>{t('header.cart')}</span>
               </Link>
             </nav>
           </div>

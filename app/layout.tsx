@@ -5,6 +5,7 @@ import { Suspense } from "react"
 import { ScrollToTopButton } from "@/components/scroll-to-top-button"
 import { SanityLive } from '@/sanity/lib/live'
 import { AnimationGuardian } from "@/components/animation-guardian"
+import { I18nProvider } from "@/contexts/i18n-context"
 import "./globals.css"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
@@ -46,12 +47,13 @@ export default function RootLayout({
   <html lang="es" className={`${jost.variable} ${playfair.variable} antialiased`}>
       <head />
       <body className="font-sans">
-      
+      <I18nProvider>
         <Suspense fallback={null}>{children}<SpeedInsights /></Suspense>
   <ScrollToTopButton />
   <SanityLive />
         <AnimationGuardian />
         {/* pre-anim removido para evitar ocultar contenido antes de las animaciones */}
+      </I18nProvider>
       </body>
     </html>
   )

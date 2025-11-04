@@ -14,6 +14,15 @@ export default async function HeroServer() {
     getTransfersList(),  // ⬅️ Nuevo: lista de traslados desde Sanity
   ])
 
+  // Debug: Verificar si hero tiene translations
+  console.log('[HeroServer] Hero data:', {
+    hasHero: !!hero,
+    hasTranslations: !!hero?.translations,
+    translationKeys: hero?.translations ? Object.keys(hero.translations) : 'none',
+    enTitle: hero?.translations?.en?.title,
+    frTitle: hero?.translations?.fr?.title,
+  })
+
   // === Imagen de fondo ===
   const bgUrl = hero?.backgroundImage
     ? urlFor(hero.backgroundImage).width(2000).url()
@@ -54,6 +63,7 @@ export default async function HeroServer() {
       primaryCtaLabel={hero?.primaryCta?.label}
       secondaryCtaLabel={hero?.secondaryCta?.label}
       bookingForm={hero?.bookingForm as any}
+      heroTranslations={hero?.translations}
       events={mappedEvents}
       toursList={mappedTours}
       transfersList={transfers}   // ⬅️ Nuevo: pasamos los traslados al Hero

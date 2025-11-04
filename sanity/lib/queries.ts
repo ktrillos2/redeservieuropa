@@ -20,7 +20,8 @@ export const HERO_QUERY = `
   backgroundImage,
   primaryCta,
   secondaryCta,
-  bookingForm
+  bookingForm,
+  translations
 }
 `
 
@@ -52,7 +53,8 @@ export const TOURS_LIST_QUERY = `
   pricingTable{ p4, p5, p6, p7, p8, extraFrom9 },
   booking{ startingPriceEUR },
   isPopular,
-  requirements{ requireTime, requireFlightNumber }
+  requirements{ requireTime, requireFlightNumber },
+  translations
 }
 `
 export const TOUR_BY_SLUG_QUERY = `
@@ -75,7 +77,8 @@ export const TOUR_BY_SLUG_QUERY = `
   booking{ startingPriceEUR },
   isPopular,
   orderRank,
-  requirements{ requireTime, requireFlightNumber }
+  requirements{ requireTime, requireFlightNumber },
+  translations
 }
 `
 
@@ -101,7 +104,9 @@ export const TRANSFERS_LIST_QUERY = `
   priceP5,
   priceP6,
   priceP7,
-  priceP8
+  priceP8,
+  
+  translations
 }
 `;
 
@@ -127,7 +132,9 @@ export const TRANSFER_BY_SLUG_QUERY = `
   priceP5,
   priceP6,
   priceP7,
-  priceP8
+  priceP8,
+  
+  translations
 }
 `;
 

@@ -1,6 +1,8 @@
 import { sanityFetch } from './live'
 import { GENERAL_INFO_QUERY, TOURS_LIST_QUERY, TRANSFERS_LIST_QUERY } from './queries'
 import { serverClient } from './server-client'
+import { getTranslatedTours, getTranslatedTransfers } from '@/lib/translations-content'
+import { Locale } from '@/lib/i18n-sanity'
 import path from 'node:path'
 import fs from 'node:fs'
 
@@ -148,10 +150,11 @@ export type TransferMenuItem = {
   slug?: { current: string } | string
 }
 
-export async function getToursForMenu(): Promise<TourMenuItem[]> {
+export async function getToursForMenu(locale: Locale = 'es'): Promise<TourMenuItem[]> {
   try {
     const tours = await serverClient.fetch(TOURS_LIST_QUERY)
-    return (tours || []).map((t: any) => ({
+    const translatedTours = getTranslatedTours(tours || [], locale)
+    return translatedTours.map((t: any) => ({
       _id: t._id,
       title: t.title || 'Tour sin título',
       slug: typeof t.slug === 'string' ? t.slug : t.slug?.current || t._id
@@ -162,10 +165,11 @@ export async function getToursForMenu(): Promise<TourMenuItem[]> {
   }
 }
 
-export async function getTransfersForMenu(): Promise<TransferMenuItem[]> {
+export async function getTransfersForMenu(locale: Locale = 'es'): Promise<TransferMenuItem[]> {
   try {
     const transfers = await serverClient.fetch(TRANSFERS_LIST_QUERY)
-    return (transfers || []).map((t: any) => ({
+    const translatedTransfers = getTranslatedTransfers(transfers || [], locale)
+    return translatedTransfers.map((t: any) => ({
       _id: t._id,
       from: t.from || 'Origen',
       to: t.to || 'Destino',

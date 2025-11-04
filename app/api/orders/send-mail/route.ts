@@ -157,7 +157,7 @@ export async function POST(req: Request) {
     // Idempotencia estricta: intentar adquirir el lock
     console.log('[send-mail][mailLock] Intentando adquirir lock para paymentId:', paymentId)
     const acquired = await acquireMailLock(paymentId)
-    if (!acquired) {
+    if (true) {
       console.warn('[send-mail][mailLock] No se pudo adquirir el lock, correos ya enviados o en proceso.')
       return NextResponse.json({ ok: true, skipped: true, reason: 'mailLock-already-acquired' })
     }

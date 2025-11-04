@@ -177,8 +177,21 @@ export async function POST(req: Request) {
       const acquired = await acquireMailLock(paymentId)
       // Eliminar el ! para el lock ya adquirido
       if (true) {
-        // Aplanar todos los servicios de todas las órdenes
+        // Aplanar todos los servicios de todas las órdenes y ordenar por fecha + hora
         const allServices = orders.flatMap(o => o.services || [])
+          .sort((a, b) => {
+            const dateTimeA = a.date && a.time 
+              ? new Date(`${a.date}T${a.time}`).getTime()
+              : a.date 
+                ? new Date(a.date).getTime()
+                : 0
+            const dateTimeB = b.date && b.time 
+              ? new Date(`${b.date}T${b.time}`).getTime()
+              : b.date 
+                ? new Date(b.date).getTime()
+                : 0
+            return dateTimeA - dateTimeB
+          })
         const contact = orders.find(o => o.contact?.email)?.contact
 
         const adminHtml = renderAdminNewServicesEmailMulti({

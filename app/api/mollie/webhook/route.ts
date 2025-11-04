@@ -147,7 +147,25 @@ export async function POST(req: Request) {
     if (!lock) return NextResponse.json({ ok: true, skipped: true })
 
     const contact = orders.find(o => o.contact?.email)?.contact
+    // Ordenar servicios por fecha y hora (del más cercano al más lejano)
     const services = orders.flatMap(o => o.services || [])
+      .sort((a, b) => {
+        // Combinar fecha y hora para crear timestamp completo
+        const dateTimeA = a.date && a.time 
+          ? new Date(`${a.date}T${a.time}`).getTime()
+          : a.date 
+          ? new Date(a.date).getTime()
+          : 0
+        
+        const dateTimeB = b.date && b.time 
+          ? new Date(`${b.date}T${b.time}`).getTime()
+          : b.date 
+          ? new Date(b.date).getTime()
+          : 0
+        
+        return dateTimeA - dateTimeB // Orden ascendente (más cercano primero)
+      })
+      
       console.log({
           mollieId: paymentId,
           amount: paidAmount,

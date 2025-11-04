@@ -362,7 +362,19 @@ export default function GraciasPage() {
                   <div className="space-y-4">
                     <h2 className="text-2xl font-semibold text-primary">Servicios contratados</h2>
                     {effectiveOrders.map((ord) => {
-                      const services = ord.services || []
+                      const services = (ord.services || []).sort((a, b) => {
+                        const dateTimeA = a.date && a.time 
+                          ? new Date(`${a.date}T${a.time}`).getTime()
+                          : a.date 
+                            ? new Date(a.date).getTime()
+                            : 0
+                        const dateTimeB = b.date && b.time 
+                          ? new Date(`${b.date}T${b.time}`).getTime()
+                          : b.date 
+                            ? new Date(b.date).getTime()
+                            : 0
+                        return dateTimeA - dateTimeB
+                      })
                       if (services.length === 0) return null
 
                       return services.map((service, idx) => {

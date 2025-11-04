@@ -36,7 +36,8 @@ export const EVENTS_FOR_HERO_QUERY = `
   meetingPoint,
   shortInfo,
   description,
-  gallery
+  gallery,
+  translations
 }
 `
 

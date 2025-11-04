@@ -15,6 +15,20 @@ export type EventItem = {
   shortInfo?: string
   description?: string
   gallery?: any[]
+  translations?: {
+    en?: {
+      title?: string
+      shortInfo?: string
+      description?: string
+      meetingPoint?: string
+    }
+    fr?: {
+      title?: string
+      shortInfo?: string
+      description?: string
+      meetingPoint?: string
+    }
+  }
 }
 
 export async function getActiveEventsForHero(): Promise<EventItem[]> {

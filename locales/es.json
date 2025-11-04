@@ -65,6 +65,36 @@
       "copyright": "© 2025 Redeservi Europa. Todos los derechos reservados."
     }
   },
+  "booking": {
+    "transferLabel": "Traslado",
+    "tourLabel": "Tour",
+    "quotationTransfer": "Cotización Traslado",
+    "quotationTour": "Cotización Tour",
+    "quotation": "Cotización Rápida",
+    "back": "Volver",
+    "origin": "Origen",
+    "originPlaceholder": "Seleccionar origen",
+    "destination": "Destino",
+    "destinationPlaceholder": "Seleccionar destino",
+    "selectOriginFirst": "Seleccione primero el origen",
+    "noDestinations": "No hay destinos disponibles",
+    "date": "Fecha",
+    "time": "Hora",
+    "passengers": "Pasajeros",
+    "children": "Niños",
+    "vehiclePlaceholder": "Seleccionar tipo de vehículo",
+    "car": "Coche",
+    "minivan": "Minivan",
+    "van": "Van",
+    "tourTypePlaceholder": "Seleccionar tipo de tour",
+    "dayTour": "Tour Diurno",
+    "nightTour": "Tour Nocturno",
+    "stopoverTour": "Tour de Escala",
+    "selectTour": "Seleccionar un tour"
+  },
+  "events": {
+    "label": "Eventos"
+  },
   "checkout": {
     "title": "Finalizar Reserva",
     "summary": "Resumen de tu reserva",

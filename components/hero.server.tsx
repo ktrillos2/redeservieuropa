@@ -21,6 +21,7 @@ export default async function HeroServer() {
     translationKeys: hero?.translations ? Object.keys(hero.translations) : 'none',
     enTitle: hero?.translations?.en?.title,
     frTitle: hero?.translations?.fr?.title,
+    fullHero: hero,
   })
 
   // === Imagen de fondo ===
@@ -39,6 +40,7 @@ export default async function HeroServer() {
     meetingPoint: e.meetingPoint,
     shortInfo: e.shortInfo,
     description: e.description,
+    translations: e.translations, // ⬅️ Pasar las traducciones desde Sanity
     images: Array.isArray(e.gallery)
       ? e.gallery
           .map((img) => (img ? urlFor(img).width(1600).url() : undefined))

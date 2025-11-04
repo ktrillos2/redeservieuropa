@@ -30,6 +30,35 @@ export default defineType({
     }),
     defineField({ name: 'isActive', title: 'Activo', type: 'boolean', initialValue: true }),
     defineField({ name: 'order', title: 'Orden', type: 'number' }),
+    defineField({
+      name: 'translations',
+      title: 'Traducciones',
+      type: 'object',
+      fields: [
+        defineField({
+          name: 'en',
+          title: 'English',
+          type: 'object',
+          fields: [
+            defineField({ name: 'title', title: 'Title', type: 'string' }),
+            defineField({ name: 'shortInfo', title: 'Short Info', type: 'text', rows: 3 }),
+            defineField({ name: 'description', title: 'Description', type: 'text', rows: 6 }),
+            defineField({ name: 'meetingPoint', title: 'Meeting Point', type: 'string' }),
+          ],
+        }),
+        defineField({
+          name: 'fr',
+          title: 'Français',
+          type: 'object',
+          fields: [
+            defineField({ name: 'title', title: 'Titre', type: 'string' }),
+            defineField({ name: 'shortInfo', title: 'Info Courte', type: 'text', rows: 3 }),
+            defineField({ name: 'description', title: 'Description', type: 'text', rows: 6 }),
+            defineField({ name: 'meetingPoint', title: 'Point de Rencontre', type: 'string' }),
+          ],
+        }),
+      ],
+    }),
   ],
   preview: {
     select: { title: 'title', media: 'image', subtitle: 'date' },

@@ -1,0 +1,37 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from 'next-sanity'
+import { apiVersion, dataset, projectId } from '@/sanity/env'
+
+const client = createClient({
+  projectId,
+  dataset,
+  apiVersion,
+  useCdn: false,
+  token: process.env.SANITY_API_TOKEN,
+})
+
+const HERO_TRANSLATIONS_QUERY = `*[_type == "hero" && _id == "hero"][0]{
+  translations
+}`
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const locale = searchParams.get('locale')
+
+    if (!locale || !['en', 'fr'].includes(locale)) {
+      return NextResponse.json({ error: 'Invalid locale' }, { status: 400 })
+    }
+
+    const hero = await client.fetch(HERO_TRANSLATIONS_QUERY)
+
+    if (!hero || !hero.translations) {
+      return NextResponse.json({ translations: null }, { status: 200 })
+    }
+
+    return NextResponse.json({ translations: hero.translations }, { status: 200 })
+  } catch (error) {
+    console.error('Error fetching hero translations:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

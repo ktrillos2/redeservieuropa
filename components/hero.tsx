@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, MapPin, Users, Clock, Car, Map, Plane } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedSection } from "@/components/animated-section";
 import { PortableText } from "@portabletext/react";
@@ -123,80 +123,174 @@ export function Hero({
   transfersList: TransferDoc[];
 }) {
   const router = useRouter();
-  const { t, locale } = useTranslation();
+  const { locale } = useTranslation();
 
-  // Estado local para forzar re-render cuando cambie el locale en localStorage
-  const [currentLocale, setCurrentLocale] = useState<typeof locale>(locale);
+  // Estado para las traducciones del hero cargadas dinámicamente
+  const [clientHeroTranslations, setClientHeroTranslations] = useState(heroTranslations);
 
-  // Sincronizar con el locale del contexto y localStorage
+  // Cargar traducciones del hero cuando cambie el locale
   useEffect(() => {
-    // Actualizar locale local cuando cambie el contexto
-    setCurrentLocale(locale);
-  }, [locale]);
-
-  // Listener adicional para cambios en localStorage (por si acaso)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const savedLocale = localStorage.getItem('locale') as typeof locale;
-      if (savedLocale && savedLocale !== currentLocale) {
-        console.log('[Hero] Locale cambió en localStorage:', savedLocale);
-        setCurrentLocale(savedLocale);
+    async function loadHeroTranslations() {
+      if (locale === 'es') {
+        // Para español, usar las props originales del servidor
+        setClientHeroTranslations(heroTranslations);
+        return;
       }
-    };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [currentLocale]);
+      try {
+        // Fetch las traducciones del hero desde Sanity
+        const response = await fetch(`/api/hero-translations?locale=${locale}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Hero] Traducciones cargadas para', locale, data);
+          if (data.translations) {
+            setClientHeroTranslations(data.translations);
+          }
+        }
+      } catch (error) {
+        console.error('[Hero] Error cargando traducciones:', error);
+      }
+    }
+
+    loadHeroTranslations();
+  }, [locale, heroTranslations]);
 
   // Debug: Verificar locale y traducciones
   useEffect(() => {
-    console.log('[Hero Debug] Locale actual:', currentLocale);
-    console.log('[Hero Debug] Locale del contexto:', locale);
-    console.log('[Hero Debug] heroTranslations disponibles:', heroTranslations ? Object.keys(heroTranslations) : 'undefined');
-    if (currentLocale !== 'es' && heroTranslations) {
-      console.log('[Hero Debug] Traducción para locale actual:', currentLocale === 'en' ? heroTranslations.en : heroTranslations.fr);
+    console.log('[Hero Debug] Locale actual:', locale);
+    console.log('[Hero Debug] clientHeroTranslations disponibles:', clientHeroTranslations ? Object.keys(clientHeroTranslations) : 'undefined');
+    if (locale !== 'es' && clientHeroTranslations) {
+      console.log('[Hero Debug] Traducción para locale actual:', locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr);
     }
-  }, [currentLocale, locale, heroTranslations]);
+  }, [locale, clientHeroTranslations]);
 
   // Aplicar traducciones del hero según el idioma seleccionado
   // Usar useMemo para que se recalculen cuando cambie el locale
   const translatedTitle = useMemo(() => {
-    if (currentLocale === 'es' || !heroTranslations) return title;
-    const translation = currentLocale === 'en' ? heroTranslations.en : heroTranslations.fr;
+    if (locale === 'es' || !clientHeroTranslations) return title;
+    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
     const result = translation?.title || title;
-    console.log('[Hero Debug] translatedTitle:', result, 'para locale:', currentLocale);
+    console.log('[Hero Debug] translatedTitle:', result, 'para locale:', locale);
     return result;
-  }, [currentLocale, heroTranslations, title]);
+  }, [locale, clientHeroTranslations, title]);
 
   const translatedHighlight = useMemo(() => {
-    if (currentLocale === 'es' || !heroTranslations) return highlight;
-    const translation = currentLocale === 'en' ? heroTranslations.en : heroTranslations.fr;
+    if (locale === 'es' || !clientHeroTranslations) return highlight;
+    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
     return translation?.highlight || highlight;
-  }, [currentLocale, heroTranslations, highlight]);
+  }, [locale, clientHeroTranslations, highlight]);
 
   const translatedDescription = useMemo(() => {
-    if (currentLocale === 'es' || !heroTranslations) return description;
-    const translation = currentLocale === 'en' ? heroTranslations.en : heroTranslations.fr;
+    if (locale === 'es' || !clientHeroTranslations) return description;
+    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
     return translation?.description || description;
-  }, [currentLocale, heroTranslations, description]);
+  }, [locale, clientHeroTranslations, description]);
 
   const translatedPrimaryCtaLabel = useMemo(() => {
-    if (currentLocale === 'es' || !heroTranslations) return primaryCtaLabel;
-    const translation = currentLocale === 'en' ? heroTranslations.en : heroTranslations.fr;
+    if (locale === 'es' || !clientHeroTranslations) return primaryCtaLabel;
+    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
     return translation?.primaryCta?.label || primaryCtaLabel;
-  }, [currentLocale, heroTranslations, primaryCtaLabel]);
+  }, [locale, clientHeroTranslations, primaryCtaLabel]);
 
   const translatedSecondaryCtaLabel = useMemo(() => {
-    if (currentLocale === 'es' || !heroTranslations) return secondaryCtaLabel;
-    const translation = currentLocale === 'en' ? heroTranslations.en : heroTranslations.fr;
+    if (locale === 'es' || !clientHeroTranslations) return secondaryCtaLabel;
+    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
     return translation?.secondaryCta?.label || secondaryCtaLabel;
-  }, [currentLocale, heroTranslations, secondaryCtaLabel]);
+  }, [locale, clientHeroTranslations, secondaryCtaLabel]);
 
   const translatedBookingForm = useMemo(() => {
-    if (currentLocale === 'es' || !heroTranslations) return bookingForm;
-    const translation = currentLocale === 'en' ? heroTranslations.en : heroTranslations.fr;
+    if (locale === 'es' || !clientHeroTranslations) return bookingForm;
+    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
     return translation?.bookingForm ? { ...bookingForm, ...translation.bookingForm } : bookingForm;
-  }, [currentLocale, heroTranslations, bookingForm]);
+  }, [locale, clientHeroTranslations, bookingForm]);
+
+  // Traducciones estáticas para el formulario de reserva
+  const bookingTexts = useMemo(() => {
+    const texts = {
+      es: {
+        transferLabel: 'Traslado',
+        tourLabel: 'Tour',
+        quotationTransfer: 'Cotización Traslado',
+        quotationTour: 'Cotización Tour',
+        quotation: 'Cotización Rápida',
+        back: 'Volver',
+        origin: 'Origen',
+        originPlaceholder: 'Seleccionar origen',
+        destination: 'Destino',
+        destinationPlaceholder: 'Seleccionar destino',
+        selectOriginFirst: 'Seleccione primero el origen',
+        noDestinations: 'No hay destinos disponibles',
+        date: 'Fecha',
+        time: 'Hora',
+        passengers: 'Pasajeros',
+        children: 'Niños',
+        vehiclePlaceholder: 'Seleccionar tipo de vehículo',
+        car: 'Coche',
+        minivan: 'Minivan',
+        van: 'Van',
+        tourTypePlaceholder: 'Seleccionar tipo de tour',
+        dayTour: 'Tour Diurno',
+        nightTour: 'Tour Nocturno',
+        stopoverTour: 'Tour de Escala',
+        selectTour: 'Seleccionar un tour',
+      },
+      en: {
+        transferLabel: 'Transfer',
+        tourLabel: 'Tour',
+        quotationTransfer: 'Transfer Quote',
+        quotationTour: 'Tour Quote',
+        quotation: 'Quick Quote',
+        back: 'Back',
+        origin: 'Origin',
+        originPlaceholder: 'Select origin',
+        destination: 'Destination',
+        destinationPlaceholder: 'Select destination',
+        selectOriginFirst: 'Select origin first',
+        noDestinations: 'No destinations available',
+        date: 'Date',
+        time: 'Time',
+        passengers: 'Passengers',
+        children: 'Children',
+        vehiclePlaceholder: 'Select vehicle type',
+        car: 'Car',
+        minivan: 'Minivan',
+        van: 'Van',
+        tourTypePlaceholder: 'Select tour type',
+        dayTour: 'Day Tour',
+        nightTour: 'Night Tour',
+        stopoverTour: 'Stopover Tour',
+        selectTour: 'Select a tour',
+      },
+      fr: {
+        transferLabel: 'Transfert',
+        tourLabel: 'Tour',
+        quotationTransfer: 'Devis Transfert',
+        quotationTour: 'Devis Tour',
+        quotation: 'Devis Rapide',
+        back: 'Retour',
+        origin: 'Origine',
+        originPlaceholder: 'Sélectionner l\'origine',
+        destination: 'Destination',
+        destinationPlaceholder: 'Sélectionner la destination',
+        selectOriginFirst: 'Sélectionnez d\'abord l\'origine',
+        noDestinations: 'Aucune destination disponible',
+        date: 'Date',
+        time: 'Heure',
+        passengers: 'Passagers',
+        children: 'Enfants',
+        vehiclePlaceholder: 'Sélectionner le type de véhicule',
+        car: 'Voiture',
+        minivan: 'Minivan',
+        van: 'Van',
+        tourTypePlaceholder: 'Sélectionner le type de tour',
+        dayTour: 'Tour de Jour',
+        nightTour: 'Tour de Nuit',
+        stopoverTour: 'Tour d\'Escale',
+        selectTour: 'Sélectionner un tour',
+      },
+    };
+    return texts[locale] || texts.es;
+  }, [locale]);
 
   // Hooks de estado
   const [bookingData, setBookingData] = useState({
@@ -649,8 +743,6 @@ if (bookingData.tipoReserva === "traslado") {
       (selectedTransfer as any)?.requireFlightInfo ?? !!flightReq.requireFlightInfo,
     requireFlightNumber:
       (selectedTransfer as any)?.requireFlightNumber ?? !!flightReq.requireFlightNumber,
-    requireFlightTimes:
-      (selectedTransfer as any)?.requireFlightTimes ?? !!flightReq.requireFlightTimes,
     slug: transferSlug ? { current: transferSlug } : undefined,
 
     // precios (si tu schema los trae)
@@ -697,7 +789,6 @@ if (bookingData.tipoReserva === "traslado") {
     // --- requisitos de vuelo (para que /pago sepa qué exigir) ---
     requireFlightInfo: !!flightReq.requireFlightInfo,
     requireFlightNumber: !!flightReq.requireFlightNumber,
-    requireFlightTimes: !!flightReq.requireFlightTimes,
 
     // --- datos de vuelo (Hero no los pide; /pago los mostrará/validará si hace falta) ---
     flight: {
@@ -936,12 +1027,12 @@ if (bookingData.tipoReserva === "traslado") {
                   {formStep === 1 && (
                     <div className="space-y-4">
                       <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">
-                        {bookingForm?.title || "Reserva tu Servicio"}
+                        {translatedBookingForm?.title || bookingForm?.title || "Reserva tu Servicio"}
                       </h3>
                       <div className="space-y-2">
                         <label className="text-sm text-center font-medium flex justify-center items-center gap-2">
                           <Map className="w-4 h-4 text-accent" />
-                          {bookingForm?.typePicker?.label || "Tipo de reserva"}
+                          {translatedBookingForm?.typePicker?.label || bookingForm?.typePicker?.label || "Tipo de reserva"}
                         </label>
                         <div className="flex flex-wrap gap-4 justify-center w-full">
                           <Button
@@ -976,7 +1067,7 @@ if (bookingData.tipoReserva === "traslado") {
                             }}
                           >
                             <Car className="w-5 h-5" />
-                            {t('booking.transferLabel')}
+                            {translatedBookingForm?.typePicker?.trasladoLabel || 'Traslado'}
                           </Button>
                           <Button
                             type="button"
@@ -1008,7 +1099,7 @@ if (bookingData.tipoReserva === "traslado") {
                             }}
                           >
                             <Map className="w-5 h-5" />
-                            {t('booking.tourLabel')}
+                            {translatedBookingForm?.typePicker?.tourLabel || 'Tour'}
                           </Button>
                         </div>
                       </div>
@@ -1020,10 +1111,10 @@ if (bookingData.tipoReserva === "traslado") {
                       {/* Título dinámico según tipo de reserva */}
                       <h4 className="text-xl font-semibold text-center mb-2">
                         {bookingData.tipoReserva === "traslado"
-                          ? t('booking.quotationTransfer')
+                          ? bookingTexts.quotationTransfer
                           : bookingData.tipoReserva === "tour"
-                            ? t('booking.quotationTour')
-                            : t('booking.quotation')}
+                            ? bookingTexts.quotationTour
+                            : bookingTexts.quotation}
                       </h4>
                       {/* Botón volver */}
                       <div className="mb-4 flex justify-start">
@@ -1032,7 +1123,7 @@ if (bookingData.tipoReserva === "traslado") {
                           size="sm"
                           onClick={() => setFormStep(1)}
                         >
-                          ← {t('booking.back')}
+                          ← {bookingTexts.back}
                         </Button>
                       </div>
                       {/* Formulario paso 2 */}
@@ -1044,7 +1135,7 @@ if (bookingData.tipoReserva === "traslado") {
 <div className="space-y-2">
   <label className="text-sm font-medium flex items-center gap-2">
     <MapPin className="w-4 h-4 text-accent" />
-    {`${t('booking.origin')}${bookingData.origen ? ` ${getOriginLabel(bookingData.origen)}` : ""}`}
+    {`${bookingTexts.origin}${bookingData.origen ? ` ${getOriginLabel(bookingData.origen)}` : ""}`}
   </label>
 
   <Select
@@ -1060,7 +1151,7 @@ if (bookingData.tipoReserva === "traslado") {
         (fieldErrors.origen ? "border-destructive focus-visible:ring-destructive" : "")
       }
     >
-      <SelectValue placeholder={t('booking.originPlaceholder')} />
+      <SelectValue placeholder={bookingTexts.originPlaceholder} />
     </SelectTrigger>
 
     <SelectContent>
@@ -1076,7 +1167,7 @@ if (bookingData.tipoReserva === "traslado") {
                             <div className="space-y-2">
                               <label className="text-sm font-medium flex items-center gap-2">
                                 <MapPin className="w-4 h-4 text-accent" />
-                                {`${t('booking.destination')}${bookingData.destino ? ` ${getDestinationLabel(bookingData.destino)}` : ""}`}
+                                {`${bookingTexts.destination}${bookingData.destino ? ` ${getDestinationLabel(bookingData.destino)}` : ""}`}
                               </label>
                               <Select
                                 value={bookingData.destino}
@@ -1100,8 +1191,8 @@ if (bookingData.tipoReserva === "traslado") {
                                   <SelectValue
                                     placeholder={
                                       bookingData.origen
-                                        ? t('booking.destinationPlaceholder')
-                                        : t('booking.selectOriginFirst')
+                                        ? bookingTexts.destinationPlaceholder
+                                        : bookingTexts.selectOriginFirst
                                     }
                                   />
                                 </SelectTrigger>
@@ -1115,8 +1206,8 @@ if (bookingData.tipoReserva === "traslado") {
                                   ) : (
                                     <SelectItem value="-" disabled>
                                       {bookingData.origen
-                                        ? t('booking.noDestinations')
-                                        : t('booking.selectOriginFirst')}
+                                        ? bookingTexts.noDestinations
+                                        : bookingTexts.selectOriginFirst}
                                     </SelectItem>
                                   )}
                                 </SelectContent>
@@ -1126,7 +1217,7 @@ if (bookingData.tipoReserva === "traslado") {
                             <div className="space-y-2">
                               <label className="text-sm font-medium flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-accent" />
-                                {t('booking.date')}
+                                {bookingTexts.date}
                               </label>
                               <Input
                                 data-field="fecha"
@@ -1156,7 +1247,7 @@ if (bookingData.tipoReserva === "traslado") {
                             <div className="space-y-2">
                               <label className="text-sm font-medium flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-accent" />
-                                {t('booking.time')}
+                                {bookingTexts.time}
                               </label>
                               <Input
                                 data-field="hora"
@@ -1209,7 +1300,7 @@ if (bookingData.tipoReserva === "traslado") {
                             <div className="space-y-2">
                               <label className="text-sm font-medium flex items-center gap-2">
                                 <Users className="w-4 h-4 text-accent" />
-                                {t('booking.passengers')}
+                                {bookingTexts.passengers}
                               </label>
                               <Select
                                 value={bookingData.pasajeros}
@@ -1253,7 +1344,7 @@ if (bookingData.tipoReserva === "traslado") {
                             <div className="space-y-2">
                               <label className="text-sm font-medium flex items-center gap-2">
                                 <Users className="w-4 h-4 text-accent" />
-                                {t('booking.children')} (0-12)
+                                {bookingTexts.children} (0-12)
                               </label>
                               <Select
                                 value={String(bookingData.ninos ?? 0)}
@@ -1322,14 +1413,14 @@ if (bookingData.tipoReserva === "traslado") {
                                     data-field="vehiculo"
                                     className="cursor-pointer"
                                   >
-                                    <SelectValue placeholder={t('booking.vehiclePlaceholder')} />
+                                    <SelectValue placeholder={bookingTexts.vehiclePlaceholder} />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="coche">{t('booking.car')}</SelectItem>
+                                    <SelectItem value="coche">{bookingTexts.car}</SelectItem>
                                     <SelectItem value="minivan">
-                                      {t('booking.minivan')}
+                                      {bookingTexts.minivan}
                                     </SelectItem>
-                                    <SelectItem value="van">{t('booking.van')}</SelectItem>
+                                    <SelectItem value="van">{bookingTexts.van}</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -1392,17 +1483,17 @@ if (bookingData.tipoReserva === "traslado") {
                                         : "")
                                     }
                                   >
-                                    <SelectValue placeholder={t('booking.tourTypePlaceholder')} />
+                                    <SelectValue placeholder={bookingTexts.tourTypePlaceholder} />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="diurno">
-                                      {t('booking.dayTour')}
+                                      {bookingTexts.dayTour}
                                     </SelectItem>
                                     <SelectItem value="nocturno">
-                                      {t('booking.nightTour')}
+                                      {bookingTexts.nightTour}
                                     </SelectItem>
                                     <SelectItem value="escala">
-                                      {t('booking.stopoverTour')}
+                                      {bookingTexts.stopoverTour}
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -1429,11 +1520,11 @@ if (bookingData.tipoReserva === "traslado") {
                                         data-field="tour"
                                         className="cursor-pointer max-w-[260px] truncate"
                                       >
-                                        <SelectValue
-                                          placeholder={t('booking.selectTour')}
-                                          renderValue={(value) => {
+                                        <SelectValue placeholder={bookingTexts.selectTour}>
+                                          {(() => {
+                                            const value = bookingData.selectedTourSlug;
                                             if (!value)
-                                              return t('booking.selectTour');
+                                              return bookingTexts.selectTour;
                                             const selectedTour = toursList.find(
                                               (t) =>
                                                 t.slug === value ||
@@ -1445,8 +1536,8 @@ if (bookingData.tipoReserva === "traslado") {
                                             return title.length > 40
                                               ? title.slice(0, 40) + "…"
                                               : title;
-                                          }}
-                                        />
+                                          })()}
+                                        </SelectValue>
                                       </SelectTrigger>
 
                                       {/* Lista del selector (sin truncar) */}
@@ -1500,7 +1591,7 @@ if (bookingData.tipoReserva === "traslado") {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Clock className="w-4 h-4 text-accent" />
-                                  {t('booking.time')}
+                                  {bookingTexts.time}
                                 </label>
                                 <Input
                                   data-field="hora"
@@ -1553,7 +1644,7 @@ if (bookingData.tipoReserva === "traslado") {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Users className="w-4 h-4 text-accent" />
-                                  {t('booking.passengers')}
+                                  {bookingTexts.passengers}
                                 </label>
                                 <Select
                                   value={bookingData.pasajeros}
@@ -1602,7 +1693,7 @@ if (bookingData.tipoReserva === "traslado") {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Users className="w-4 h-4 text-accent" />
-                                  {t('booking.children')} (0-12)
+                                  {bookingTexts.children} (0-12)
                                 </label>
                                 <Select
                                   value={String(bookingData.ninos ?? 0)}
@@ -1674,17 +1765,17 @@ if (bookingData.tipoReserva === "traslado") {
                                     data-field="vehiculo"
                                     className="cursor-pointer"
                                   >
-                                    <SelectValue placeholder={t('booking.vehiclePlaceholder')} />
+                                    <SelectValue placeholder={bookingTexts.vehiclePlaceholder} />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="coche">
-                                      {t('booking.car')} (4 personas)
+                                      {bookingTexts.car} (4 personas)
                                     </SelectItem>
                                     <SelectItem value="minivan">
-                                      {t('booking.minivan')} (6 pasajeros)
+                                      {bookingTexts.minivan} (6 pasajeros)
                                     </SelectItem>
                                     <SelectItem value="van">
-                                      {t('booking.van')} (8 pasajeros)
+                                      {bookingTexts.van} (8 pasajeros)
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>

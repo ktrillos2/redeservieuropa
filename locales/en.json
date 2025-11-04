@@ -65,6 +65,36 @@
       "copyright": "© 2025 Redeservi Europa. All rights reserved."
     }
   },
+  "booking": {
+    "transferLabel": "Transfer",
+    "tourLabel": "Tour",
+    "quotationTransfer": "Transfer Quote",
+    "quotationTour": "Tour Quote",
+    "quotation": "Quick Quote",
+    "back": "Back",
+    "origin": "Origin",
+    "originPlaceholder": "Select origin",
+    "destination": "Destination",
+    "destinationPlaceholder": "Select destination",
+    "selectOriginFirst": "Select origin first",
+    "noDestinations": "No destinations available",
+    "date": "Date",
+    "time": "Time",
+    "passengers": "Passengers",
+    "children": "Children",
+    "vehiclePlaceholder": "Select vehicle type",
+    "car": "Car",
+    "minivan": "Minivan",
+    "van": "Van",
+    "tourTypePlaceholder": "Select tour type",
+    "dayTour": "Day Tour",
+    "nightTour": "Night Tour",
+    "stopoverTour": "Stopover Tour",
+    "selectTour": "Select a tour"
+  },
+  "events": {
+    "label": "Events"
+  },
   "checkout": {
     "title": "Complete Booking",
     "summary": "Your booking summary",

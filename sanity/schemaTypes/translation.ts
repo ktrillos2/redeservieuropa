@@ -111,6 +111,52 @@ export default defineType({
       ],
     }),
 
+    // FORMULARIO DE RESERVA (BOOKING)
+    defineField({
+      name: 'booking',
+      title: 'Formulario de Reserva',
+      type: 'object',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        { name: 'transferLabel', title: 'Traslado', type: 'string' },
+        { name: 'tourLabel', title: 'Tour', type: 'string' },
+        { name: 'quotationTransfer', title: 'Cotización Traslado', type: 'string' },
+        { name: 'quotationTour', title: 'Cotización Tour', type: 'string' },
+        { name: 'quotation', title: 'Cotización Rápida', type: 'string' },
+        { name: 'back', title: 'Volver', type: 'string' },
+        { name: 'origin', title: 'Origen', type: 'string' },
+        { name: 'originPlaceholder', title: 'Placeholder origen', type: 'string' },
+        { name: 'destination', title: 'Destino', type: 'string' },
+        { name: 'destinationPlaceholder', title: 'Placeholder destino', type: 'string' },
+        { name: 'selectOriginFirst', title: 'Seleccione origen primero', type: 'string' },
+        { name: 'noDestinations', title: 'No hay destinos', type: 'string' },
+        { name: 'date', title: 'Fecha', type: 'string' },
+        { name: 'time', title: 'Hora', type: 'string' },
+        { name: 'passengers', title: 'Pasajeros', type: 'string' },
+        { name: 'children', title: 'Niños', type: 'string' },
+        { name: 'vehiclePlaceholder', title: 'Placeholder vehículo', type: 'string' },
+        { name: 'car', title: 'Coche', type: 'string' },
+        { name: 'minivan', title: 'Minivan', type: 'string' },
+        { name: 'van', title: 'Van', type: 'string' },
+        { name: 'tourTypePlaceholder', title: 'Placeholder tipo de tour', type: 'string' },
+        { name: 'dayTour', title: 'Tour Diurno', type: 'string' },
+        { name: 'nightTour', title: 'Tour Nocturno', type: 'string' },
+        { name: 'stopoverTour', title: 'Tour de Escala', type: 'string' },
+        { name: 'selectTour', title: 'Seleccionar un tour', type: 'string' },
+      ],
+    }),
+
+    // EVENTOS
+    defineField({
+      name: 'events',
+      title: 'Eventos',
+      type: 'object',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        { name: 'label', title: 'Etiqueta "Eventos"', type: 'string' },
+      ],
+    }),
+
     // PÁGINA DE PAGO
     defineField({
       name: 'checkout',

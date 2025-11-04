@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { useTranslation } from "@/contexts/i18n-context"
 
 export type EventItem = {
   id: string
@@ -17,13 +18,45 @@ export type EventItem = {
   shortInfo?: string
   description?: string
   images?: string[]
+  translations?: {
+    en?: {
+      title?: string
+      shortInfo?: string
+      description?: string
+      meetingPoint?: string
+    }
+    fr?: {
+      title?: string
+      shortInfo?: string
+      description?: string
+      meetingPoint?: string
+    }
+  }
 }
 
 export function EventsSlider({ className, events: eventsProp }: { className?: string; events?: EventItem[] }) {
   const router = useRouter()
+  const { locale } = useTranslation()
 
   // Fuente de eventos (se recibe por props; si no hay, fallback a vacío)
   const events = useMemo<EventItem[]>(() => eventsProp || [], [eventsProp])
+
+  // Traducciones estáticas para la palabra "Eventos"
+  const eventLabel = useMemo(() => {
+    const labels = {
+      es: 'Eventos',
+      en: 'Events',
+      fr: 'Événements',
+    }
+    return labels[locale] || labels.es
+  }, [locale])
+
+  // Helper para obtener el título traducido del evento
+  const getTranslatedTitle = useCallback((event: EventItem): string => {
+    if (locale === 'es' || !event.translations) return event.title
+    const translation = locale === 'en' ? event.translations.en : event.translations.fr
+    return translation?.title || event.title
+  }, [locale])
 
   const apiRef = useRef<CarouselApi | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -120,11 +153,13 @@ export function EventsSlider({ className, events: eventsProp }: { className?: st
                 type="button"
                 onClick={() => handleClick(ev)}
                 className="relative block w-full h-full overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
-                aria-label={`Abrir pago de ${ev.title}`}
+                aria-label={`Abrir pago de ${getTranslatedTitle(ev)}`}
               >
                 {/* Badge de Eventos */}
                 <div className="absolute top-2 left-2 z-10">
-                  <Badge className="bg-accent text-white shadow-sm text-xs sm:text-sm px-3 py-1.5 rounded-md font-display">Eventos</Badge>
+                  <Badge className="bg-accent text-white shadow-sm text-xs sm:text-sm px-3 py-1.5 rounded-md font-display">
+                    {eventLabel}
+                  </Badge>
                 </div>
                 {/* Fondo imagen */}
                 <div
@@ -143,7 +178,7 @@ export function EventsSlider({ className, events: eventsProp }: { className?: st
                   <div className="flex items-end justify-between gap-3">
                     <div className="text-left">
                       <div className="text-white text-sm sm:text-base font-semibold drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-display">
-                        {ev.title}
+                        {getTranslatedTitle(ev)}
                       </div>
                     </div>
                     <div className="shrink-0">

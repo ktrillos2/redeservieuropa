@@ -24,6 +24,8 @@ export interface TranslationDocument {
   header?: any
   footer?: any
   home?: any
+  booking?: any
+  events?: any
   checkout?: any
   thanks?: any
   common?: any
@@ -38,6 +40,8 @@ const TRANSLATIONS_QUERY = `*[_type == "translation" && language == $language][0
   header,
   footer,
   home,
+  booking,
+  events,
   checkout,
   thanks,
   common

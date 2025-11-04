@@ -1,5 +1,82 @@
 import { serverClient } from './server-client'
-import { TOURS_LIST_QUERY, TOUR_BY_SLUG_QUERY } from './queries'
+import { TOURS_LIST_QUERY, TOUR_BY_SLUG_QUERY, TOURS_SECTION_QUERY } from './queries'
+
+export type ToursSectionDoc = {
+  _id: string
+  title?: string
+  subtitle?: string
+  footnote?: string
+  customQuote?: {
+    title?: string
+    transfers?: {
+      title?: string
+      subtitle?: string
+      buttonLabel?: string
+    }
+    tickets?: {
+      title?: string
+      subtitle?: string
+      buttonLabel?: string
+    }
+  }
+  additionalCharges?: {
+    title?: string
+    nightCharge?: string
+    extraPassenger?: string
+    bulkyLuggage?: string
+    groupRates?: string
+  }
+  translations?: {
+    en?: {
+      title?: string
+      subtitle?: string
+      customQuote?: {
+        title?: string
+        transfers?: {
+          title?: string
+          subtitle?: string
+          buttonLabel?: string
+        }
+        tickets?: {
+          title?: string
+          subtitle?: string
+          buttonLabel?: string
+        }
+      }
+      additionalCharges?: {
+        title?: string
+        nightCharge?: string
+        extraPassenger?: string
+        bulkyLuggage?: string
+        groupRates?: string
+      }
+    }
+    fr?: {
+      title?: string
+      subtitle?: string
+      customQuote?: {
+        title?: string
+        transfers?: {
+          title?: string
+          subtitle?: string
+          buttonLabel?: string
+        }
+        tickets?: {
+          title?: string
+          subtitle?: string
+          buttonLabel?: string
+        }
+      }
+      additionalCharges?: {
+        title?: string
+        nightCharge?: string
+        extraPassenger?: string
+        bulkyLuggage?: string
+        groupRates?: string
+      }
+    }
+  }
+}
 
 export type TourDoc = {
   _id: string
@@ -85,4 +162,9 @@ export async function getTourBySlug(slug: string): Promise<TourDoc | null> {
   if (!slug) return null
   const res = await serverClient.fetch(TOUR_BY_SLUG_QUERY, { slug }, { cache: 'no-store', next: { revalidate: 0, tags: ['tours'] }} )
   return (res as TourDoc) || null
+}
+
+export async function getToursSection(): Promise<ToursSectionDoc | null> {
+  const res = await serverClient.fetch(TOURS_SECTION_QUERY, {}, { cache: 'no-store', next: { revalidate: 0, tags: ['toursSection'] } })
+  return (res as ToursSectionDoc) || null
 }

@@ -1,5 +1,5 @@
 import { urlFor } from '@/sanity/lib/image'
-import { getToursList, TourDoc } from '@/sanity/lib/tours'
+import { getToursList, TourDoc, getToursSection } from '@/sanity/lib/tours'
 import { Services, type ServiceCard } from './services'
 
 export const revalidate = 0
@@ -23,6 +23,7 @@ function startingPriceEUR(t: TourDoc): number | undefined {
 
 export default async function ServicesServer() {
   const tours = (await getToursList()) as TourDoc[] | undefined
+  const toursSection = await getToursSection()
 
   const cards: ServiceCard[] = (tours ?? []).map((t, idx) => {
     const priceNum = startingPriceEUR(t)
@@ -34,7 +35,7 @@ export default async function ServicesServer() {
         ? `Tour por ${t.route.destination} saliendo y regresando a ${t.route.origin}.`
         : 'Tour privado con paradas para fotos y ruta optimizada.')
 
-    const note = t.route?.circuitName ? `Disponible: ${t.route.circuitName}` : undefined
+    const note = t.route?.circuitName || undefined
 
     return {
       id: t._id || `tour-${idx}`,
@@ -48,5 +49,5 @@ export default async function ServicesServer() {
     }
   })
 
-  return <Services cards={cards} />
+  return <Services cards={cards} toursSection={toursSection} />
 }

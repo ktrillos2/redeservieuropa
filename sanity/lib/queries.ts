@@ -158,7 +158,9 @@ export const TOURS_SECTION_QUERY = `
   title,
   subtitle,
   footnote,
-  cta
+  customQuote,
+  additionalCharges,
+  translations
 }
 `
 

@@ -2748,10 +2748,10 @@ export default function PaymentPage() {
                             <div className="grid grid-cols-3 gap-3">
                               <div className="space-y-2">
                                 <label className="text-xs font-medium">
-                                  Número de Vuelo{" "}
+                                  Número de Vuelo o tren{" "}
                                   {bookingData?.tourDoc?.requirements
                                     ?.requireFlightNumber
-                                    ? "(obligatorio)"
+                                    ? "(obligatorio; Si no es aeropuerto o estación de trenes, escriba N/A)"
                                     : "(opcional)"}
                                 </label>
                                 <Input
@@ -2848,9 +2848,9 @@ export default function PaymentPage() {
                             {/* Número de vuelo */}
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Número de Vuelo{" "}
+                                Número de Vuelo o tren{" "}
                                 {requireFlight
-                                  ? "(obligatorio)"
+                                  ? "(obligatorio; Si no es aeropuerto o estación de trenes, escriba N/A)"
                                   : "(opcional)"}
                               </label>
                               <Input
@@ -5391,8 +5391,8 @@ export default function PaymentPage() {
                   {/* Número de vuelo */}
                   <div className="space-y-2">
                     <label className="text-xs font-medium">
-                      Número de Vuelo{" "}
-                      {requireFlightModal ? "(obligatorio)" : "(opcional)"}
+                      Número de Vuelo o tren{" "}
+                      {requireFlightModal ? "(obligatorio; Si no es aeropuerto o estación de trenes, escriba N/A)" : "(opcional)"}
                     </label>
                     <Input
                       placeholder="AF1234, BA456, etc."

@@ -49,13 +49,39 @@ export function Footer() {
         { label: 'Aeropuerto Orly', internalHref: '/#traslados', external: false },
         { label: 'Aeropuerto Beauvais', internalHref: '/#traslados', external: false },
         { label: 'París ↔ Disneyland', internalHref: '/#traslados', external: false },
-        { label: 'Tour Nocturno', href: '#', external: true },
+        { label: 'Tour Nocturno', internalHref: '/#hero-booking-form', external: false },
       ],
     },
   ]
+  
+  // Filtrar y limpiar enlaces de WhatsApp de las columnas que vengan del CMS
+  const cleanedColumns = columns.map(col => ({
+    ...col,
+    links: (col.links || []).map(link => {
+      // Si el enlace contiene wa.me o whatsapp, reemplazarlo con enlaces internos
+      const href = link.href || link.internalHref || ''
+      if (href.includes('wa.me') || href.includes('whatsapp')) {
+        // Reemplazar enlaces de WhatsApp según el label
+        if (link.label.toLowerCase().includes('tour') || link.label.toLowerCase().includes('nocturno')) {
+          return { ...link, internalHref: '/#hero-booking-form', href: undefined, external: false }
+        }
+        // Por defecto, redirigir a traslados
+        return { ...link, internalHref: '/#traslados', href: undefined, external: false }
+      }
+      return link
+    })
+  }))
+  
   const copyright = footer?.copyright || '© 2025 REDESERVI PARIS. Todos los derechos reservados.'
 
-  const resolveHref = (link: MenuLink) => link.internalHref || link.href || '#'
+  const resolveHref = (link: MenuLink) => {
+    const href = link.internalHref || link.href || '#'
+    // Doble verificación: nunca devolver enlaces de WhatsApp
+    if (href.includes('wa.me') || href.includes('whatsapp')) {
+      return '/#traslados'
+    }
+    return href
+  }
 
   return (
     <footer className="bg-primary text-primary-foreground">
@@ -128,7 +154,7 @@ export function Footer() {
 
           {/* Columns from CMS */}
           <div>
-            {(columns || []).map((col, idx) => (
+            {(cleanedColumns || []).map((col, idx) => (
               <div key={idx} className={idx === 0 ? '' : 'mt-6'}>
                 {col?.title ? <h4 className="font-semibold mb-4">{col.title}</h4> : null}
                 <div className="space-y-2 text-sm">

@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { useEffect, useRef, useState, useMemo } from "react";
-import { Header } from "@/components/header";
+import HeaderServer from "@/components/header.server";
 import { Footer } from "@/components/footer";
 import { AnimatedSection } from "@/components/animated-section";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +60,7 @@ import {
   TransferDoc,
 } from "@/sanity/lib/transfers";
 import { TourDoc } from "@/sanity/lib/tours";
+import { Header } from "@/components/header";
 
 // Helper: formato con máximo 2 decimales (sin forzar ceros)
 const fmtMoney = (n: number | string | undefined | null) => {
@@ -4236,7 +4237,7 @@ export default function PaymentPage() {
                                       .replace(/\b\w/g, (m) => m.toUpperCase())
                                   : "";
 
-                              const selectedTourNameFromList = (() => {
+                              let selectedTourNameFromList = (() => {
                                 try {
                                   if (
                                     bookingData?.selectedTourSlug &&
@@ -4254,6 +4255,13 @@ export default function PaymentPage() {
                                 return undefined;
                               })();
 
+                              if(!selectedTourNameFromList){
+                                selectedTourNameFromList = toTitleCase(bookingData.tourDoc?.title);
+                              }
+
+                              
+
+
                               const tourName =
                                 bookingData?.tourData?.title ||
                                 selectedTourNameFromList ||
@@ -4261,6 +4269,8 @@ export default function PaymentPage() {
                                   ? toTitleCase(bookingData.tourId)
                                   : "");
 
+
+                 
                               // Origen/Destino legibles (para traslados)
                               const originPretty =
                                 bookingData?.pickupAddress ||
@@ -4310,6 +4320,7 @@ export default function PaymentPage() {
                                 ? (body.items || []).map((it: any) => {
                                     // Construir título del traslado para cada item si es traslado
                                     let itemTransferTitle = "";
+                                    let itemTourTitle = "";
                                     const isItemTour = Boolean(
                                       it.isEvent ||
                                       it.quickType === "tour" ||
@@ -4349,6 +4360,10 @@ export default function PaymentPage() {
                                         itemTransferTitle = from || to;
                                       }
                                     }
+
+                                    if(isItemTour){
+                                      itemTourTitle = toursList.find(t=>t.slug===it.selectedTourSlug || t.title===it.selectedTourSlug)?.title || '';
+                                    }
                                     
                                     return {
                                       ...it,
@@ -4361,6 +4376,7 @@ export default function PaymentPage() {
                                         "",
                                       payFullNow: body.payFullNow,
                                       ninosMenores9: it.ninosMenores9 || "",
+                                      tourTitle: itemTourTitle,
                                       // Agregar título del traslado si se encontró
                                       ...(itemTransferTitle && !isItemTour ? { transferTitle: itemTransferTitle } : {}),
                                     };

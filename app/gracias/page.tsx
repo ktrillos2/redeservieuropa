@@ -140,13 +140,15 @@ export default function GraciasPage() {
         tourTitle: it?.tourData?.title,
       });
 
+      
       console.log(it)
       
       return {
         type: isTour ? 'tour' : 'traslado',
         title:
-          it?.transferTitle || // 👈 PRIMERO: Usar transferTitle que ya viene formateado
-          it?.tourData?.title || // Para tours
+          it?.tourTitle || // 👈 PRIMERO: Usar tourTitle si es tour
+          it?.transferTitle || // Para traslados formateados
+          it?.tourData?.title || // Fallback para tours
           it?.label ||
           it?.serviceLabel ||
           it?.serviceSubLabel ||

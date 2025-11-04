@@ -2765,7 +2765,7 @@ export default function PaymentPage() {
                                   onChange={(e) =>
                                     updateBookingField(
                                       "flightNumber",
-                                      e.target.value
+                                      e.target.value.toUpperCase()
                                     )
                                   }
                                 />
@@ -2864,7 +2864,7 @@ export default function PaymentPage() {
                                 onChange={(e) =>
                                   updateBookingField(
                                     "flightNumber",
-                                    e.target.value
+                                    e.target.value.toUpperCase()
                                   )
                                 }
                               />
@@ -5405,7 +5405,7 @@ export default function PaymentPage() {
                       onChange={(e) =>
                         setModalForm((s: any) => ({
                           ...s,
-                          flightNumber: e.target.value,
+                          flightNumber: e.target.value.toUpperCase(),
                         }))
                       }
                     />

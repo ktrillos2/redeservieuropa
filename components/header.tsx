@@ -52,10 +52,14 @@ export function Header({
   siteTitle = 'REDESERVI',
   siteSubtitle = 'PARIS',
   logoUrl = '/images/logo.png',
+  tours = [],
+  transfers = [],
 }: {
   siteTitle?: string
   siteSubtitle?: string
   logoUrl?: string
+  tours?: Array<{ _id: string; title: string; slug: string }>
+  transfers?: Array<{ _id: string; from: string; to: string; slug?: string | { current: string } }>
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -63,8 +67,15 @@ export function Header({
   const [isServicesOpenMobile, setIsServicesOpenMobile] = useState(false)
   const [servicesOpen, setServicesOpen] = useState(false)
   const hoverCloseTimeout = useRef<number | null>(null)
-  const [belgiumOpen, setBelgiumOpen] = useState(false)
-  const [parisOpen, setParisOpen] = useState(false)
+  const [toursOpen, setToursOpen] = useState(false)
+  const [transfersOpen, setTransfersOpen] = useState(false)
+
+  // Resetear el estado del acordeón de servicios cuando se cierra el menú móvil
+  useEffect(() => {
+    if (!isMenuOpen) {
+      setIsServicesOpenMobile(false)
+    }
+  }, [isMenuOpen])
   const pathname = usePathname()
 
   const isHomePage = pathname === "/"
@@ -181,140 +192,97 @@ export function Header({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="min-w-64 px-1.5 py-1.5"
+                className="min-w-64 px-1.5 py-1.5 max-h-[500px] overflow-y-auto"
                 onMouseEnter={cancelClose}
                 onPointerEnter={cancelClose}
                 onMouseLeave={scheduleClose}
                 onPointerLeave={scheduleClose}
               >
                 <DropdownMenuGroup>
+                  {/* Sección Traslados dinámicos */}
+                  {transfers.length > 0 && (
+                    <>
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setTransfersOpen((v) => !v)
+                          setServicesOpen(true)
+                        }}
+                        className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
+                      >
+                        <span>Traslados</span>
+                        {transfersOpen ? (
+                          <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
+                        ) : (
+                          <ChevronDown className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
+                        )}
+                      </DropdownMenuItem>
+                      {transfersOpen && (
+                        <div className="pl-6 py-2 space-y-1 soft-fade-in max-h-60 overflow-y-auto">
+                          {transfers.map((transfer) => {
+                            const slug = typeof transfer.slug === 'string' 
+                              ? transfer.slug 
+                              : transfer.slug?.current || `${transfer.from}-${transfer.to}`.toLowerCase().replace(/\s+/g, '-')
+                            return (
+                              <Link
+                                key={transfer._id}
+                                href={`/transfer/${slug}`}
+                                className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                              >
+                                {transfer.from} → {transfer.to}
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Sección Tours dinámicos */}
+                  {tours.length > 0 && (
+                    <>
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setToursOpen((v) => !v)
+                          setServicesOpen(true)
+                        }}
+                        className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
+                      >
+                        <span>Tours</span>
+                        {toursOpen ? (
+                          <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
+                        ) : (
+                          <ChevronDown className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
+                        )}
+                      </DropdownMenuItem>
+                      {toursOpen && (
+                        <div className="pl-6 py-2 space-y-1 soft-fade-in max-h-60 overflow-y-auto">
+                          {tours.map((tour) => (
+                            <Link
+                              key={tour._id}
+                              href={`/tour/${tour.slug}`}
+                              className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                            >
+                              {tour.title}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <DropdownMenuSeparator />
+
+                  {/* Opción de cotización */}
                   <DropdownMenuItem asChild className="rounded-md">
-                    <Link href="/#traslados" className="px-2 py-2 w-full rounded-md">Traslados</Link>
-                  </DropdownMenuItem>
-
-                  {/* Acordeón inline: Tours París */}
-                  <DropdownMenuItem
-                    onSelect={(e) => e.preventDefault()}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setParisOpen((v) => !v)
-                      setServicesOpen(true)
-                    }}
-                    className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
-                  >
-                    <span>Tours París</span>
-                    {parisOpen ? (
-                      <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                    ) : (
-                      <ChevronDown className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                    )}
-                  </DropdownMenuItem>
-                  {parisOpen && (
-                    <div className="pl-6 py-2 space-y-1 soft-fade-in">
-                      <Link
-                        href="/tour/tour-paris"
-                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                      >
-                        Tour por París (personalizable)
-                      </Link>
-                      <a
-                        href={wa("Hola, me interesa un Tour en acompañamiento por París (sin vehículo). ¿Podrían enviarme propuesta y disponibilidad?")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                      >
-                        Tour en acompañamiento por París (No vehículo)
-                      </a>
-                      <a
-                        href={wa("Hola, me interesa un Tour escala (aeropuerto - Tour - aeropuerto). Tengo una escala y deseo hacer un tour por París entre vuelos. ¿Podrían enviarme opciones, duración y precios?")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                      >
-                        Tour escala (aeropuerto - Tour - aeropuerto)
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Acordeón inline: Tours Bélgica */}
-                  <DropdownMenuItem
-                    onSelect={(e) => e.preventDefault()}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setBelgiumOpen((v) => !v)
-                      setServicesOpen(true)
-                    }}
-                    className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
-                  >
-                    <span>Tours Bélgica</span>
-                    {belgiumOpen ? (
-                      <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                    ) : (
-                      <ChevronDown className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                    )}
-                  </DropdownMenuItem>
-                  {belgiumOpen && (
-                    <div className="pl-6 py-1 space-y-1 soft-fade-in">
-                      <a
-                        href={wa("Hola, me interesa el Tour a Brujas desde París. ¿Podrían enviarme información y disponibilidad?")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                      >
-                        Brujas
-                      </a>
-                      <a
-                        href={wa("Hola, me interesa el Tour Gante y Brujas desde París. ¿Podrían enviarme información y disponibilidad?")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                      >
-                        Gante y Brujas
-                      </a>
-                      <a
-                        href={wa("Hola, me interesa el Tour Bruselas y Brujas desde París. ¿Podrían enviarme información y disponibilidad?")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                      >
-                        Bruselas y Brujas
-                      </a>
-                    </div>
-                  )}
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem asChild>
-                    <a href={wa("Hola, me interesa el Tour Brujas y Amsterdam (3 días). ¿Podrían enviarme itinerario y precios?")} target="_blank" rel="noopener noreferrer">Tour Brujas y Amsterdam (3 días)</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href={wa("Hola, me interesa el Tour a Mont Saint Michel. ¿Podrían enviarme información y disponibilidad?")} target="_blank" rel="noopener noreferrer">Tour Mont Saint Michel</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href={wa("Hola, me interesa el Tour a los Castillos del Valle del Loira. ¿Podrían enviarme opciones y precios?")} target="_blank" rel="noopener noreferrer">Tour castillo del Valle de Loira</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href={wa("Hola, me interesa el Tour a Versailles. ¿Podrían enviarme información de horarios, entradas y transporte?")} target="_blank" rel="noopener noreferrer">Tour Versailles</a>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={wa("Hola, quiero cotizar un tour a mi gusto. Indico a continuación intereses, fechas y número de pasajeros: ")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Cotiza tu tour a tu gusto
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href={wa("Hola, quiero comprar billetes para el paseo en barco por el Río Sena (con/sin cena). ¿Podrían enviarme opciones y precios?")} target="_blank" rel="noopener noreferrer">Billetes paseo en barco Río Sena</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href={wa("Hola, quiero comprar billetes para Disneyland París. ¿Podrían enviarme disponibilidad y precios?")} target="_blank" rel="noopener noreferrer">Billetes Disneyland</a>
+                    <Link href="/#hero-booking-form" className="px-2 py-2 w-full rounded-md font-semibold text-accent">
+                      💬 Cotizar servicio personalizado
+                    </Link>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
@@ -339,7 +307,7 @@ export function Header({
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden transition-colors hover:bg-muted drop-shadow-lg"
+            className={`md:hidden transition-colors hover:bg-muted drop-shadow-lg ${useDarkText ? "text-black" : "text-white"}`}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <XIcon /> : <MenuIcon />}
@@ -347,94 +315,95 @@ export function Header({
         </div>
 
   {isMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 soft-fade-in">
-            <nav className="flex flex-col space-y-5 pt-4 font-display px-2">
+          <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 backdrop-blur-sm soft-fade-in">
+            <nav className="flex flex-col space-y-4 pt-4 font-display px-2">
               {/* Servicios (acordeón simple en móvil) */}
               <button
                 onClick={() => setIsServicesOpenMobile((v) => !v)}
-                className="text-left transition-colors drop-shadow-lg hover:bg-accent/10 rounded-md px-2 py-2"
-                style={{ color: "#000000", fontWeight: 600 }}
+                className="text-left text-black transition-colors drop-shadow-lg hover:bg-accent/10 rounded-md px-3 py-2.5 text-base font-semibold"
               >
                 Servicios {isServicesOpenMobile ? "▲" : "▼"}
               </button>
               {isServicesOpenMobile && (
-                <div className="pl-4 space-y-3 text-sm">
-                  <Link href="/#traslados" className="block hover:underline" style={{ color: "#000" }}>
-                    <span className="inline-block px-1 py-1.5 -mx-1 rounded-md hover:bg-accent/10">Traslados</span>
-                  </Link>
-                  <div>
-                    <div className="font-semibold mb-1" style={{ color: "#000" }}>Tours París</div>
-                    <div className="pl-4 space-y-2">
-                      <Link href="/tour/tour-paris" className="block hover:underline" style={{ color: "#000" }}>
-                        Tour por París (personalizable)
-                      </Link>
-                      <a href={wa("Hola, me interesa un Tour en acompañamiento por París (sin vehículo). ¿Podrían enviarme propuesta y disponibilidad?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>
-                        Tour en acompañamiento por París (No vehículo)
-                      </a>
-                      <a
-                        href={wa("Hola, me interesa un Tour escala (aeropuerto - Tour - aeropuerto). Tengo una escala y deseo hacer un tour por París entre vuelos. ¿Podrían enviarme opciones, duración y precios?")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block hover:underline"
-                        style={{ color: "#000" }}
-                      >
-                        Tour escala (aeropuerto - Tour - aeropuerto)
-                      </a>
+                <div className="pl-4 space-y-4 text-sm font-display">
+                  {/* Traslados dinámicos */}
+                  {transfers.length > 0 && (
+                    <div>
+                      <div className="font-bold mb-2 text-base text-black">
+                        Traslados
+                      </div>
+                      <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
+                        {transfers.map((transfer) => {
+                          const slug = typeof transfer.slug === 'string' 
+                            ? transfer.slug 
+                            : transfer.slug?.current || `${transfer.from}-${transfer.to}`.toLowerCase().replace(/\s+/g, '-')
+                          return (
+                            <Link 
+                              key={transfer._id}
+                              href={`/transfer/${slug}`} 
+                              className="block text-black/80 hover:text-black hover:underline transition-colors"
+                            >
+                              {transfer.from} → {transfer.to}
+                            </Link>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <div className="font-semibold mb-1" style={{ color: "#000" }}>Tours Bélgica</div>
-                    <div className="pl-4 space-y-2">
-                      <a href={wa("Hola, me interesa el Tour a Brujas desde París. ¿Podrían enviarme información y disponibilidad?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Brujas</a>
-                      <a href={wa("Hola, me interesa el Tour Gante y Brujas desde París. ¿Podrían enviarme información y disponibilidad?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Gante y Brujas</a>
-                      <a href={wa("Hola, me interesa el Tour Bruselas y Brujas desde París. ¿Podrían enviarme información y disponibilidad?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Bruselas y Brujas</a>
+                  )}
+
+                  {/* Tours dinámicos */}
+                  {tours.length > 0 && (
+                    <div>
+                      <div className="font-bold mb-2 text-base text-black">
+                        Tours
+                      </div>
+                      <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
+                        {tours.map((tour) => (
+                          <Link 
+                            key={tour._id}
+                            href={`/tour/${tour.slug}`} 
+                            className="block text-black/80 hover:text-black hover:underline transition-colors"
+                          >
+                            {tour.title}
+                          </Link>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <a href={wa("Hola, me interesa el Tour Brujas y Amsterdam (3 días). ¿Podrían enviarme itinerario y precios?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Tour Brujas y Amsterdam (3 días)</a>
-                  <a href={wa("Hola, me interesa el Tour a Mont Saint Michel. ¿Podrían enviarme información y disponibilidad?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Tour Mont Saint Michel</a>
-                  <a href={wa("Hola, me interesa el Tour a los Castillos del Valle del Loira. ¿Podrían enviarme opciones y precios?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Tour castillo del Valle de Loira</a>
-                  <a href={wa("Hola, me interesa el Tour a Versailles. ¿Podrían enviarme información de horarios, entradas y transporte?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Tour Versailles</a>
-                  <a href={wa("Hola, me interesa un Tour en acompañamiento por París (sin vehículo). ¿Podrían enviarme propuesta y disponibilidad?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Tour en acompañamiento por París (No vehículo)</a>
-                  <a
-                    href={wa("Hola, me interesa un Tour escala (aeropuerto - Tour - aeropuerto). Tengo una escala y deseo hacer un tour por París entre vuelos. ¿Podrían enviarme opciones, duración y precios?")}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block hover:underline"
-                    style={{ color: "#000" }}
+                  )}
+
+                  <div className="border-t border-border pt-3 mt-3"></div>
+
+                  {/* Opción de cotización */}
+                  <Link 
+                    href="/#hero-booking-form" 
+                    className="block font-semibold text-accent hover:underline px-1 text-base transition-colors"
                   >
-                    Tour escala (aeropuerto - Tour - aeropuerto)
-                  </a>
-                  <a href={wa("Hola, quiero cotizar un tour a mi gusto. Indico a continuación intereses, fechas y número de pasajeros: ")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Cotiza tu tour a tu gusto</a>
-                  <a href={wa("Hola, quiero comprar billetes para el paseo en barco por el Río Sena (con/sin cena). ¿Podrían enviarme opciones y precios?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Billetes paseo en barco Río Sena</a>
-                  <a href={wa("Hola, quiero comprar billetes para Disneyland París. ¿Podrían enviarme disponibilidad y precios?")} target="_blank" rel="noopener noreferrer" className="block hover:underline" style={{ color: "#000" }}>Billetes Disneyland</a>
+                    💬 Cotizar servicio personalizado
+                  </Link>
                 </div>
               )}
               {/* Enlace principal 'Traslados' removido en móvil: permanece en el submenú de Servicios */}
               <Link
                 href="#testimonios"
-                className="transition-colors drop-shadow-lg hover:opacity-75"
-                style={{ color: "#000000", fontWeight: "600" }}
+                className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
               >
                 Testimonios
               </Link>
               <Link
                 href="#contacto"
-                className="transition-colors drop-shadow-lg hover:opacity-75"
-                style={{ color: "#000000", fontWeight: "600" }}
+                className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
               >
                 Contacto
               </Link>
               {/* Icono de carrito de compras (móvil) */}
               <Link
                 href="/pago"
-                className="inline-flex items-center justify-center transition-colors rounded-full p-2 w-fit self-start"
+                className="inline-flex items-center gap-2 text-black transition-colors rounded-md px-3 py-2.5 w-fit font-semibold text-base hover:bg-accent/10"
                 aria-label="Ver cotizaciones (carrito)"
                 prefetch={false}
               >
-                <ShoppingCart
-                  className="size-6"
-                  style={{ color: useDarkText ? "#000000" : "#ffffff" }}
-                />
+                <ShoppingCart className="size-5" />
+                <span>Mi Cotización</span>
               </Link>
             </nav>
           </div>

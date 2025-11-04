@@ -1,5 +1,5 @@
 import { sanityFetch } from './live'
-import { GENERAL_INFO_QUERY } from './queries'
+import { GENERAL_INFO_QUERY, TOURS_LIST_QUERY, TRANSFERS_LIST_QUERY } from './queries'
 import { serverClient } from './server-client'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -131,4 +131,48 @@ export async function ensureAndGetHeader(): Promise<HeaderDoc> {
     return (created as HeaderDoc) || doc
   }
   return doc
+}
+
+// === Tours y Traslados para el menú ===
+
+export type TourMenuItem = {
+  _id: string
+  title: string
+  slug: string
+}
+
+export type TransferMenuItem = {
+  _id: string
+  from: string
+  to: string
+  slug?: { current: string } | string
+}
+
+export async function getToursForMenu(): Promise<TourMenuItem[]> {
+  try {
+    const tours = await serverClient.fetch(TOURS_LIST_QUERY)
+    return (tours || []).map((t: any) => ({
+      _id: t._id,
+      title: t.title || 'Tour sin título',
+      slug: typeof t.slug === 'string' ? t.slug : t.slug?.current || t._id
+    }))
+  } catch (error) {
+    console.error('Error fetching tours for menu:', error)
+    return []
+  }
+}
+
+export async function getTransfersForMenu(): Promise<TransferMenuItem[]> {
+  try {
+    const transfers = await serverClient.fetch(TRANSFERS_LIST_QUERY)
+    return (transfers || []).map((t: any) => ({
+      _id: t._id,
+      from: t.from || 'Origen',
+      to: t.to || 'Destino',
+      slug: typeof t.slug === 'string' ? t.slug : t.slug?.current || `${t.from}-${t.to}`.toLowerCase().replace(/\s+/g, '-')
+    }))
+  } catch (error) {
+    console.error('Error fetching transfers for menu:', error)
+    return []
+  }
 }

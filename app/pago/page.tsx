@@ -1,5 +1,6 @@
 "use client";
 import { TooltipBriefInfo } from "@/components/ui/tooltip-brief-info";
+import { useTranslation } from "@/contexts/i18n-context";
 
 // idaYVuelta removed: round-trip option deprecated
 // Removed idaYVuelta from modalForm initialization
@@ -285,6 +286,426 @@ type TransferBookingData = CommonBookingFields & {
 type BookingData = TourBookingData | TransferBookingData;
 
 export default function PaymentPage() {
+  const { locale } = useTranslation();
+  
+  // Traducciones locales de la página
+  const pageTexts = useMemo(() => {
+    const texts = {
+      es: {
+        // Títulos y encabezados
+        bookingSummary: 'Resumen de tu Reserva',
+        service: 'Servicio',
+        event: 'Evento',
+        passengers: 'Pasajeros',
+        children: 'Niños',
+        passenger: 'Pasajero',
+        slots: 'Cupos',
+        select: 'Selecciona',
+        // Campos de formulario
+        pickupAddress: 'Dirección de Recogida',
+        dropoffAddress: 'Dirección de Entrega',
+        flightNumber: 'Número de Vuelo',
+        luggage: 'Equipaje',
+        specialRequests: 'Peticiones Especiales',
+        // Botones y acciones
+        backToHome: 'Volver al Inicio',
+        confirmPayment: 'Confirmar y Pagar',
+        payFull: 'Pagar Total',
+        addQuote: 'Agregar Cotización',
+        edit: 'Editar',
+        delete: 'Eliminar',
+        save: 'Guardar',
+        cancel: 'Cancelar',
+        next: 'Siguiente',
+        back: 'Volver',
+        // Información de pago
+        total: 'Total',
+        deposit: 'Depósito',
+        remaining: 'Restante',
+        paymentSummary: 'Resumen de Pago',
+        // Tipos de vehículo
+        car: 'Coche',
+        minivan: 'Minivan',
+        van: 'Van',
+        // Tipos de tour
+        dayTour: 'Tour Diurno',
+        nightTour: 'Tour Nocturno',
+        stopoverTour: 'Tour de Escala',
+        // Campos de contacto
+        contactInfo: 'Información de Contacto',
+        name: 'Nombre',
+        phone: 'Teléfono',
+        email: 'Correo Electrónico',
+        // Errores y validaciones
+        required: 'Requerido',
+        invalidEmail: 'Correo inválido',
+        invalidPhone: 'Teléfono inválido',
+        // Otros
+        date: 'Fecha',
+        time: 'Hora',
+        origin: 'Origen',
+        destination: 'Destino',
+        tour: 'Tour',
+        transfer: 'Traslado',
+        loading: 'Cargando',
+        processing: 'Procesando',
+        // Nuevas traducciones
+        childrenAges: 'Edades de los niños',
+        addressesAdditionalInfo: 'Direcciones (información adicional)',
+        serviceOrigin: 'Origen del servicio',
+        serviceDestination: 'Destino del servicio',
+        flightOrTrainNumber: 'Número de Vuelo o tren (obligatorio; Si no es aeropuerto o estación de trenes, escriba N/A)',
+        suitcases23kg: '# Maletas 23kg',
+        suitcases10kg: '# Maletas 10kg',
+        fullName: 'Nombre Completo',
+        whereDidYouHearAboutUs: '¿Dónde nos conociste?',
+        selectOption: 'Selecciona una opción',
+        specialRequestsOptional: 'Solicitudes Especiales (opcional)',
+        specialRequestsPlaceholder: 'Asiento bebé, parada extra, etc.',
+        referralGoogle: 'Google',
+        referralFacebook: 'Facebook',
+        referralInstagram: 'Instagram',
+        referralRecommendation: 'Recomendación',
+        referralOther: 'Otro',
+        depositToConfirm: 'Depósito para confirmar',
+        estimatedTotalAmount: 'Importe total estimado del servicio',
+        remainderPayOnDay: 'El resto del servicio ({amount}) se paga el día del servicio.',
+        wantToPayFullNow: '¿Deseas pagar todo ahora?',
+        totalToPayNow: 'Total a pagar ahora (depósito {percent}%)',
+        exactLocation: 'Ubicación exacta',
+        optional: 'opcional',
+        // Títulos de página
+        paymentPageTitle: 'Página de Pago',
+        paymentPageSubtitle: 'Confirma tu reserva y procede con el pago seguro',
+        // Placeholders
+        phonePlaceholder: 'Selecciona país y número',
+        // Sección de pago
+        paymentInfo: 'Información de Pago',
+        paymentMethod: 'Método de Pago',
+        payWithCard: 'Pago con tarjeta',
+        cardProviders: 'Visa / Mastercard',
+        secureBadge: 'Seguro',
+        paypalPart1: 'Pay',
+        paypalPart2: 'Pal',
+        recommendedBadge: 'Recomendado',
+        cash: 'Efectivo',
+        depositRequiredBadge: 'Depósito requerido',
+        confirmationPayment: 'Pago de confirmación',
+        confirmationPaymentDescription: 'Este pago asegura tu reserva. Después de pagarlo, terminarás de rellenar los datos faltantes.',
+        confirmReservationDeposit: 'Confirmar tu reserva (depósito)',
+        amountToPayOnServiceDay: 'Valor a pagar el día del servicio',
+        depositWhy: '¿Por qué pedimos un depósito? Asegura la disponibilidad del vehículo y del conductor en la fecha y hora seleccionadas y cubre el bloqueo de agenda y la preparación del servicio.',
+        depositHow: '¿Cómo se paga? El depósito se abona ahora de forma segura. El resto ({amount}€) se paga el día del servicio en efectivo, tarjeta o PayPal según prefieras.',
+        depositAmount: 'Importe del depósito: {amount}€.',
+        payWithCardOrPaypal: 'Puedes pagar con tarjeta o PayPal de forma segura.',
+        surchargeNotes: '* Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.',
+        securePayment: 'Pago Seguro',
+        sslEncryption: 'Encriptación SSL de 256 bits',
+        secureProcessing: 'Procesamiento seguro de pagos',
+        addAnotherQuotePrefix: 'Si deseas añadir',
+        addAnotherQuoteStrong: 'Otra Cotización',
+        addAnotherQuoteHere: 'aquí',
+        addAnotherQuoteSuffix: 'y podrás cotizar otro traslado o tour.',
+        extraQuotesMade: 'Cotizaciones extras realizadas:',
+        depositNote: '<strong>Nota:</strong> Ahora se cobrará el depósito correspondiente a cada servicio ({transferPct}% para traslados y {tourPct}% para tours), por un total de {amount}€ sobre un total combinado de {combined}€.',
+        payDeposit: 'Pagar depósito',
+        cannotPayYet: 'No puedes pagar aún:',
+        v_pickupAddress: 'Completa la dirección exacta de recogida.',
+        v_dropoffAddress: 'Completa la dirección exacta de destino.',
+        v_fullName: 'Escribe tu nombre completo.',
+        v_validPhone: 'Indica un teléfono válido.',
+        v_validEmail: 'Indica un email válido.',
+        v_flightNumber: 'Ingresa el número de vuelo.',
+        invalidFormat: 'Formato inválido',
+        termsAndConditions: 'Al confirmar el pago, aceptas nuestros términos y condiciones de servicio. Recibirás una confirmación por email con todos los detalles de tu reserva.',
+        // Sección "¿Qué sucede después del pago?"
+        afterPaymentTitle: '¿Qué sucede después del pago?',
+        step1Title: '1. Confirmación Inmediata',
+        step1Description: 'Recibirás un email con los detalles de tu reserva',
+        step2Title: '2. Recordatorio',
+        step2Description: 'Te contactaremos 24h antes para confirmar detalles',
+        step3Title: '3. Servicio Cómodo',
+        step3Description: 'Disfruta de tu traslado puntual y cómodo',
+        backToServices: 'Volver a servicios',
+      },
+      en: {
+        // Títulos y encabezados
+        bookingSummary: 'Booking Summary',
+        service: 'Service',
+        event: 'Event',
+        passengers: 'Passengers',
+        children: 'Children',
+        passenger: 'Passenger',
+        slots: 'Slots',
+        select: 'Select',
+        // Campos de formulario
+        pickupAddress: 'Pickup Address',
+        dropoffAddress: 'Drop-off Address',
+        flightNumber: 'Flight Number',
+        luggage: 'Luggage',
+        specialRequests: 'Special Requests',
+        // Botones y acciones
+        backToHome: 'Back to Home',
+        confirmPayment: 'Confirm and Pay',
+        payFull: 'Pay Full Amount',
+        addQuote: 'Add Quote',
+        edit: 'Edit',
+        delete: 'Delete',
+        save: 'Save',
+        cancel: 'Cancel',
+        next: 'Next',
+        back: 'Back',
+        // Información de pago
+        total: 'Total',
+        deposit: 'Deposit',
+        remaining: 'Remaining',
+        paymentSummary: 'Payment Summary',
+        // Tipos de vehículo
+        car: 'Car',
+        minivan: 'Minivan',
+        van: 'Van',
+        // Tipos de tour
+        dayTour: 'Day Tour',
+        nightTour: 'Night Tour',
+        stopoverTour: 'Stopover Tour',
+        // Campos de contacto
+        contactInfo: 'Contact Information',
+        name: 'Name',
+        phone: 'Phone',
+        email: 'Email',
+        // Errores y validaciones
+        required: 'Required',
+        invalidEmail: 'Invalid email',
+        invalidPhone: 'Invalid phone',
+        // Otros
+        date: 'Date',
+        time: 'Time',
+        origin: 'Origin',
+        destination: 'Destination',
+        tour: 'Tour',
+        transfer: 'Transfer',
+        loading: 'Loading',
+        processing: 'Processing',
+        // Nuevas traducciones
+        childrenAges: 'Children\'s ages',
+        addressesAdditionalInfo: 'Addresses (additional information)',
+        serviceOrigin: 'Service origin',
+        serviceDestination: 'Service destination',
+        flightOrTrainNumber: 'Flight or Train Number (required; If not airport or train station, write N/A)',
+        suitcases23kg: '# Suitcases 23kg',
+        suitcases10kg: '# Suitcases 10kg',
+        fullName: 'Full Name',
+        whereDidYouHearAboutUs: 'Where did you hear about us?',
+        selectOption: 'Select an option',
+        specialRequestsOptional: 'Special Requests (optional)',
+        specialRequestsPlaceholder: 'Baby seat, extra stop, etc.',
+        referralGoogle: 'Google',
+        referralFacebook: 'Facebook',
+        referralInstagram: 'Instagram',
+        referralRecommendation: 'Recommendation',
+        referralOther: 'Other',
+        depositToConfirm: 'Deposit to confirm',
+        estimatedTotalAmount: 'Estimated total service amount',
+        remainderPayOnDay: 'The remainder of the service ({amount}) is paid on the day of service.',
+        wantToPayFullNow: 'Do you want to pay in full now?',
+        totalToPayNow: 'Total to pay now (deposit {percent}%)',
+        exactLocation: 'Exact location',
+        optional: 'optional',
+        // Títulos de página
+        paymentPageTitle: 'Payment Page',
+        paymentPageSubtitle: 'Confirm your booking and proceed with secure payment',
+        // Placeholders
+        phonePlaceholder: 'Select country and number',
+        // Payment section
+        paymentInfo: 'Payment Information',
+        paymentMethod: 'Payment Method',
+        payWithCard: 'Pay with card',
+        cardProviders: 'Visa / Mastercard',
+        secureBadge: 'Secure',
+        paypalPart1: 'Pay',
+        paypalPart2: 'Pal',
+        recommendedBadge: 'Recommended',
+        cash: 'Cash',
+        depositRequiredBadge: 'Deposit required',
+        confirmationPayment: 'Confirmation payment',
+        confirmationPaymentDescription: 'This payment secures your booking. After paying it, you will finish filling the missing details.',
+        confirmReservationDeposit: 'Confirm your reservation (deposit)',
+        amountToPayOnServiceDay: 'Amount to pay on the service day',
+        depositWhy: 'Why do we ask for a deposit? It ensures the availability of the vehicle and driver on the selected date/time and covers schedule blocking and service preparation.',
+        depositHow: 'How is it paid? The deposit is paid now securely. The remainder ({amount}€) is paid on the service day in cash, card or PayPal as you prefer.',
+        depositAmount: 'Deposit amount: {amount}€.',
+        payWithCardOrPaypal: 'You can pay securely with card or PayPal.',
+        surchargeNotes: '* Night surcharge after 21:00: +5€. Large luggage (more than 3 x 23Kg suitcases): +10€.',
+        securePayment: 'Secure payment',
+        sslEncryption: '256-bit SSL encryption',
+        secureProcessing: 'Secure payment processing',
+        addAnotherQuotePrefix: 'If you want to add',
+        addAnotherQuoteStrong: 'Another Quote',
+        addAnotherQuoteHere: 'here',
+        addAnotherQuoteSuffix: 'you will be able to quote another transfer or tour.',
+        extraQuotesMade: 'Extra quotes made:',
+        depositNote: '<strong>Note:</strong> Now the deposit corresponding to each service will be charged ({transferPct}% for transfers and {tourPct}% for tours), for a total of {amount}€ over a combined total of {combined}€.',
+        payDeposit: 'Pay deposit',
+        cannotPayYet: 'You cannot pay yet:',
+        v_pickupAddress: 'Complete the exact pickup address.',
+        v_dropoffAddress: 'Complete the exact drop-off address.',
+        v_fullName: 'Enter your full name.',
+        v_validPhone: 'Provide a valid phone number.',
+        v_validEmail: 'Provide a valid email.',
+        v_flightNumber: 'Enter flight number.',
+        invalidFormat: 'Invalid format',
+        termsAndConditions: 'By confirming payment you accept our terms and conditions of service. You will receive a confirmation by email with all booking details.',
+        // After payment section
+        afterPaymentTitle: 'What happens after payment?',
+        step1Title: '1. Immediate Confirmation',
+        step1Description: 'You will receive an email with your booking details',
+        step2Title: '2. Reminder',
+        step2Description: 'We will contact you 24h before to confirm details',
+        step3Title: '3. Comfortable Service',
+        step3Description: 'Enjoy your punctual and comfortable transfer',
+        backToServices: 'Back to services',
+      },
+      fr: {
+        // Títulos y encabezados
+        bookingSummary: 'Résumé de Réservation',
+        service: 'Service',
+        event: 'Événement',
+        passengers: 'Passagers',
+        children: 'Enfants',
+        passenger: 'Passager',
+        slots: 'Places',
+        select: 'Sélectionner',
+        // Campos de formulario
+        pickupAddress: 'Adresse de Prise en Charge',
+        dropoffAddress: 'Adresse de Dépose',
+        flightNumber: 'Numéro de Vol',
+        luggage: 'Bagages',
+        specialRequests: 'Demandes Spéciales',
+        // Botones y acciones
+        backToHome: 'Retour à l\'Accueil',
+        confirmPayment: 'Confirmer et Payer',
+        payFull: 'Payer le Montant Total',
+        addQuote: 'Ajouter un Devis',
+        edit: 'Modifier',
+        delete: 'Supprimer',
+        save: 'Enregistrer',
+        cancel: 'Annuler',
+        next: 'Suivant',
+        back: 'Retour',
+        // Información de pago
+        total: 'Total',
+        deposit: 'Acompte',
+        remaining: 'Restant',
+        paymentSummary: 'Résumé de Paiement',
+        // Tipos de vehículo
+        car: 'Voiture',
+        minivan: 'Minivan',
+        van: 'Van',
+        // Tipos de tour
+        dayTour: 'Tour de Jour',
+        nightTour: 'Tour de Nuit',
+        stopoverTour: 'Tour d\'Escale',
+        // Campos de contacto
+        contactInfo: 'Informations de Contact',
+        name: 'Nom',
+        phone: 'Téléphone',
+        email: 'Email',
+        // Errores y validaciones
+        required: 'Requis',
+        invalidEmail: 'Email invalide',
+        invalidPhone: 'Téléphone invalide',
+        // Otros
+        date: 'Date',
+        time: 'Heure',
+        origin: 'Origine',
+        destination: 'Destination',
+        tour: 'Tour',
+        transfer: 'Transfert',
+        loading: 'Chargement',
+        processing: 'Traitement',
+        // Nuevas traducciones
+        childrenAges: 'Âges des enfants',
+        addressesAdditionalInfo: 'Adresses (informations supplémentaires)',
+        serviceOrigin: 'Origine du service',
+        serviceDestination: 'Destination du service',
+        flightOrTrainNumber: 'Numéro de vol ou de train (obligatoire; Si ce n\'est pas un aéroport ou une gare, écrivez N/A)',
+        suitcases23kg: '# Valises 23kg',
+        suitcases10kg: '# Valises 10kg',
+        fullName: 'Nom complet',
+        whereDidYouHearAboutUs: 'Où nous avez-vous connu?',
+        selectOption: 'Sélectionnez une option',
+        specialRequestsOptional: 'Demandes spéciales (optionnel)',
+        specialRequestsPlaceholder: 'Siège bébé, arrêt supplémentaire, etc.',
+        referralGoogle: 'Google',
+        referralFacebook: 'Facebook',
+        referralInstagram: 'Instagram',
+        referralRecommendation: 'Recommandation',
+        referralOther: 'Autre',
+        depositToConfirm: 'Acompte pour confirmer',
+        estimatedTotalAmount: 'Montant total estimé du service',
+        remainderPayOnDay: 'Le reste du service ({amount}) est payé le jour du service.',
+        wantToPayFullNow: 'Voulez-vous tout payer maintenant?',
+        totalToPayNow: 'Total à payer maintenant (acompte {percent}%)',
+        exactLocation: 'Emplacement exact',
+        optional: 'optionnel',
+        // Títulos de página
+        paymentPageTitle: 'Page de Paiement',
+        paymentPageSubtitle: 'Confirmez votre réservation et procédez au paiement sécurisé',
+        // Placeholders
+        phonePlaceholder: 'Sélectionnez pays et numéro',
+        // Section de paiement
+        paymentInfo: 'Informations de Paiement',
+        paymentMethod: 'Méthode de Paiement',
+        payWithCard: 'Paiement par carte',
+        cardProviders: 'Visa / Mastercard',
+        secureBadge: 'Sécurisé',
+        paypalPart1: 'Pay',
+        paypalPart2: 'Pal',
+        recommendedBadge: 'Recommandé',
+        cash: 'Espèces',
+        depositRequiredBadge: 'Acompte requis',
+        confirmationPayment: 'Paiement de confirmation',
+        confirmationPaymentDescription: 'Ce paiement sécurise votre réservation. Après l\'avoir payé, vous terminerez de remplir les données manquantes.',
+        confirmReservationDeposit: 'Confirmer votre réservation (acompte)',
+        amountToPayOnServiceDay: 'Montant à payer le jour du service',
+        depositWhy: 'Pourquoi demandons-nous un acompte ? Il garantit la disponibilité du véhicule et du conducteur à la date et l\'heure sélectionnées et couvre le blocage de l\'agenda et la préparation du service.',
+        depositHow: 'Comment est-il payé ? L\'acompte est payé maintenant de façon sécurisée. Le reste ({amount}€) est payé le jour du service en espèces, carte ou PayPal selon votre préférence.',
+        depositAmount: 'Montant de l\'acompte : {amount}€.',
+        payWithCardOrPaypal: 'Vous pouvez payer en toute sécurité par carte ou PayPal.',
+        surchargeNotes: '* Supplément de nuit après 21h : +5€. Bagages volumineux (plus de 3 bagages de 23Kg) : +10€.',
+        securePayment: 'Paiement sécurisé',
+        sslEncryption: 'Chiffrement SSL 256 bits',
+        secureProcessing: 'Traitement sécurisé des paiements',
+        addAnotherQuotePrefix: 'Si vous souhaitez ajouter',
+        addAnotherQuoteStrong: 'Une autre Cotation',
+        addAnotherQuoteHere: 'ici',
+        addAnotherQuoteSuffix: 'vous pourrez cotiser un autre transfert ou tour.',
+        extraQuotesMade: 'Cotations supplémentaires réalisées :',
+        depositNote: '<strong>Note :</strong> Maintenant, l\'acompte correspondant à chaque service sera facturé ({transferPct}% pour les transferts et {tourPct}% pour les tours), pour un total de {amount}€ sur un total combiné de {combined}€.',
+        payDeposit: 'Payer l\'acompte',
+        cannotPayYet: 'Vous ne pouvez pas payer encore :',
+        v_pickupAddress: 'Complétez l\'adresse exacte de prise en charge.',
+        v_dropoffAddress: 'Complétez l\'adresse exacte de destination.',
+        v_fullName: 'Indiquez votre nom complet.',
+        v_validPhone: 'Indiquez un numéro de téléphone valide.',
+        v_validEmail: 'Indiquez un email valide.',
+        v_flightNumber: 'Saisissez le numéro de vol.',
+        invalidFormat: 'Format invalide',
+        termsAndConditions: 'En confirmant le paiement, vous acceptez nos conditions générales de service. Vous recevrez une confirmation par email avec tous les détails de votre réservation.',
+        // Section après paiement
+        afterPaymentTitle: 'Que se passe-t-il après le paiement ?',
+        step1Title: '1. Confirmation Immédiate',
+        step1Description: 'Vous recevrez un email avec les détails de votre réservation',
+        step2Title: '2. Rappel',
+        step2Description: 'Nous vous contactons 24h avant pour confirmer les détails',
+        step3Title: '3. Service Confortable',
+        step3Description: 'Profitez de votre transfert ponctuel et confortable',
+        backToServices: 'Retour aux services',
+      },
+    };
+    return texts[locale] || texts.es;
+  }, [locale]);
+
   const [destino, setDestino] = useState<BookingData | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
   // Guardar origen/destino al cargar la página (por ejemplo después de redirigir desde la cotización)
@@ -788,7 +1209,7 @@ export default function PaymentPage() {
   const requireFlightTimesFromItem =
     item?.transferDoc?.requireFlightTimes ?? item?.requireFlightTimes;
 
-  setModalForm(prev => {
+  setModalForm((prev: any) => {
     const origenResolved =
       toIndexKey(transferDoc?.from) || item?.origen || prev.origen || "";
 
@@ -1995,23 +2416,23 @@ export default function PaymentPage() {
 
     if (needsAddresses) {
       if (!String(paymentPickupAddress || "").trim())
-        reasons.push("Completa la dirección exacta de recogida.");
+        reasons.push(pageTexts.v_pickupAddress);
       if (!String(paymentDropoffAddress || "").trim())
-        reasons.push("Completa la dirección exacta de destino.");
+        reasons.push(pageTexts.v_dropoffAddress);
     }
 
     // Contacto
     if (!String(bd.contactName || "").trim())
-      reasons.push("Escribe tu nombre completo.");
+      reasons.push(pageTexts.v_fullName);
     if (!String(bd.contactPhone || "").trim())
-      reasons.push("Indica un teléfono válido.");
+      reasons.push(pageTexts.v_validPhone);
     const email = String(bd.contactEmail || "");
     if (!email.trim()) {
-      reasons.push("Indica un email válido.");
+      reasons.push(pageTexts.v_validEmail);
     } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!emailRegex.test(email))
-        reasons.push("El email no tiene un formato válido.");
+        reasons.push(pageTexts.invalidFormat);
     }
 
     // Si el tour requiere número de vuelo, solo exigimos el número (no las horas de llegada/salida)
@@ -2021,7 +2442,7 @@ export default function PaymentPage() {
 
     if (requireFlightByTour) {
       if (!String(bd.flightNumber || "").trim())
-        reasons.push("Indica el número de vuelo.");
+        reasons.push(pageTexts.v_flightNumber);
     }
 
     // Si quieres además forzar hora del servicio por `requireTime` del tour:
@@ -2120,7 +2541,7 @@ export default function PaymentPage() {
           typeof v === "number" ? true : Boolean(String(v ?? "").trim());
 
         if (requireFlightInfo || requireFlightNumber) {
-          if (!has(b.flightNumber)) reasons.push("Ingresa el número de vuelo.");
+          if (!has(b.flightNumber)) reasons.push(pageTexts.v_flightNumber);
         }
         // Ya no pedimos hora de llegada ni salida del vuelo
       }
@@ -2325,7 +2746,7 @@ export default function PaymentPage() {
               className="mt-6 inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
             >
               <ArrowLeft className="w-4 h-4" />
-              Volver a servicios
+              {pageTexts.backToServices}
             </Link>
           </AnimatedSection>
 
@@ -2333,10 +2754,10 @@ export default function PaymentPage() {
             {/* Header */}
             <AnimatedSection animation="fade-up" className="text-center mb-8">
               <h1 className="text-4xl font-bold text-primary mb-4">
-                Página de Pago
+                {pageTexts.paymentPageTitle}
               </h1>
               <p className="text-xl text-muted-foreground">
-                Confirma tu reserva y procede con el pago seguro
+                {pageTexts.paymentPageSubtitle}
               </p>
             </AnimatedSection>
 
@@ -2348,10 +2769,10 @@ export default function PaymentPage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-primary">
                         <CheckCircle className="w-6 h-6 text-accent" />
-                        Resumen de tu Reserva
+                        {pageTexts.bookingSummary}
                         {bookingData.isEvent && (
                           <Badge className="ml-2 bg-accent text-white">
-                            Evento
+                            {pageTexts.event}
                           </Badge>
                         )}
                       </CardTitle>
@@ -2367,7 +2788,7 @@ export default function PaymentPage() {
                         )}
                       <div className="flex items-center justify-between">
                         <span className="font-medium">
-                          {bookingData.isEvent ? "Evento:" : "Servicio:"}
+                          {bookingData.isEvent ? `${pageTexts.event}:` : `${pageTexts.service}:`}
                         </span>
                         <div className="flex items-center gap-2 relative">
                           {isTour ? (
@@ -2409,7 +2830,7 @@ export default function PaymentPage() {
                           <Users className="w-4 h-4 text-accent" />
                           <div className="flex items-center gap-2">
                             <span className="text-sm">
-                              {bookingData.isEvent ? "Cupos" : "Pasajeros"}
+                              {bookingData.isEvent ? pageTexts.slots : pageTexts.passengers}
                             </span>
 
                             <Select
@@ -2444,7 +2865,7 @@ export default function PaymentPage() {
                                     : ""
                                 }`}
                               >
-                                <SelectValue placeholder="Selecciona" />
+                                <SelectValue placeholder={pageTexts.select} />
                               </SelectTrigger>
 
                               {/* 🔹 Lista dinámica de 1 a 56 pasajeros */}
@@ -2454,7 +2875,7 @@ export default function PaymentPage() {
                                   (_, i) => i + 1
                                 ).map((n) => (
                                   <SelectItem key={n} value={String(n)}>
-                                    {n} {n === 1 ? "Pasajero" : "Pasajeros"}
+                                    {n} {n === 1 ? pageTexts.passenger : pageTexts.passengers}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -2478,7 +2899,7 @@ export default function PaymentPage() {
                                   d="M9 12h6m-3-3v6m9 0a9 9 0 11-18 0 9 9 0 0118 0z"
                                 />
                               </svg>
-                              Niños
+                              {pageTexts.children}
                             </span>
                             <Select
                               value={String(bookingData.ninos ?? 0)}
@@ -2546,7 +2967,7 @@ export default function PaymentPage() {
                                     d="M12 8v4m0 4h.01"
                                   />
                                 </svg>
-                                Edades de los niños
+                                {pageTexts.childrenAges}
                               </span>
                               <Input
                                 type="text"
@@ -2676,11 +3097,11 @@ export default function PaymentPage() {
                         {isTour ? (
                           <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                             <h4 className="font-medium text-primary">
-                              Direcciones (información adicional)
+                              {pageTexts.addressesAdditionalInfo}
                             </h4>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Origen del servicio${bookingData?.origen ? ` [${bookingData.origen}]` : ""}`}
+                                {`${pageTexts.serviceOrigin}${bookingData?.origen ? ` [${bookingData.origen}]` : ""}`}
                               </label>
                               <p className="text-sm text-muted-foreground">
                                 {carritoState && carritoState.length > 0
@@ -2688,7 +3109,7 @@ export default function PaymentPage() {
                                   : paymentPickupAddress || "No especificado"}
                               </p>
                               <Input
-                                placeholder="Ubicación exacta"
+                                placeholder={pageTexts.exactLocation}
                                 data-field="paymentPickupAddress"
                                 className={
                                   fieldErrors.pickupAddress
@@ -2712,7 +3133,7 @@ export default function PaymentPage() {
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Destino del servicio${bookingData?.destino ? ` [${bookingData.destino}]` : ""}`}
+                                {`${pageTexts.serviceDestination}${bookingData?.destino ? ` [${bookingData.destino}]` : ""}`}
                               </label>
                               <p className="text-sm text-muted-foreground">
                                 {carritoState && carritoState.length > 0
@@ -2722,7 +3143,7 @@ export default function PaymentPage() {
                                     "No especificado"}
                               </p>
                               <Input
-                                placeholder="Ubicación exacta"
+                                placeholder={pageTexts.exactLocation}
                                 data-field="paymentDropoffAddress"
                                 className={
                                   fieldErrors.dropoffAddress
@@ -2749,10 +3170,10 @@ export default function PaymentPage() {
                             <div className="grid grid-cols-3 gap-3">
                               <div className="space-y-2">
                                 <label className="text-xs font-medium">
-                                  Número de Vuelo o tren{" "}
+                                  {pageTexts.flightOrTrainNumber.split('(')[0]}{" "}
                                   {bookingData?.tourDoc?.requirements
                                     ?.requireFlightNumber
-                                    ? "(obligatorio; Si no es aeropuerto o estación de trenes, escriba N/A)"
+                                    ? `(${pageTexts.flightOrTrainNumber.split('(')[1]}`
                                     : "(opcional)"}
                                 </label>
                                 <Input
@@ -2781,11 +3202,11 @@ export default function PaymentPage() {
                         ) : (
                           <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                             <h4 className="font-medium text-primary">
-                              Direcciones (información adicional)
+                              {pageTexts.addressesAdditionalInfo}
                             </h4>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Origen del servicio${
+                                {`${pageTexts.serviceOrigin}${
                                   bookingData?.origen
                                     ? ` [${bookingData.origen}]`
                                     : ""
@@ -2793,7 +3214,7 @@ export default function PaymentPage() {
                               </label>
 
                               <Input
-                                placeholder="Ubicación exacta"
+                                placeholder={pageTexts.exactLocation}
                                 data-field="paymentPickupAddress"
                                 className={
                                   fieldErrors.pickupAddress
@@ -2819,10 +3240,10 @@ export default function PaymentPage() {
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                {`Destino del servicio${bookingData?.destino ? ` [${bookingData.destino}]` : ""}`}
+                                {`${pageTexts.serviceDestination}${bookingData?.destino ? ` [${bookingData.destino}]` : ""}`}
                               </label>
                               <Input
-                                placeholder="Ubicación exacta"
+                                placeholder={pageTexts.exactLocation}
                                 data-field="paymentDropoffAddress"
                                 className={
                                   fieldErrors.dropoffAddress
@@ -2849,9 +3270,9 @@ export default function PaymentPage() {
                             {/* Número de vuelo */}
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Número de Vuelo o tren{" "}
+                                {pageTexts.flightOrTrainNumber.split('(')[0]}{" "}
                                 {requireFlight
-                                  ? "(obligatorio; Si no es aeropuerto o estación de trenes, escriba N/A)"
+                                  ? `(${pageTexts.flightOrTrainNumber.split('(')[1]}`
                                   : "(opcional)"}
                               </label>
                               <Input
@@ -2883,13 +3304,13 @@ export default function PaymentPage() {
                           <div className="flex items-center gap-3">
                             <Luggage className="w-4 h-4 text-accent" />
                             <span className="text-sm font-medium">
-                              Equipaje
+                              {pageTexts.luggage}
                             </span>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="text-xs text-muted-foreground">
-                                # Maletas 23kg
+                                {pageTexts.suitcases23kg}
                               </label>
                               <Input
                                 type="number"
@@ -2905,7 +3326,7 @@ export default function PaymentPage() {
                             </div>
                             <div>
                               <label className="text-xs text-muted-foreground">
-                                # Maletas 10kg
+                                {pageTexts.suitcases10kg}
                               </label>
                               <Input
                                 type="number"
@@ -2950,11 +3371,11 @@ export default function PaymentPage() {
                       {bookingData.isEvent ? (
                         <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                           <h4 className="font-medium text-primary">
-                            Información de Contacto
+                            {pageTexts.contactInfo}
                           </h4>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">
-                              Nombre Completo
+                              {pageTexts.fullName}
                             </label>
                             <Input
                               placeholder="Tu nombre completo"
@@ -2976,13 +3397,14 @@ export default function PaymentPage() {
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Teléfono
+                                {pageTexts.phone}
                               </label>
                               <PhoneInputIntl
                                 value={bookingData.contactPhone || ""}
                                 onChange={(value) =>
                                   updateBookingField("contactPhone", value)
                                 }
+                                placeholder={pageTexts.phonePlaceholder}
                                 inputProps={{
                                   name: "contactPhone",
                                   className: fieldErrors.contactPhone
@@ -2993,7 +3415,7 @@ export default function PaymentPage() {
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Email
+                                {pageTexts.email}
                               </label>
                               <EmailAutocomplete
                                 value={bookingData.contactEmail || ""}
@@ -3015,7 +3437,7 @@ export default function PaymentPage() {
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">
-                              ¿Dónde nos conociste?
+                              {pageTexts.whereDidYouHearAboutUs}
                             </label>
                             <Select
                               value={bookingData.referralSource || ""}
@@ -3024,29 +3446,29 @@ export default function PaymentPage() {
                               }
                             >
                               <SelectTrigger className="cursor-pointer">
-                                <SelectValue placeholder="Selecciona una opción" />
+                                <SelectValue placeholder={pageTexts.selectOption} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="google">Google</SelectItem>
+                                <SelectItem value="google">{pageTexts.referralGoogle}</SelectItem>
                                 <SelectItem value="facebook">
-                                  Facebook
+                                  {pageTexts.referralFacebook}
                                 </SelectItem>
                                 <SelectItem value="instagram">
-                                  Instagram
+                                  {pageTexts.referralInstagram}
                                 </SelectItem>
                                 <SelectItem value="referido">
-                                  Recomendación
+                                  {pageTexts.referralRecommendation}
                                 </SelectItem>
-                                <SelectItem value="otro">Otro</SelectItem>
+                                <SelectItem value="otro">{pageTexts.referralOther}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">
-                              Solicitudes Especiales (opcional)
+                              {pageTexts.specialRequestsOptional}
                             </label>
                             <Input
-                              placeholder="Asiento bebé, parada extra, etc."
+                              placeholder={pageTexts.specialRequestsPlaceholder}
                               value={bookingData.specialRequests || ""}
                               onChange={(e) =>
                                 updateBookingField(
@@ -3061,11 +3483,11 @@ export default function PaymentPage() {
                         <>
                           <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                             <h4 className="font-medium text-primary">
-                              Información de Contacto
+                              {pageTexts.contactInfo}
                             </h4>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Nombre Completo
+                                {pageTexts.fullName}
                               </label>
                               <Input
                                 placeholder="Tu nombre completo"
@@ -3087,13 +3509,14 @@ export default function PaymentPage() {
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-2">
                                 <label className="text-xs font-medium">
-                                  Teléfono
+                                  {pageTexts.phone}
                                 </label>
                                 <PhoneInputIntl
                                   value={bookingData.contactPhone || ""}
                                   onChange={(value) =>
                                     updateBookingField("contactPhone", value)
                                   }
+                                  placeholder={pageTexts.phonePlaceholder}
                                   inputProps={{
                                     name: "contactPhone",
                                     className: fieldErrors.contactPhone
@@ -3104,7 +3527,7 @@ export default function PaymentPage() {
                               </div>
                               <div className="space-y-2">
                                 <label className="text-xs font-medium">
-                                  Email
+                                  {pageTexts.email}
                                 </label>
                                 <EmailAutocomplete
                                   value={bookingData.contactEmail || ""}
@@ -3126,7 +3549,7 @@ export default function PaymentPage() {
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                ¿Dónde nos conociste?
+                                {pageTexts.whereDidYouHearAboutUs}
                               </label>
                               <Select
                                 value={bookingData.referralSource || ""}
@@ -3135,29 +3558,29 @@ export default function PaymentPage() {
                                 }
                               >
                                 <SelectTrigger className="cursor-pointer">
-                                  <SelectValue placeholder="Selecciona una opción" />
+                                  <SelectValue placeholder={pageTexts.selectOption} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="google">Google</SelectItem>
+                                  <SelectItem value="google">{pageTexts.referralGoogle}</SelectItem>
                                   <SelectItem value="facebook">
-                                    Facebook
+                                    {pageTexts.referralFacebook}
                                   </SelectItem>
                                   <SelectItem value="instagram">
-                                    Instagram
+                                    {pageTexts.referralInstagram}
                                   </SelectItem>
                                   <SelectItem value="referido">
-                                    Recomendación
+                                    {pageTexts.referralRecommendation}
                                   </SelectItem>
-                                  <SelectItem value="otro">Otro</SelectItem>
+                                  <SelectItem value="otro">{pageTexts.referralOther}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Solicitudes Especiales (opcional)
+                                {pageTexts.specialRequestsOptional}
                               </label>
                               <Input
-                                placeholder="Asiento bebé, parada extra, etc."
+                                placeholder={pageTexts.specialRequestsPlaceholder}
                                 value={bookingData.specialRequests || ""}
                                 onChange={(e) =>
                                   updateBookingField(
@@ -3172,11 +3595,11 @@ export default function PaymentPage() {
                       ) : (
                         <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                           <h4 className="font-medium text-primary">
-                            Información de Contacto
+                            {pageTexts.contactInfo}
                           </h4>
                           <div className="space-y-2">
                             <label className="text-xs font-medium">
-                              Nombre Completo
+                              {pageTexts.fullName}
                             </label>
                             <Input
                               placeholder="Tu nombre completo"
@@ -3198,13 +3621,14 @@ export default function PaymentPage() {
                           <div className="space-y-4">
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Teléfono
+                                {pageTexts.phone}
                               </label>
                               <PhoneInputIntl
                                 value={bookingData.contactPhone || ""}
                                 onChange={(value) =>
                                   updateBookingField("contactPhone", value)
                                 }
+                                placeholder={pageTexts.phonePlaceholder}
                                 inputProps={{
                                   name: "contactPhone",
                                   className: fieldErrors.contactPhone
@@ -3216,7 +3640,7 @@ export default function PaymentPage() {
 
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Email
+                                {pageTexts.email}
                               </label>
                               <EmailAutocomplete
                                 value={bookingData.contactEmail || ""}
@@ -3238,7 +3662,7 @@ export default function PaymentPage() {
 
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                ¿Dónde nos conociste?
+                                {pageTexts.whereDidYouHearAboutUs}
                               </label>
                               <Select
                                 value={bookingData.referralSource || ""}
@@ -3247,30 +3671,30 @@ export default function PaymentPage() {
                                 }
                               >
                                 <SelectTrigger className="cursor-pointer w-full">
-                                  <SelectValue placeholder="Selecciona una opción" />
+                                  <SelectValue placeholder={pageTexts.selectOption} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="google">Google</SelectItem>
+                                  <SelectItem value="google">{pageTexts.referralGoogle}</SelectItem>
                                   <SelectItem value="facebook">
-                                    Facebook
+                                    {pageTexts.referralFacebook}
                                   </SelectItem>
                                   <SelectItem value="instagram">
-                                    Instagram
+                                    {pageTexts.referralInstagram}
                                   </SelectItem>
                                   <SelectItem value="referido">
-                                    Recomendación
+                                    {pageTexts.referralRecommendation}
                                   </SelectItem>
-                                  <SelectItem value="otro">Otro</SelectItem>
+                                  <SelectItem value="otro">{pageTexts.referralOther}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
-                                Solicitudes Especiales (opcional)
+                                {pageTexts.specialRequestsOptional}
                               </label>
                               <Input
-                                placeholder="Asiento bebé, parada extra, etc."
+                                placeholder={pageTexts.specialRequestsPlaceholder}
                                 value={bookingData.specialRequests || ""}
                                 onChange={(e) =>
                                   updateBookingField(
@@ -3292,7 +3716,7 @@ export default function PaymentPage() {
                         {isQuick ? (
                           <>
                             <div className="flex justify-between text-sm">
-                              <span>Depósito para confirmar</span>
+                              <span>{pageTexts.depositToConfirm}</span>
                               <span>{fmtMoney(deposit)}€</span>
                             </div>
                             {isTour && (
@@ -3303,13 +3727,12 @@ export default function PaymentPage() {
                             )}
                             {total > 0 && (
                               <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>Importe total estimado del servicio</span>
+                                <span>{pageTexts.estimatedTotalAmount}</span>
                                 <span>{fmtMoney(total)}€</span>
                               </div>
                             )}
                             <p className="text-xs text-muted-foreground">
-                              El resto del servicio ({fmtMoney(remaining)}€) se
-                              paga el día del servicio.
+                              {pageTexts.remainderPayOnDay.replace('{amount}', `${fmtMoney(remaining)}€`)}
                             </p>
                           </>
                         ) : bookingData.isEvent ? (
@@ -3567,14 +3990,11 @@ export default function PaymentPage() {
                               checked={payFullNow}
                               onChange={(e) => setPayFullNow(e.target.checked)}
                             />
-                            ¿Deseas pagar todo ahora?
+                            {pageTexts.wantToPayFullNow}
                           </label>
                           <div className="flex items-baseline gap-3 font-bold text-lg">
                             <span>
-                              Total a pagar ahora{" "}
-                              {payFullNow
-                                ? "(100%)"
-                                : `(depósito ${depositPercentInt}%)`}
+                              {pageTexts.totalToPayNow.replace('{percent}', payFullNow ? '100' : String(depositPercentInt))}
                             </span>
                             <span className="text-accent animate-pulse">
                               {fmtMoney(amountNow)}€
@@ -3595,13 +4015,13 @@ export default function PaymentPage() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-primary">
                           <Users className="w-5 h-5 text-accent" />
-                          Información de Contacto
+                          {pageTexts.contactInfo}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="space-y-2">
                           <label className="text-xs font-medium">
-                            Nombre Completo
+                            {pageTexts.fullName}
                           </label>
                           <Input
                             placeholder="Tu nombre completo"
@@ -3620,13 +4040,14 @@ export default function PaymentPage() {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <label className="text-xs font-medium">
-                              Teléfono
+                              {pageTexts.phone}
                             </label>
                             <PhoneInputIntl
                               value={bookingData.contactPhone || ""}
                               onChange={(value) =>
                                 updateBookingField("contactPhone", value)
                               }
+                              placeholder={pageTexts.phonePlaceholder}
                               inputProps={{
                                 name: "contactPhone",
                                 className: fieldErrors.contactPhone
@@ -3636,7 +4057,7 @@ export default function PaymentPage() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-xs font-medium">Email</label>
+                            <label className="text-xs font-medium">{pageTexts.email}</label>
                             <EmailAutocomplete
                               value={bookingData.contactEmail || ""}
                               onChange={(value) =>
@@ -3657,7 +4078,7 @@ export default function PaymentPage() {
                         </div>
                         <div className="space-y-2">
                           <label className="text-xs font-medium">
-                            ¿Dónde nos conociste?
+                            {pageTexts.whereDidYouHearAboutUs}
                           </label>
                           <Select
                             value={bookingData.referralSource || ""}
@@ -3666,27 +4087,27 @@ export default function PaymentPage() {
                             }
                           >
                             <SelectTrigger className="cursor-pointer">
-                              <SelectValue placeholder="Selecciona una opción" />
+                              <SelectValue placeholder={pageTexts.selectOption} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="google">Google</SelectItem>
-                              <SelectItem value="facebook">Facebook</SelectItem>
+                              <SelectItem value="google">{pageTexts.referralGoogle}</SelectItem>
+                              <SelectItem value="facebook">{pageTexts.referralFacebook}</SelectItem>
                               <SelectItem value="instagram">
-                                Instagram
+                                {pageTexts.referralInstagram}
                               </SelectItem>
                               <SelectItem value="referido">
-                                Recomendación
+                                {pageTexts.referralRecommendation}
                               </SelectItem>
-                              <SelectItem value="otro">Otro</SelectItem>
+                              <SelectItem value="otro">{pageTexts.referralOther}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
                           <label className="text-xs font-medium">
-                            Solicitudes Especiales (opcional)
+                            {pageTexts.specialRequestsOptional}
                           </label>
                           <Input
-                            placeholder="Asiento bebé, parada extra, etc."
+                            placeholder={pageTexts.specialRequestsPlaceholder}
                             value={bookingData.specialRequests || ""}
                             onChange={(e) =>
                               updateBookingField(
@@ -3711,13 +4132,13 @@ export default function PaymentPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-primary">
                       <CreditCard className="w-6 h-6 text-accent" />
-                      Información de Pago
+                      {pageTexts.paymentInfo}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Payment Method Selection */}
                     <div className="space-y-4">
-                      <h4 className="font-medium">Método de Pago</h4>
+                      <h4 className="font-medium">{pageTexts.paymentMethod}</h4>
                       <div className="grid gap-3">
                         {/* Tarjeta */}
                         <label className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/30">
@@ -3734,7 +4155,7 @@ export default function PaymentPage() {
                           <CreditCard className="w-5 h-5 text-accent" />
                           <div className="flex-1">
                             <span className="font-medium">
-                              Pago con tarjeta
+                              {pageTexts.payWithCard}
                             </span>
                             <div className="mt-1 flex items-center gap-3">
                               <img
@@ -3750,7 +4171,7 @@ export default function PaymentPage() {
                             </div>
                           </div>
                           <Badge variant="secondary" className="ml-auto">
-                            Seguro
+                            {pageTexts.secureBadge}
                           </Badge>
                         </label>
 
@@ -3769,15 +4190,15 @@ export default function PaymentPage() {
                           {/* Logo estilo PayPal */}
                           <div className="flex items-center">
                             <span className="text-[#003087] font-extrabold text-sm">
-                              Pay
+                              {pageTexts.paypalPart1}
                             </span>
                             <span className="text-[#009CDE] font-extrabold text-sm">
-                              Pal
+                              {pageTexts.paypalPart2}
                             </span>
                           </div>
                           <div className="flex-1" />
                           <Badge variant="secondary" className="ml-auto">
-                            Recomendado
+                            {pageTexts.recommendedBadge}
                           </Badge>
                         </label>
 
@@ -3793,9 +4214,9 @@ export default function PaymentPage() {
                             }
                             className="text-accent"
                           />
-                          <span className="font-medium">Efectivo</span>
+                          <span className="font-medium">{pageTexts.cash}</span>
                           <Badge className="ml-2" variant="outline">
-                            Depósito requerido
+                            {pageTexts.depositRequiredBadge}
                           </Badge>
                           <div className="flex-1" />
                         </label>
@@ -3809,39 +4230,32 @@ export default function PaymentPage() {
                       {isQuick ? (
                         <>
                           <div className="flex justify-between">
-                            <span>Pago de confirmación</span>
+                            <span>{pageTexts.confirmationPayment}</span>
                             <span>{fmtMoney(deposit)}€</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Este pago asegura tu reserva. Después de pagarlo,
-                            terminarás de rellenar los datos faltantes.
+                            {pageTexts.confirmationPaymentDescription}
                           </p>
                         </>
                       ) : paymentMethod === "cash" ? (
                         <>
                           <div className="flex justify-between">
-                            <span>Confirmar tu reserva (depósito)</span>
+                            <span>{pageTexts.confirmReservationDeposit}</span>
                             <span>{deposit}€</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Valor a pagar el día del servicio</span>
+                            <span>{pageTexts.amountToPayOnServiceDay}</span>
                             <span>{fmtMoney(remaining)}€</span>
                           </div>
                           <div className="text-xs text-muted-foreground space-y-1">
                             <p>
-                              ¿Por qué pedimos un depósito? Asegura la
-                              disponibilidad del vehículo y del conductor en la
-                              fecha y hora seleccionadas y cubre el bloqueo de
-                              agenda y la preparación del servicio.
+                              {pageTexts.depositWhy}
                             </p>
                             <p>
-                              ¿Cómo se paga? El depósito se abona ahora de forma
-                              segura. El resto ({remaining}€) se paga el día del
-                              servicio en efectivo, tarjeta o PayPal según
-                              prefieras.
+                              {pageTexts.depositHow.replace('{amount}', String(remaining))}
                             </p>
                             {isTourBooking ? (
-                              <p>Importe del depósito: {deposit}€.</p>
+                              <p>{pageTexts.depositAmount.replace('{amount}', String(deposit))}</p>
                             ) : null}
                           </div>
                         </>
@@ -3863,15 +4277,13 @@ export default function PaymentPage() {
                             </div>
                           )}
                           <p className="text-xs text-muted-foreground">
-                            Puedes pagar con tarjeta o PayPal de forma segura.{" "}
+                            {pageTexts.payWithCardOrPaypal}{" "}
                             {payFullNow
                               ? "Se cobrará el total ahora."
                               : `Si prefieres, marca "¿Deseas pagar todo ahora?" para abonar el 100%. En caso contrario, se cobrará el depósito del ${depositPercentInt}% y el resto se paga el día del servicio.`}
                           </p>
                           <p className="text-[11px] text-muted-foreground mt-1">
-                            * Recargo nocturno después de las 21:00: +5€.
-                            Equipaje voluminoso (más de 3 maletas de 23Kg):
-                            +10€.
+                            {pageTexts.surchargeNotes}
                             {typeof clientHour === "number" && (
                               <span className="ml-1 text-xs">
                                 Hora local detectada: {clientHour}:00{" "}
@@ -3891,16 +4303,16 @@ export default function PaymentPage() {
                     <div className="space-y-3">
                       <h4 className="font-medium flex items-center gap-2">
                         <Shield className="w-5 h-5 text-accent" />
-                        Pago Seguro
+                        {pageTexts.securePayment}
                       </h4>
                       <div className="space-y-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-accent rounded-full" />
-                          <span>Encriptación SSL de 256 bits</span>
+                          <span>{pageTexts.sslEncryption}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-accent rounded-full" />
-                          <span>Procesamiento seguro de pagos</span>
+                          <span>{pageTexts.secureProcessing}</span>
                         </div>
                       </div>
                     </div>
@@ -4044,7 +4456,7 @@ export default function PaymentPage() {
                       {carritoState?.length < 1 && (
                         <div className="text-center p-4 mt-4 bg-muted border border-dashed rounded-lg">
                           <p className="text-sm text-primary/90">
-                            Si deseas añadir <strong>Otra Cotización</strong> ,
+                            {pageTexts.addAnotherQuotePrefix} <strong>{pageTexts.addAnotherQuoteStrong}</strong> ,
                             pulsa
                             <Button
                               size="sm"
@@ -4052,16 +4464,16 @@ export default function PaymentPage() {
                               className="mx-2 align-middle"
                               onClick={openReturnQuoteModal}
                             >
-                              aquí
+                              {pageTexts.addAnotherQuoteHere}
                             </Button>
-                            y podrás cotizar otro traslado o tour.
+                            {pageTexts.addAnotherQuoteSuffix}
                           </p>
                         </div>
                       )}
                       {/* Mostrar número de cotizaciones realizadas (items en carrito) */}
                       <div className="text-center mb-3">
                         <span className="text-sm text-muted-foreground">
-                          Cotizaciones extras realizadas:{" "}
+                          {pageTexts.extraQuotesMade}{" "}
                           <strong>{carritoState?.length || 0}</strong>
                         </span>
                       </div>
@@ -4069,15 +4481,13 @@ export default function PaymentPage() {
                       {/* Nota: indicar porcentaje de depósito e importe a pagar ahora (ej. 10%) */}
                       {!payFullNow && (
                         <div className="text-center mb-3 p-3 bg-muted/10 rounded">
-                          <p className="text-sm text-muted-foreground">
-                            <strong>Nota:</strong> Ahora se cobrará el depósito
-                            correspondiente a cada servicio (
-                            <strong>10%</strong> para traslados y{" "}
-                            <strong>20%</strong> para tours), por un total de{" "}
-                            <strong>{fmtMoney(amountNow)}€</strong> sobre un
-                            total combinado de{" "}
-                            <strong>{fmtMoney(combinedTotal)}€</strong>.
-                          </p>
+                          <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{
+                            __html: pageTexts.depositNote
+                              .replace('{transferPct}', '10')
+                              .replace('{tourPct}', '20')
+                              .replace('{amount}', fmtMoney(amountNow))
+                              .replace('{combined}', fmtMoney(combinedTotal))
+                          }} />
                         </div>
                       )}
 
@@ -4512,13 +4922,13 @@ export default function PaymentPage() {
                         {isPaying ? (
                           <span className="inline-flex items-center gap-2">
                             <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                            Procesando...
+                            {pageTexts.processing}...
                           </span>
                         ) : (
                           <>
                             {payFullNow
-                              ? `Pagar todo (${fmtMoney(combinedTotal)}€)`
-                              : `Pagar depósito (${fmtMoney(amountNow)}€)`}
+                              ? `${pageTexts.payFull} (${fmtMoney(combinedTotal)}€)`
+                              : `${pageTexts.payDeposit} (${fmtMoney(amountNow)}€)`}
                           </>
                         )}
                       </Button>
@@ -4529,7 +4939,7 @@ export default function PaymentPage() {
                           return (
                             <div className="mt-3 p-3 bg-destructive/10 rounded text-destructive text-sm">
                               <span className="font-semibold block mb-1">
-                                No puedes pagar aún:
+                                {pageTexts.cannotPayYet}
                               </span>
                               <ul className="list-disc pl-5">
                                 {reasons.map((msg, idx) => (
@@ -4544,7 +4954,7 @@ export default function PaymentPage() {
                       {/* Mensajes de error por campo ya mostrados inline sobre cada input */}
 
                       <p className="text-xs text-muted-foreground text-center">
-                        Al confirmar el pago, aceptas nuestros términos y condiciones de servicio. Recibirás una confirmación por email con todos los detalles de tu reserva.
+                        {pageTexts.termsAndConditions}
                       </p>
                     </div>
                   </CardContent>
@@ -4558,7 +4968,7 @@ export default function PaymentPage() {
                 <CardContent className="p-6">
                   <div className="text-center space-y-4">
                     <h3 className="text-lg font-semibold text-primary">
-                      ¿Qué sucede después del pago?
+                      {pageTexts.afterPaymentTitle}
                     </h3>
                     <div className="grid md:grid-cols-3 gap-6 text-sm">
                       <div className="flex flex-col items-center gap-2">
@@ -4566,28 +4976,28 @@ export default function PaymentPage() {
                           <CheckCircle className="w-6 h-6 text-accent" />
                         </div>
                         <h4 className="font-medium">
-                          1. Confirmación Inmediata
+                          {pageTexts.step1Title}
                         </h4>
                         <p className="text-muted-foreground">
-                          Recibirás un email con los detalles de tu reserva
+                          {pageTexts.step1Description}
                         </p>
                       </div>
                       <div className="flex flex-col items-center gap-2">
                         <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
                           <Clock className="w-6 h-6 text-accent" />
                         </div>
-                        <h4 className="font-medium">2. Recordatorio</h4>
+                        <h4 className="font-medium">{pageTexts.step2Title}</h4>
                         <p className="text-muted-foreground">
-                          Te contactaremos 24h antes para confirmar detalles
+                          {pageTexts.step2Description}
                         </p>
                       </div>
                       <div className="flex flex-col items-center gap-2">
                         <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
                           <CreditCard className="w-6 h-6 text-accent" />
                         </div>
-                        <h4 className="font-medium">3. Servicio Comodo</h4>
+                        <h4 className="font-medium">{pageTexts.step3Title}</h4>
                         <p className="text-muted-foreground">
-                          Disfruta de tu traslado puntual y cómodo
+                          {pageTexts.step3Description}
                         </p>
                       </div>
                     </div>
@@ -5500,10 +5910,7 @@ export default function PaymentPage() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      const ok = handleModalSave(false);
-                      if (ok) {
-                        // modal already closed in saveModalAsNew
-                      }
+                      handleModalSave(false);
                     }}
                   >
                     Añadir al carrito
@@ -5513,10 +5920,7 @@ export default function PaymentPage() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      const ok = handleModalSave(true);
-                      if (ok) {
-                        // modal already closed in updateExistingItem
-                      }
+                      handleModalSave(true);
                     }}
                   >
                     Guardar cambios

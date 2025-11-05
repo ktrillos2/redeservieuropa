@@ -10,9 +10,10 @@ export interface PhoneInputProps {
   country?: string;
   disabled?: boolean;
   className?: string;
+  placeholder?: string;
 }
 
-export const PhoneInputIntl: React.FC<PhoneInputProps> = ({ value, onChange, inputProps, country = 'fr', disabled, className }) => {
+export const PhoneInputIntl: React.FC<PhoneInputProps> = ({ value, onChange, inputProps, country = 'fr', disabled, className, placeholder = 'Selecciona país y número' }) => {
   return (
     <PhoneInput
       country={country}
@@ -37,7 +38,7 @@ export const PhoneInputIntl: React.FC<PhoneInputProps> = ({ value, onChange, inp
       autoFormat
       disableDropdown={false}
       masks={{ fr: '.. .. .. .. ..', mx: '.. .. .. .. .. .. ..', es: '... ... ...' }}
-      placeholder="Selecciona país y número"
+      placeholder={placeholder}
     />
   );
 };

@@ -16,6 +16,29 @@ export const footerColumn = defineType({
       type: 'array',
       of: [{ type: 'menuLink' }], // Reutiliza el objeto menuLink del Header
     }),
+    defineField({
+      name: 'translations',
+      title: 'Traducciones',
+      type: 'object',
+      fields: [
+        defineField({
+          name: 'en',
+          title: 'English',
+          type: 'object',
+          fields: [
+            defineField({ name: 'title', title: 'Title', type: 'string' }),
+          ],
+        }),
+        defineField({
+          name: 'fr',
+          title: 'Français',
+          type: 'object',
+          fields: [
+            defineField({ name: 'title', title: 'Titre', type: 'string' }),
+          ],
+        }),
+      ],
+    }),
   ],
 })
 
@@ -54,6 +77,33 @@ const footerSection = defineType({
       name: 'copyright',
       title: 'Copyright',
       type: 'string',
+    }),
+    defineField({
+      name: 'translations',
+      title: 'Traducciones',
+      type: 'object',
+      fields: [
+        defineField({
+          name: 'en',
+          title: 'English',
+          type: 'object',
+          fields: [
+            defineField({ name: 'description', title: 'Description', type: 'text', rows: 3 }),
+            defineField({ name: 'statsText', title: 'Stats Text', type: 'string' }),
+            defineField({ name: 'copyright', title: 'Copyright', type: 'string' }),
+          ],
+        }),
+        defineField({
+          name: 'fr',
+          title: 'Français',
+          type: 'object',
+          fields: [
+            defineField({ name: 'description', title: 'Description', type: 'text', rows: 3 }),
+            defineField({ name: 'statsText', title: 'Texte des Statistiques', type: 'string' }),
+            defineField({ name: 'copyright', title: 'Copyright', type: 'string' }),
+          ],
+        }),
+      ],
     }),
   ],
 })

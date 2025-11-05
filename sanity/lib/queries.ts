@@ -203,8 +203,10 @@ export const FOOTER_SECTION_QUERY = `
   statsText,
   columns[]{
     title,
-    links[]{ label, href, internalHref, external }
+    links[]{ label, href, internalHref, external },
+    translations
   },
-  copyright
+  copyright,
+  translations
 }
 `

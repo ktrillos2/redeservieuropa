@@ -148,7 +148,8 @@ export const TRANSFERS_SECTION_CONTENT_QUERY = `
   footnote,
   cta{ label, href, internalHref },
   notes,
-  extraCharges[]{ icon, text, price }
+  extraCharges[]{ icon, text, price },
+  translations
 }
 `
 

@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { client } from "@/sanity/lib/client"
 import { TRANSFERS_LIST_QUERY, TRANSFERS_SECTION_CONTENT_QUERY } from "@/sanity/lib/queries"
+import { useTranslation } from "@/contexts/i18n-context"
 
 type Route = {
   from: string
@@ -32,9 +33,59 @@ type Charge = { icon?: string; text: string; price: string } // solo si lo traes
 
 export function TransfersSection() {
   const router = useRouter()
+  const { locale } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [list, setList] = useState<Route[] | null>(null)
   const [content, setContent] = useState<any | null>(null)
+
+  // Traducciones estáticas locales (solo badges y botones)
+  const staticTexts = useMemo(() => {
+    const texts = {
+      es: {
+        popular: 'Popular',
+        from: 'Desde',
+        reserve: 'Reservar',
+        additionalCharges: 'Cargos Adicionales',
+        note: 'Nota',
+        loading: 'Cargando traslados…',
+      },
+      en: {
+        popular: 'Popular',
+        from: 'From',
+        reserve: 'Book Now',
+        additionalCharges: 'Additional Charges',
+        note: 'Note',
+        loading: 'Loading transfers…',
+      },
+      fr: {
+        popular: 'Populaire',
+        from: 'Dès',
+        reserve: 'Réserver',
+        additionalCharges: 'Frais Supplémentaires',
+        note: 'Note',
+        loading: 'Chargement des transferts…',
+      },
+    }
+    return texts[locale] || texts.es
+  }, [locale])
+
+  // Aplicar traducciones de Sanity según el idioma
+  const translatedContent = useMemo(() => {
+    if (!content) return null
+    if (locale === 'es') return content
+    
+    const translation = locale === 'en' ? content.translations?.en : content.translations?.fr
+    if (!translation) return content
+    
+    return {
+      ...content,
+      title: translation.title || content.title,
+      subtitle: translation.subtitle || content.subtitle,
+      highlight: translation.highlight || content.highlight,
+      footnote: translation.footnote || content.footnote,
+      extraCharges: translation.extraCharges || content.extraCharges,
+    }
+  }, [locale, content])
 
   useEffect(() => {
     let mounted = true
@@ -45,7 +96,9 @@ export function TransfersSection() {
           client.fetch(TRANSFERS_SECTION_CONTENT_QUERY),
         ])
         if (!mounted) return
-        console.warn("[TransfersSection] Datos cargados desde Sanity:", { listRes, contentRes } )
+        console.log("[TransfersSection] Datos cargados desde Sanity para locale:", locale)
+        console.log("[TransfersSection] Content:", contentRes)
+        console.log("[TransfersSection] Translations disponibles:", contentRes?.translations)
         setList(listRes || [])
         setContent(contentRes || null)
       } catch (e) {
@@ -57,7 +110,7 @@ export function TransfersSection() {
       }
     })()
     return () => { mounted = false }
-  }, [])
+  }, [locale])
 
   const parseBasePrice = (price: string): number => {
     const m = String(price || "").match(/\d+([.,]\d+)?/)
@@ -78,6 +131,7 @@ export function TransfersSection() {
     return list.map((t: any) => ({
       from: t.from,
       to: t.to,
+      price: t.price || `${t.priceP4 || 0}€`,
       description: t.briefInfo || t.description,
       duration: t.duration,
       popular: t.popular,
@@ -95,13 +149,13 @@ export function TransfersSection() {
   return []
 }, [list])
   const charges: Charge[] = useMemo(
-    () => (content?.extraCharges && Array.isArray(content.extraCharges)) ? content.extraCharges : [],
-    [content]
+    () => (translatedContent?.extraCharges && Array.isArray(translatedContent.extraCharges)) ? translatedContent.extraCharges : [],
+    [translatedContent]
   )
 
-  const sectionTitle = content?.title || "Nuestros Traslados"
-  const sectionSubtitle = content?.subtitle || "Tarifas transparentes para todos nuestros servicios de transporte premium en París."
-  const footnote = content?.footnote || ""
+  const sectionTitle = translatedContent?.title || "Nuestros Traslados"
+  const sectionSubtitle = translatedContent?.subtitle || "Traslados privados y puntuales entre aeropuertos, ciudad y destinos especiales."
+  const footnote = translatedContent?.footnote || ""
 
   const handleReserve = (route: Route) => {
   const base = Number(route.priceP4 || 0)   // ⬅️ usa priceP4
@@ -163,7 +217,7 @@ export function TransfersSection() {
     return (
       <section id="traslados" className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
-          <p className="text-center text-muted-foreground">Cargando traslados…</p>
+          <p className="text-center text-muted-foreground">{staticTexts.loading}</p>
         </div>
       </section>
     )
@@ -197,7 +251,7 @@ export function TransfersSection() {
                         >
                           {route.popular && (
                             <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-white z-10 font-medium">
-                              Popular
+                              {staticTexts.popular}
                             </Badge>
                           )}
 
@@ -221,9 +275,9 @@ export function TransfersSection() {
                                 </div>
                               </div>
 
-                              {/* Derecha: precio “Desde X €” */}
+                              {/* Derecha: precio "Desde X €" */}
                               <div className="text-right leading-tight">
-  <div className="text-xs text-muted-foreground">Desde</div>
+  <div className="text-xs text-muted-foreground">{staticTexts.from}</div>
   <div className="text-2xl font-extrabold text-primary text-nowrap">
     {typeof route.priceP4 === "number" ? `${route.priceP4} €` : "—"}
   </div>
@@ -248,7 +302,7 @@ export function TransfersSection() {
                               onClick={() => handleReserve(route)}
                               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transform hover:scale-105 transition-all duration-300 hover:shadow-md"
                             >
-                              Reservar
+                              {staticTexts.reserve}
                             </Button>
                           </div>
                         </Card>
@@ -268,7 +322,7 @@ export function TransfersSection() {
           <Card className="bg-card border-border hover-lift">
             <CardHeader>
               <AnimatedSection animation="fade-up">
-                <CardTitle className="text-center text-primary font-display">Cargos Adicionales</CardTitle>
+                <CardTitle className="text-center text-primary font-display">{staticTexts.additionalCharges}</CardTitle>
               </AnimatedSection>
             </CardHeader>
             <CardContent>
@@ -287,7 +341,7 @@ export function TransfersSection() {
               {footnote && (
                 <div className="mt-6 p-4 bg-primary rounded-lg">
                   <p className="text-sm text-center text-white">
-                    <strong>Nota:</strong> {footnote}
+                    <strong>{staticTexts.note}:</strong> {footnote}
                   </p>
                 </div>
               )}

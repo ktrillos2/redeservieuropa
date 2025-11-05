@@ -15,6 +15,7 @@ import { contactFormSchema, type ContactFormValues } from '@/lib/validation'
 // Eliminado toast de validación por solicitud: solo errores inline
 import { client } from "@/sanity/lib/client"
 import { GENERAL_INFO_QUERY, CONTACT_SECTION_QUERY } from "@/sanity/lib/queries"
+import { useTranslation } from "@/contexts/i18n-context"
 
 export function Contact() {
   const form = useForm<ContactFormValues>({
@@ -23,6 +24,91 @@ export function Contact() {
   })
   const [gi, setGi] = useState<any | null>(null)
   const [section, setSection] = useState<any | null>(null)
+  const { locale } = useTranslation()
+
+  // Traducciones estáticas locales (solo para elementos de UI que no vienen de Sanity)
+  const staticTexts = useMemo(() => {
+    const texts = {
+      es: {
+        phone: 'Teléfono',
+        available247: '24/7 disponible',
+        email: 'Email',
+        quickResponse: 'Respuesta rápida',
+        location: 'Ubicación',
+        allRegion: 'Toda la región',
+        schedule: 'Horarios',
+        allDays: 'Todos los días',
+        nameLabel: 'Nombre',
+        namePlaceholder: 'Tu nombre completo',
+        phoneLabel: 'Teléfono',
+        emailLabel: 'Email',
+        emailPlaceholder: 'tu@email.com',
+        messageLabel: 'Mensaje',
+        messagePlaceholder: 'Cuéntanos sobre tu viaje o consulta...',
+        sending: 'Enviando...',
+        sendMessage: 'Enviar Mensaje',
+        sentSuccessfully: 'Enviado correctamente.',
+      },
+      en: {
+        phone: 'Phone',
+        available247: '24/7 available',
+        email: 'Email',
+        quickResponse: 'Quick response',
+        location: 'Location',
+        allRegion: 'All region',
+        schedule: 'Schedule',
+        allDays: 'Every day',
+        nameLabel: 'Name',
+        namePlaceholder: 'Your full name',
+        phoneLabel: 'Phone',
+        emailLabel: 'Email',
+        emailPlaceholder: 'your@email.com',
+        messageLabel: 'Message',
+        messagePlaceholder: 'Tell us about your trip or inquiry...',
+        sending: 'Sending...',
+        sendMessage: 'Send Message',
+        sentSuccessfully: 'Sent successfully.',
+      },
+      fr: {
+        phone: 'Téléphone',
+        available247: '24/7 disponible',
+        email: 'Email',
+        quickResponse: 'Réponse rapide',
+        location: 'Localisation',
+        allRegion: 'Toute la région',
+        schedule: 'Horaires',
+        allDays: 'Tous les jours',
+        nameLabel: 'Nom',
+        namePlaceholder: 'Votre nom complet',
+        phoneLabel: 'Téléphone',
+        emailLabel: 'Email',
+        emailPlaceholder: 'votre@email.com',
+        messageLabel: 'Message',
+        messagePlaceholder: 'Parlez-nous de votre voyage ou demande...',
+        sending: 'Envoi...',
+        sendMessage: 'Envoyer le Message',
+        sentSuccessfully: 'Envoyé avec succès.',
+      },
+    }
+    return texts[locale] || texts.es
+  }, [locale])
+
+  // Aplicar traducciones de Sanity según el idioma
+  const translatedSection = useMemo(() => {
+    if (!section) return null
+    if (locale === 'es') return section
+    
+    const translation = locale === 'en' ? section.translations?.en : section.translations?.fr
+    if (!translation) return section
+    
+    return {
+      ...section,
+      title: translation.title || section.title,
+      subtitle: translation.subtitle || section.subtitle,
+      formTitle: translation.formTitle || section.formTitle,
+      formNote: translation.formNote || section.formNote,
+    }
+  }, [locale, section])
 
   useEffect(() => {
     let mounted = true
@@ -33,6 +119,9 @@ export function Contact() {
           client.fetch(CONTACT_SECTION_QUERY),
         ])
         if (!mounted) return
+        console.log("[Contact] Datos cargados desde Sanity para locale:", locale)
+        console.log("[Contact] Section:", s)
+        console.log("[Contact] Translations disponibles:", s?.translations)
         setGi(g)
         setSection(s)
       } catch (e) {
@@ -40,7 +129,7 @@ export function Contact() {
       }
     })()
     return () => { mounted = false }
-  }, [])
+  }, [locale])
 
   const [submitted, setSubmitted] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -67,9 +156,11 @@ export function Contact() {
     <section id="contacto" className="py-16 bg-muted/30 relative z-0">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="fade-up" className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4 text-balance text-primary font-display">{section?.title || 'Contáctanos'}</h2>
+          <h2 className="text-4xl font-bold mb-4 text-balance text-primary font-display">
+            {translatedSection?.title || 'Contáctanos'}
+          </h2>
           <p className="text-xl max-w-2xl mx-auto text-pretty text-muted-foreground">
-            {section?.subtitle || 'Estamos disponibles 24/7 para atender tus consultas y reservas.'}
+            {translatedSection?.subtitle || 'Estamos disponibles 24/7 para atender tus consultas y reservas.'}
           </p>
         </AnimatedSection>
 
@@ -79,10 +170,10 @@ export function Contact() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
                 <Phone className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold text-foreground">Teléfono</h3>
+                <h3 className="font-semibold text-foreground">{staticTexts.phone}</h3>
               </div>
               <p className="font-semibold text-foreground">{gi?.contact?.phone || '+33 1 23 45 67 89'}</p>
-              <p className="text-sm text-muted-foreground font-medium">24/7 disponible</p>
+              <p className="text-sm text-muted-foreground font-medium">{staticTexts.available247}</p>
             </CardContent>
           </Card>
 
@@ -90,10 +181,10 @@ export function Contact() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
                 <Mail className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold text-foreground">Email</h3>
+                <h3 className="font-semibold text-foreground">{staticTexts.email}</h3>
               </div>
               <p className="font-semibold text-foreground">{gi?.contact?.email || 'info@redeservi.paris'}</p>
-              <p className="text-sm text-muted-foreground font-medium">Respuesta rápida</p>
+              <p className="text-sm text-muted-foreground font-medium">{staticTexts.quickResponse}</p>
             </CardContent>
           </Card>
 
@@ -101,10 +192,10 @@ export function Contact() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
                 <MapPin className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold text-foreground">Ubicación</h3>
+                <h3 className="font-semibold text-foreground">{staticTexts.location}</h3>
               </div>
               <p className="font-semibold text-foreground">{gi?.contact?.address || 'París, Francia'}</p>
-              <p className="text-sm text-muted-foreground font-medium">Toda la región</p>
+              <p className="text-sm text-muted-foreground font-medium">{staticTexts.allRegion}</p>
             </CardContent>
           </Card>
 
@@ -112,10 +203,10 @@ export function Contact() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
                 <Clock className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold text-foreground">Horarios</h3>
+                <h3 className="font-semibold text-foreground">{staticTexts.schedule}</h3>
               </div>
               <p className="font-semibold text-foreground">24/7</p>
-              <p className="text-sm text-muted-foreground font-medium">Todos los días</p>
+              <p className="text-sm text-muted-foreground font-medium">{staticTexts.allDays}</p>
             </CardContent>
           </Card>
         </AnimatedSection>
@@ -127,16 +218,16 @@ export function Contact() {
             <CardHeader>
               <CardTitle className="flex items-center gap-3 text-foreground text-center justify-center font-display">
                 <MessageCircle className="w-6 h-6 text-accent" />
-                {section?.formTitle || 'Envíanos un Mensaje'}
+                {translatedSection?.formTitle || 'Envíanos un Mensaje'}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Nombre</label>
+                    <label className="text-sm font-medium text-foreground">{staticTexts.nameLabel}</label>
                     <Input
-                      placeholder="Tu nombre completo"
+                      placeholder={staticTexts.namePlaceholder}
                       {...form.register('nombre')}
                       className="transform focus:scale-105 transition-all duration-300"
                       aria-invalid={!!form.formState.errors.nombre}
@@ -146,7 +237,7 @@ export function Contact() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Teléfono</label>
+                    <label className="text-sm font-medium text-foreground">{staticTexts.phoneLabel}</label>
                     <Input
                       placeholder="+33 1 23 45 67 89"
                       {...form.register('telefono')}
@@ -160,10 +251,10 @@ export function Contact() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Email</label>
+                  <label className="text-sm font-medium text-foreground">{staticTexts.emailLabel}</label>
                   <Input
                     type="email"
-                    placeholder="tu@email.com"
+                    placeholder={staticTexts.emailPlaceholder}
                     {...form.register('email')}
                     className="transform focus:scale-105 transition-all duration-300"
                     aria-invalid={!!form.formState.errors.email}
@@ -174,9 +265,9 @@ export function Contact() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Mensaje</label>
+                  <label className="text-sm font-medium text-foreground">{staticTexts.messageLabel}</label>
                   <Textarea
-                    placeholder="Cuéntanos sobre tu viaje o consulta..."
+                    placeholder={staticTexts.messagePlaceholder}
                     rows={3}
                     {...form.register('mensaje')}
                     className="transform focus:scale-105 transition-all duration-300"
@@ -193,13 +284,13 @@ export function Contact() {
                   size="lg"
                   disabled={form.formState.isSubmitting}
                 >
-                  {form.formState.isSubmitting ? 'Enviando...' : 'Enviar Mensaje'}
+                  {form.formState.isSubmitting ? staticTexts.sending : staticTexts.sendMessage}
                 </Button>
                 {errorMsg && (
                   <p className="text-center text-sm text-destructive">{errorMsg}</p>
                 )}
                 {submitted && !Object.keys(form.formState.errors).length && (
-                  <p className="text-center text-sm text-green-600">Enviado correctamente.</p>
+                  <p className="text-center text-sm text-green-600">{staticTexts.sentSuccessfully}</p>
                 )}
                 {section?.showWhatsAppButton && gi?.contact?.whatsapp ? (
                   <a
@@ -215,7 +306,7 @@ export function Contact() {
                   </a>
                 ) : null}
                 <p className="text-xs text-muted-foreground mt-3 text-center">
-                  {section?.formNote || 'Por favor, asegúrate de completar todos tus datos para que podamos contactarte.'}
+                  {translatedSection?.formNote || 'Por favor, asegúrate de completar todos tus datos para que podamos contactarte.'}
                 </p>
               </form>
             </CardContent>

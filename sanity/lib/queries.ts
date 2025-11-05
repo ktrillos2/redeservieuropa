@@ -190,7 +190,8 @@ export const CONTACT_SECTION_QUERY = `
   subtitle,
   formTitle,
   formNote,
-  showWhatsAppButton
+  showWhatsAppButton,
+  translations
 }
 `
 

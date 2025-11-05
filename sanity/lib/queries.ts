@@ -176,8 +176,10 @@ export const TESTIMONIALS_SECTION_QUERY = `
     rating,
     comment,
     service,
-    avatar
-  }
+    avatar,
+    translations
+  },
+  translations
 }
 `
 

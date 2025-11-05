@@ -3,10 +3,11 @@ import { AnimatedSection } from "@/components/animated-section"
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Star, Quote } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { client } from "@/sanity/lib/client"
 import { TESTIMONIALS_SECTION_QUERY } from "@/sanity/lib/queries"
 import { urlFor } from "@/sanity/lib/image"
+import { useTranslation } from "@/contexts/i18n-context"
 
 const testimonialsLocal = [
   {
@@ -65,6 +66,45 @@ export function Testimonials() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [data, setData] = useState<any | null>(null)
   const [items, setItems] = useState<any[]>(testimonialsLocal)
+  const { locale } = useTranslation()
+
+  // Traducciones estáticas locales (solo para elementos de UI que no vienen de Sanity)
+  const staticTexts = useMemo(() => {
+    // No hay textos estáticos adicionales por ahora, todo viene de Sanity
+    return {}
+  }, [locale])
+
+  // Aplicar traducciones de Sanity según el idioma
+  const translatedData = useMemo(() => {
+    if (!data) return null
+    if (locale === 'es') return data
+    
+    const translation = locale === 'en' ? data.translations?.en : data.translations?.fr
+    if (!translation) return data
+    
+    return {
+      ...data,
+      title: translation.title || data.title,
+      subtitle: translation.subtitle || data.subtitle,
+    }
+  }, [locale, data])
+
+  // Traducir testimonios individuales
+  const translatedItems = useMemo(() => {
+    if (!items || locale === 'es') return items
+    
+    return items.map(item => {
+      const translation = locale === 'en' ? item.translations?.en : item.translations?.fr
+      if (!translation) return item
+      
+      return {
+        ...item,
+        location: translation.location || item.location,
+        comment: translation.comment || item.comment,
+        service: translation.service || item.service,
+      }
+    })
+  }, [items, locale])
 
   useEffect(() => {
     let mounted = true
@@ -72,6 +112,9 @@ export function Testimonials() {
       try {
         const res = await client.fetch(TESTIMONIALS_SECTION_QUERY)
         if (!mounted) return
+        console.log("[Testimonials] Datos cargados desde Sanity para locale:", locale)
+        console.log("[Testimonials] Data:", res)
+        console.log("[Testimonials] Translations disponibles:", res?.translations)
         setData(res)
         if (Array.isArray(res?.testimonials) && res.testimonials.length > 0) {
           setItems(res.testimonials)
@@ -81,19 +124,19 @@ export function Testimonials() {
       }
     })()
     return () => { mounted = false }
-  }, [])
+  }, [locale])
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 3) % items.length)
+      setCurrentIndex((prevIndex) => (prevIndex + 3) % translatedItems.length)
     }, 6000)
     return () => clearInterval(timer)
-  }, [items.length])
+  }, [translatedItems.length])
 
   const getVisibleTestimonials = () => {
     const visible = []
     for (let i = 0; i < 3; i++) {
-      visible.push(items[(currentIndex + i) % items.length])
+      visible.push(translatedItems[(currentIndex + i) % translatedItems.length])
     }
     return visible
   }
@@ -102,9 +145,11 @@ export function Testimonials() {
     <section id="testimonios" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <AnimatedSection animation="fade-up" className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">{data?.title || 'Lo que Dicen Nuestros Clientes'}</h2>
+          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">
+            {translatedData?.title || 'Lo que Dicen Nuestros Clientes'}
+          </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            {data?.subtitle || 'Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.'}
+            {translatedData?.subtitle || 'Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.'}
           </p>
         </AnimatedSection>
 
@@ -162,7 +207,7 @@ export function Testimonials() {
           </div>
 
           <div className="flex justify-center gap-2 mt-8">
-            {Array.from({ length: Math.ceil(items.length / 3) }).map((_, index) => (
+            {Array.from({ length: Math.ceil(translatedItems.length / 3) }).map((_, index) => (
               <button
                 key={index}
                 className={`w-3 h-3 rounded-full transition-all duration-300 transform hover:scale-125 ${

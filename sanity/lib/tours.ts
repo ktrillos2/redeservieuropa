@@ -131,6 +131,41 @@ export type TourDoc = {
 
   isPopular?: boolean | 'yes' | 'no'
 
+  // --- TRADUCCIONES ---
+  translations?: {
+    en?: {
+      title?: string
+      summary?: string
+      description?: any
+      features?: string[]
+      includes?: string[]
+      visitedPlaces?: string[]
+      notes?: string[]
+      amenities?: string[]
+      overCapacityNote?: string
+      route?: {
+        origin?: string
+        destination?: string
+        circuitName?: string
+      }
+    }
+    fr?: {
+      title?: string
+      summary?: string
+      description?: any
+      features?: string[]
+      includes?: string[]
+      visitedPlaces?: string[]
+      notes?: string[]
+      amenities?: string[]
+      overCapacityNote?: string
+      route?: {
+        origin?: string
+        destination?: string
+        circuitName?: string
+      }
+    }
+  }
 
   // --- CAMPOS ANTIGUOS (opcional mantener si hay data vieja) ---
   duration?: string

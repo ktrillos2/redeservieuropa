@@ -379,6 +379,7 @@ export default function PaymentPage() {
         paymentPageSubtitle: 'Confirma tu reserva y procede con el pago seguro',
         // Placeholders
         phonePlaceholder: 'Selecciona país y número',
+        fullNamePlaceholder: 'Tu nombre completo',
         // Sección de pago
         paymentInfo: 'Información de Pago',
         paymentMethod: 'Método de Pago',
@@ -427,6 +428,7 @@ export default function PaymentPage() {
         step3Title: '3. Servicio Cómodo',
         step3Description: 'Disfruta de tu traslado puntual y cómodo',
         backToServices: 'Volver a servicios',
+        clickHere: 'pulsa',
       },
       en: {
         // Títulos y encabezados
@@ -516,6 +518,7 @@ export default function PaymentPage() {
         paymentPageSubtitle: 'Confirm your booking and proceed with secure payment',
         // Placeholders
         phonePlaceholder: 'Select country and number',
+        fullNamePlaceholder: 'Your full name',
         // Payment section
         paymentInfo: 'Payment Information',
         paymentMethod: 'Payment Method',
@@ -564,6 +567,7 @@ export default function PaymentPage() {
         step3Title: '3. Comfortable Service',
         step3Description: 'Enjoy your punctual and comfortable transfer',
         backToServices: 'Back to services',
+        clickHere: 'click',
       },
       fr: {
         // Títulos y encabezados
@@ -653,6 +657,7 @@ export default function PaymentPage() {
         paymentPageSubtitle: 'Confirmez votre réservation et procédez au paiement sécurisé',
         // Placeholders
         phonePlaceholder: 'Sélectionnez pays et numéro',
+        fullNamePlaceholder: 'Votre nom complet',
         // Section de paiement
         paymentInfo: 'Informations de Paiement',
         paymentMethod: 'Méthode de Paiement',
@@ -701,6 +706,7 @@ export default function PaymentPage() {
         step3Title: '3. Service Confortable',
         step3Description: 'Profitez de votre transfert ponctuel et confortable',
         backToServices: 'Retour aux services',
+        clickHere: 'cliquez',
       },
     };
     return texts[locale] || texts.es;
@@ -3378,7 +3384,7 @@ export default function PaymentPage() {
                               {pageTexts.fullName}
                             </label>
                             <Input
-                              placeholder="Tu nombre completo"
+                              placeholder={pageTexts.fullNamePlaceholder}
                               data-field="contactName"
                               className={
                                 fieldErrors.contactName
@@ -3490,7 +3496,7 @@ export default function PaymentPage() {
                                 {pageTexts.fullName}
                               </label>
                               <Input
-                                placeholder="Tu nombre completo"
+                                placeholder={pageTexts.fullNamePlaceholder}
                                 data-field="contactName"
                                 className={
                                   fieldErrors.contactName
@@ -3602,7 +3608,7 @@ export default function PaymentPage() {
                               {pageTexts.fullName}
                             </label>
                             <Input
-                              placeholder="Tu nombre completo"
+                              placeholder={pageTexts.fullNamePlaceholder}
                               data-field="contactName"
                               className={
                                 fieldErrors.contactName
@@ -4024,7 +4030,7 @@ export default function PaymentPage() {
                             {pageTexts.fullName}
                           </label>
                           <Input
-                            placeholder="Tu nombre completo"
+                            placeholder={pageTexts.fullNamePlaceholder}
                             data-field="contactName"
                             className={
                               fieldErrors.contactName
@@ -4457,7 +4463,7 @@ export default function PaymentPage() {
                         <div className="text-center p-4 mt-4 bg-muted border border-dashed rounded-lg">
                           <p className="text-sm text-primary/90">
                             {pageTexts.addAnotherQuotePrefix} <strong>{pageTexts.addAnotherQuoteStrong}</strong> ,
-                            pulsa
+                            {pageTexts.clickHere}
                             <Button
                               size="sm"
                               variant="default"

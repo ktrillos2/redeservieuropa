@@ -1,8 +1,8 @@
-import type React from "react"
+import type React from "next"
 import type { Metadata } from "next"
 import { Jost, Playfair_Display } from "next/font/google"
 import { Suspense } from "react"
-import { ScrollToTopButton } from "@/components/scroll-to-top-button"
+import { ScrollToTopButtonServer } from "@/components/scroll-to-top-button.server"
 import { SanityLive } from '@/sanity/lib/live'
 import { AnimationGuardian } from "@/components/animation-guardian"
 import { I18nProvider } from "@/contexts/i18n-context"
@@ -49,7 +49,7 @@ export default function RootLayout({
       <body className="font-sans">
       <I18nProvider>
         <Suspense fallback={null}>{children}<SpeedInsights /></Suspense>
-  <ScrollToTopButton />
+  <ScrollToTopButtonServer />
   <SanityLive />
         <AnimationGuardian />
         {/* pre-anim removido para evitar ocultar contenido antes de las animaciones */}

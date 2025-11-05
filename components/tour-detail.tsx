@@ -11,6 +11,7 @@ import { useMemo } from "react"
 import { PortableText } from "@portabletext/react"
 import { tourData } from "@/lib/tours"
 import { urlFor } from "@/sanity/lib/image"
+import { useTranslation } from "@/contexts/i18n-context"
 
 type PricingRules = { baseUpTo4EUR: number }
 type PricingTable = { p4?: number; p5?: number; p6?: number; p7?: number; p8?: number; extraFrom9?: number }
@@ -48,6 +49,23 @@ interface TourDetailProps {
     // opcional si quieres mostrar una previa de precios
     pricePreview?: Array<{ pax: number; price: number }>
   }
+  staticTexts?: {
+    backToServices?: string
+    popular?: string
+    features?: string
+    includes?: string
+    visitedPlaces?: string
+    vehicleAmenities?: string
+    notes?: string
+    wifi?: string
+    water?: string
+    comfortable?: string
+    safe?: string
+    tourNotFound?: string
+    backToHome?: string
+    enlargeImage?: string
+    legacyTour?: string
+  }
 }
 
 const INC_5 = 34, INC_6 = 32, INC_7 = 28, INC_8 = 26
@@ -74,9 +92,70 @@ function computePriceForPax(n: number, mode?: "rules" | "table", rules?: Pricing
   return undefined
 }
 
-export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
+export function TourDetail({ tourId, tourFromCms, staticTexts: passedStaticTexts }: TourDetailProps) {
   const effectiveTourId = tourId === "tour-nocturno" ? "tour-paris" : tourId
   const tour = tourFromCms || tourData[effectiveTourId]
+  const { locale } = useTranslation()
+
+  // Traducciones estáticas locales por defecto
+  const defaultStaticTexts = useMemo(() => {
+    const texts = {
+      es: {
+        backToServices: 'Volver a servicios',
+        popular: 'Popular',
+        features: 'Características',
+        includes: 'Incluye',
+        visitedPlaces: 'Qué visitamos',
+        vehicleAmenities: 'Comodidades del Vehículo',
+        notes: 'Notas',
+        wifi: 'WiFi',
+        water: 'Agua',
+        comfortable: 'Cómodo',
+        safe: 'Seguro',
+        tourNotFound: 'Tour no encontrado',
+        backToHome: 'Volver al inicio',
+        enlargeImage: 'Ampliar imagen',
+        legacyTour: 'Este tour no viene del CMS (rama legacy).',
+      },
+      en: {
+        backToServices: 'Back to services',
+        popular: 'Popular',
+        features: 'Features',
+        includes: 'Includes',
+        visitedPlaces: 'What we visit',
+        vehicleAmenities: 'Vehicle Amenities',
+        notes: 'Notes',
+        wifi: 'WiFi',
+        water: 'Water',
+        comfortable: 'Comfortable',
+        safe: 'Safe',
+        tourNotFound: 'Tour not found',
+        backToHome: 'Back to home',
+        enlargeImage: 'Enlarge image',
+        legacyTour: 'This tour does not come from CMS (legacy branch).',
+      },
+      fr: {
+        backToServices: 'Retour aux services',
+        popular: 'Populaire',
+        features: 'Caractéristiques',
+        includes: 'Inclus',
+        visitedPlaces: 'Ce que nous visitons',
+        vehicleAmenities: 'Commodités du Véhicule',
+        notes: 'Notes',
+        wifi: 'WiFi',
+        water: 'Eau',
+        comfortable: 'Confortable',
+        safe: 'Sûr',
+        tourNotFound: 'Tour non trouvé',
+        backToHome: 'Retour à l\'accueil',
+        enlargeImage: 'Agrandir l\'image',
+        legacyTour: 'Ce tour ne provient pas du CMS (branche héritée).',
+      },
+    }
+    return texts[locale] || texts.es
+  }, [locale])
+
+  const staticTexts = passedStaticTexts || defaultStaticTexts
 
   // Galería
   const galleryImages = useMemo<string[]>(() => {
@@ -99,9 +178,9 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-primary mb-4">Tour no encontrado</h1>
+          <h1 className="text-2xl font-bold text-primary mb-4">{staticTexts.tourNotFound}</h1>
           <Link href="/" className="inline-flex items-center px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90">
-            Volver al inicio
+            {staticTexts.backToHome}
           </Link>
         </div>
       </div>
@@ -119,7 +198,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
             className="mt-6 inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
           >
             <ArrowLeft className="w-4 h-4" />
-            Volver a servicios
+            {staticTexts.backToServices}
           </Link>
 
           {/* SOLO contenido informativo - SIN columna de reserva */}
@@ -133,7 +212,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                       <Dialog>
                         <DialogTrigger asChild>
                           <button
-                            aria-label="Ampliar imagen"
+                            aria-label={staticTexts.enlargeImage}
                             className="relative group block w-full h-64 md:h-96 overflow-hidden"
                           >
                             <img src={src} alt={`${tourFromCms.title} - imagen ${idx + 1}`} className="w-full h-full object-cover" />
@@ -157,7 +236,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                 <div className="absolute top-4 left-4">
                   <Badge className="bg-accent text-accent-foreground">
                     <Star className="w-3 h-3 mr-1" />
-                    Popular
+                    {staticTexts.popular}
                   </Badge>
                 </div>
               )}
@@ -199,7 +278,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
                 {Array.isArray(tourFromCms.features) && tourFromCms.features.length > 0 && (
                   <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-4 text-primary">Características</h3>
+                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.features}</h3>
                     <div className="grid md:grid-cols-2 gap-3">
                       {tourFromCms.features.map((feature, i) => (
                         <div key={i} className="flex items-center gap-2">
@@ -213,7 +292,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
                 {Array.isArray(tourFromCms.includes) && tourFromCms.includes.length > 0 && (
                   <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-4 text-primary">Incluye</h3>
+                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.includes}</h3>
                     <div className="grid md:grid-cols-2 gap-3">
                       {tourFromCms.includes.map((item, i) => (
                         <div key={i} className="flex items-center gap-2">
@@ -228,7 +307,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                 {Array.isArray(tourFromCms.visitedPlaces) && tourFromCms.visitedPlaces.length > 0 && (
                   <>
                     <Separator className="my-6" />
-                    <h3 className="text-xl font-semibold mb-4 text-primary">Qué visitamos</h3>
+                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.visitedPlaces}</h3>
                     <ul className="list-disc pl-5 space-y-1">
                       {tourFromCms.visitedPlaces.map((p, i) => <li key={i}>{p}</li>)}
                     </ul>
@@ -237,7 +316,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
                 {Array.isArray(tourFromCms.amenities) && tourFromCms.amenities.length > 0 && (
                   <div className="mt-8">
-                    <h3 className="text-xl font-semibold mb-4 text-primary">Comodidades del Vehículo</h3>
+                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.vehicleAmenities}</h3>
                     <div className="grid md:grid-cols-2 gap-3">
                       {tourFromCms.amenities.map((am, i) => (
                         <div key={i} className="flex items-center gap-2">
@@ -252,7 +331,7 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
                 {Array.isArray(tourFromCms.notes) && tourFromCms.notes.length > 0 && (
                   <>
                     <Separator className="my-6" />
-                    <h3 className="text-xl font-semibold mb-4 text-primary">Notas</h3>
+                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.notes}</h3>
                     <ul className="list-disc pl-5 space-y-1">
                       {tourFromCms.notes.map((n, i) => <li key={i}>{n}</li>)}
                     </ul>
@@ -270,28 +349,28 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
 
             
 
-            {/* Tarjeta “comodidades” visual */}
+            {/* Tarjeta "comodidades" visual */}
             <Card className="transform hover:scale-105 transition-all duration-300">
               <CardHeader>
-                <CardTitle className="text-2xl text-primary">Comodidades del Vehículo</CardTitle>
+                <CardTitle className="text-2xl text-primary">{staticTexts.vehicleAmenities}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
                     <Wifi className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">WiFi</span>
+                    <span className="text-sm text-center">{staticTexts.wifi}</span>
                   </div>
                   <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
                     <Coffee className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">Agua</span>
+                    <span className="text-sm text-center">{staticTexts.water}</span>
                   </div>
                   <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
                     <Car className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">Cómodo</span>
+                    <span className="text-sm text-center">{staticTexts.comfortable}</span>
                   </div>
                   <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
                     <Shield className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">Seguro</span>
+                    <span className="text-sm text-center">{staticTexts.safe}</span>
                   </div>
                 </div>
               </CardContent>
@@ -311,9 +390,9 @@ export function TourDetail({ tourId, tourFromCms }: TourDetailProps) {
           className="mt-6 inline-flex items-center gap-2 text-primary hover:text-accent transition-colors mb-8 transform hover:scale-105 duration-300"
         >
           <ArrowLeft className="w-4 h-4" />
-          Volver a servicios
+          {staticTexts.backToServices}
         </Link>
-        <p className="text-muted-foreground">Este tour no viene del CMS (rama legacy).</p>
+        <p className="text-muted-foreground">{staticTexts.legacyTour}</p>
       </div>
     </div>
   )

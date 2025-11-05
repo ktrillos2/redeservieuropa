@@ -225,14 +225,42 @@ export function Hero({
         passengers: 'Pasajeros',
         children: 'Niños',
         vehiclePlaceholder: 'Seleccionar tipo de vehículo',
+        vehicleLabel: 'Tipo de vehículo',
         car: 'Coche',
         minivan: 'Minivan',
         van: 'Van',
         tourTypePlaceholder: 'Seleccionar tipo de tour',
+        tourTypeLabel: 'Tipo de tour',
+        tourLabel2: 'Tour',
         dayTour: 'Tour Diurno',
         nightTour: 'Tour Nocturno',
         stopoverTour: 'Tour de Escala',
         selectTour: 'Seleccionar un tour',
+        passengersSingular: 'Pasajero',
+        passengersPlural: 'Pasajeros',
+        childrenSingular: 'niño',
+        childrenPlural: 'niños',
+        childrenQuantity: 'Cantidad de niños',
+        passengersMax: 'Número de pasajeros (máx.',
+        quote: 'Cotizar',
+        missingFields: 'Campos faltantes:',
+        timeValidation: 'La hora debe ser al menos 45 minutos después de la hora actual',
+        // Field labels for error messages
+        fieldBookingType: 'Tipo de reserva',
+        fieldOrigin: 'Origen',
+        fieldDestination: 'Destino',
+        fieldDate: 'Fecha',
+        fieldTime: 'Hora',
+        fieldPassengers: 'Pasajeros',
+        fieldTourCategory: 'Categoría de tour',
+        fieldVehicle: 'Tipo de vehículo',
+        fieldTour: 'Tour',
+        // Form titles and labels
+        bookYourService: 'Reserva tu Servicio',
+        bookingTypeLabel: 'Tipo de reserva',
+        // Vehicle capacity labels
+        peopleCapacity: 'personas',
+        passengersCapacity: 'pasajeros',
       },
       en: {
         transferLabel: 'Transfer',
@@ -252,14 +280,42 @@ export function Hero({
         passengers: 'Passengers',
         children: 'Children',
         vehiclePlaceholder: 'Select vehicle type',
+        vehicleLabel: 'Vehicle type',
         car: 'Car',
         minivan: 'Minivan',
         van: 'Van',
         tourTypePlaceholder: 'Select tour type',
+        tourTypeLabel: 'Tour type',
+        tourLabel2: 'Tour',
         dayTour: 'Day Tour',
         nightTour: 'Night Tour',
         stopoverTour: 'Stopover Tour',
         selectTour: 'Select a tour',
+        passengersSingular: 'Passenger',
+        passengersPlural: 'Passengers',
+        childrenSingular: 'child',
+        childrenPlural: 'children',
+        childrenQuantity: 'Number of children',
+        passengersMax: 'Number of passengers (max.',
+        quote: 'Get Quote',
+        missingFields: 'Missing fields:',
+        timeValidation: 'Time must be at least 45 minutes from now',
+        // Field labels for error messages
+        fieldBookingType: 'Booking type',
+        fieldOrigin: 'Origin',
+        fieldDestination: 'Destination',
+        fieldDate: 'Date',
+        fieldTime: 'Time',
+        fieldPassengers: 'Passengers',
+        fieldTourCategory: 'Tour category',
+        fieldVehicle: 'Vehicle type',
+        fieldTour: 'Tour',
+        // Form titles and labels
+        bookYourService: 'Book Your Service',
+        bookingTypeLabel: 'Booking type',
+        // Vehicle capacity labels
+        peopleCapacity: 'people',
+        passengersCapacity: 'passengers',
       },
       fr: {
         transferLabel: 'Transfert',
@@ -279,14 +335,42 @@ export function Hero({
         passengers: 'Passagers',
         children: 'Enfants',
         vehiclePlaceholder: 'Sélectionner le type de véhicule',
+        vehicleLabel: 'Type de véhicule',
         car: 'Voiture',
         minivan: 'Minivan',
         van: 'Van',
         tourTypePlaceholder: 'Sélectionner le type de tour',
+        tourTypeLabel: 'Type de tour',
+        tourLabel2: 'Tour',
         dayTour: 'Tour de Jour',
         nightTour: 'Tour de Nuit',
         stopoverTour: 'Tour d\'Escale',
         selectTour: 'Sélectionner un tour',
+        passengersSingular: 'Passager',
+        passengersPlural: 'Passagers',
+        childrenSingular: 'enfant',
+        childrenPlural: 'enfants',
+        childrenQuantity: 'Nombre d\'enfants',
+        passengersMax: 'Nombre de passagers (max.',
+        quote: 'Obtenir un Devis',
+        missingFields: 'Champs manquants:',
+        timeValidation: 'L\'heure doit être au moins 45 minutes après l\'heure actuelle',
+        // Field labels for error messages
+        fieldBookingType: 'Type de réservation',
+        fieldOrigin: 'Origine',
+        fieldDestination: 'Destination',
+        fieldDate: 'Date',
+        fieldTime: 'Heure',
+        fieldPassengers: 'Passagers',
+        fieldTourCategory: 'Catégorie de tour',
+        fieldVehicle: 'Type de véhicule',
+        fieldTour: 'Tour',
+        // Form titles and labels
+        bookYourService: 'Réservez Votre Service',
+        bookingTypeLabel: 'Type de réservation',
+        // Vehicle capacity labels
+        peopleCapacity: 'personnes',
+        passengersCapacity: 'passagers',
       },
     };
     return texts[locale] || texts.es;
@@ -550,17 +634,17 @@ export function Hero({
 
   // Derived boolean for UI and a human-friendly map of field labels
   const isFormValid = useMemo(() => validateHard(), [bookingData]);
-  const fieldLabelMap: Record<string, string> = {
-    tipoReserva: "Tipo de reserva",
-    origen: "Origen",
-    destino: "Destino",
-    fecha: "Fecha",
-    hora: "Hora",
-    pasajeros: "Pasajeros",
-    categoriaTour: "Categoría de tour",
-    vehiculo: "Tipo de vehículo",
-    selectedTourSlug: "Tour",
-  };
+  const fieldLabelMap: Record<string, string> = useMemo(() => ({
+    tipoReserva: bookingTexts.fieldBookingType,
+    origen: bookingTexts.fieldOrigin,
+    destino: bookingTexts.fieldDestination,
+    fecha: bookingTexts.fieldDate,
+    hora: bookingTexts.fieldTime,
+    pasajeros: bookingTexts.fieldPassengers,
+    categoriaTour: bookingTexts.fieldTourCategory,
+    vehiculo: bookingTexts.fieldVehicle,
+    selectedTourSlug: bookingTexts.fieldTour,
+  }), [bookingTexts]);
 
   const isNightTime = (timeStr?: string) => {
     if (!timeStr) return false;
@@ -1027,12 +1111,12 @@ if (bookingData.tipoReserva === "traslado") {
                   {formStep === 1 && (
                     <div className="space-y-4">
                       <h3 className="text-2xl font-bold mb-6 text-center text-primary font-display">
-                        {translatedBookingForm?.title || bookingForm?.title || "Reserva tu Servicio"}
+                        {translatedBookingForm?.title || bookingTexts.bookYourService}
                       </h3>
                       <div className="space-y-2">
                         <label className="text-sm text-center font-medium flex justify-center items-center gap-2">
                           <Map className="w-4 h-4 text-accent" />
-                          {translatedBookingForm?.typePicker?.label || bookingForm?.typePicker?.label || "Tipo de reserva"}
+                          {translatedBookingForm?.typePicker?.label || bookingTexts.bookingTypeLabel}
                         </label>
                         <div className="flex flex-wrap gap-4 justify-center w-full">
                           <Button
@@ -1067,7 +1151,7 @@ if (bookingData.tipoReserva === "traslado") {
                             }}
                           >
                             <Car className="w-5 h-5" />
-                            {translatedBookingForm?.typePicker?.trasladoLabel || 'Traslado'}
+                            {translatedBookingForm?.typePicker?.trasladoLabel || bookingTexts.transferLabel}
                           </Button>
                           <Button
                             type="button"
@@ -1099,7 +1183,7 @@ if (bookingData.tipoReserva === "traslado") {
                             }}
                           >
                             <Map className="w-5 h-5" />
-                            {translatedBookingForm?.typePicker?.tourLabel || 'Tour'}
+                            {translatedBookingForm?.typePicker?.tourLabel || bookingTexts.tourLabel}
                           </Button>
                         </div>
                       </div>
@@ -1267,7 +1351,7 @@ if (bookingData.tipoReserva === "traslado") {
                                     if (selected <= minTime) {
                                       setFieldErrors((f) => ({
                                         ...f,
-                                        hora: "La hora debe ser al menos 45 minutos después de la hora actual"
+                                        hora: bookingTexts.timeValidation
                                       }));
                                       return;
                                     }
@@ -1321,7 +1405,7 @@ if (bookingData.tipoReserva === "traslado") {
                                   }
                                 >
                                   <SelectValue
-                                    placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`}
+                                    placeholder={`${bookingTexts.passengersMax} ${getVehicleCap(bookingData.vehiculo)})`}
                                   />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-72">
@@ -1334,7 +1418,7 @@ if (bookingData.tipoReserva === "traslado") {
                                     (_, i) => i + 1
                                   ).map((n) => (
                                     <SelectItem key={n} value={String(n)}>
-                                      {n} {n === 1 ? "Pasajero" : "Pasajeros"}
+                                      {n} {n === 1 ? bookingTexts.passengersSingular : bookingTexts.passengersPlural}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1364,8 +1448,8 @@ if (bookingData.tipoReserva === "traslado") {
                                   <SelectValue>
                                     {bookingData.ninos === 0 ||
                                     bookingData.ninos
-                                      ? `${bookingData.ninos} ${bookingData.ninos === 1 ? "niño" : "niños"}`
-                                      : "Cantidad de niños"}
+                                      ? `${bookingData.ninos} ${bookingData.ninos === 1 ? bookingTexts.childrenSingular : bookingTexts.childrenPlural}`
+                                      : bookingTexts.childrenQuantity}
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="max-h-72">
@@ -1389,7 +1473,7 @@ if (bookingData.tipoReserva === "traslado") {
                               <div className="flex-1 space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Car className="w-4 h-4 text-accent" />
-                                  Tipo de vehículo
+                                  {bookingTexts.vehicleLabel}
                                 </label>
                                 <Select
                                   value={bookingData.vehiculo}
@@ -1437,7 +1521,7 @@ if (bookingData.tipoReserva === "traslado") {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Plane className="w-4 h-4 text-accent" />
-                                  Tipo de tour
+                                  {bookingTexts.tourTypeLabel}
                                 </label>
                                 <Select
                                   value={
@@ -1504,7 +1588,7 @@ if (bookingData.tipoReserva === "traslado") {
                                   <div className="space-y-2">
                                     <label className="text-sm font-medium flex items-center gap-2">
                                       <Map className="w-4 h-4 text-accent" />
-                                      Tour
+                                      {bookingTexts.tourLabel2}
                                     </label>
                                     <Select
                                       value={bookingData.selectedTourSlug}
@@ -1562,7 +1646,7 @@ if (bookingData.tipoReserva === "traslado") {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Calendar className="w-4 h-4 text-accent" />
-                                  {bookingForm?.dateField?.label || "Fecha"}
+                                  {translatedBookingForm?.dateField?.label || bookingTexts.date}
                                 </label>
                                 <Input
                                   data-field="fecha"
@@ -1610,7 +1694,7 @@ if (bookingData.tipoReserva === "traslado") {
                                       if (selected <= minTime) {
                                         setFieldErrors((f) => ({
                                           ...f,
-                                          hora: "La hora debe ser al menos 45 minutos después de la hora actual"
+                                          hora: bookingTexts.timeValidation
                                         }));
                                         return;
                                       }
@@ -1665,7 +1749,7 @@ if (bookingData.tipoReserva === "traslado") {
                                     }
                                   >
                                     <SelectValue
-                                      placeholder={`Número de pasajeros (máx. ${getVehicleCap(bookingData.vehiculo)})`}
+                                      placeholder={`${bookingTexts.passengersMax} ${getVehicleCap(bookingData.vehiculo)})`}
                                     />
                                   </SelectTrigger>
                                   <SelectContent className="max-h-72">
@@ -1680,10 +1764,10 @@ if (bookingData.tipoReserva === "traslado") {
                                       <SelectItem key={n} value={String(n)}>
                                         {n}{" "}
                                         {n === 1
-                                          ? bookingForm?.passengersField
-                                              ?.singular || "Pasajero"
-                                          : bookingForm?.passengersField
-                                              ?.plural || "Pasajeros"}
+                                          ? translatedBookingForm?.passengersField
+                                              ?.singular || bookingTexts.passengersSingular
+                                          : translatedBookingForm?.passengersField
+                                              ?.plural || bookingTexts.passengersPlural}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -1716,8 +1800,8 @@ if (bookingData.tipoReserva === "traslado") {
                                     <SelectValue>
                                       {bookingData.ninos === 0 ||
                                       bookingData.ninos
-                                        ? `${bookingData.ninos} ${bookingData.ninos === 1 ? "niño" : "niños"}`
-                                        : "Cantidad de niños"}
+                                        ? `${bookingData.ninos} ${bookingData.ninos === 1 ? bookingTexts.childrenSingular : bookingTexts.childrenPlural}`
+                                        : bookingTexts.childrenQuantity}
                                     </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent className="max-h-72">
@@ -1740,8 +1824,8 @@ if (bookingData.tipoReserva === "traslado") {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Car className="w-4 h-4 text-accent" />
-                                  {bookingForm?.vehicleField?.label ||
-                                    "Tipo de vehículo"}
+                                  {translatedBookingForm?.vehicleField?.label ||
+                                    bookingTexts.vehicleLabel}
                                 </label>
                                 <Select
                                   value={bookingData.vehiculo}
@@ -1769,13 +1853,13 @@ if (bookingData.tipoReserva === "traslado") {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="coche">
-                                      {bookingTexts.car} (4 personas)
+                                      {bookingTexts.car} (4 {bookingTexts.peopleCapacity})
                                     </SelectItem>
                                     <SelectItem value="minivan">
-                                      {bookingTexts.minivan} (6 pasajeros)
+                                      {bookingTexts.minivan} (6 {bookingTexts.passengersCapacity})
                                     </SelectItem>
                                     <SelectItem value="van">
-                                      {bookingTexts.van} (8 pasajeros)
+                                      {bookingTexts.van} (8 {bookingTexts.passengersCapacity})
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -1836,11 +1920,11 @@ if (bookingData.tipoReserva === "traslado") {
                                     goToPayment();
                                   }}
                                 >
-                                  Cotizar
+                                  {bookingTexts.quote}
                                 </Button>
                                 {disabled && (
                                   <p className="text-sm text-muted-foreground mt-2">
-                                    Campos faltantes:{" "}
+                                    {bookingTexts.missingFields}{" "}
                                     {Object.keys(errs)
                                       .map((k) => fieldLabelMap[k] || k)
                                       .join(", ")}

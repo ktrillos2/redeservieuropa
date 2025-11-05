@@ -32,6 +32,22 @@ export default function TourPage({ params }: TourPageProps) {
         depositRest: 'como depósito en la siguiente pantalla. El resto al confirmar.',
         reserveNow: 'Reservar ahora',
         loading: 'Cargando...',
+        // Para TourDetail
+        backToServices: 'Volver a servicios',
+        popular: 'Popular',
+        features: 'Características',
+        includes: 'Incluye',
+        visitedPlaces: 'Qué visitamos',
+        vehicleAmenities: 'Comodidades del Vehículo',
+        notes: 'Notas',
+        wifi: 'WiFi',
+        water: 'Agua',
+        comfortable: 'Cómodo',
+        safe: 'Seguro',
+        tourNotFound: 'Tour no encontrado',
+        backToHome: 'Volver al inicio',
+        enlargeImage: 'Ampliar imagen',
+        legacyTour: 'Este tour no viene del CMS (rama legacy).',
       },
       en: {
         priceFrom: 'Price from:',
@@ -40,6 +56,22 @@ export default function TourPage({ params }: TourPageProps) {
         depositRest: 'as a deposit on the next screen. The rest upon confirmation.',
         reserveNow: 'Book now',
         loading: 'Loading...',
+        // Para TourDetail
+        backToServices: 'Back to services',
+        popular: 'Popular',
+        features: 'Features',
+        includes: 'Includes',
+        visitedPlaces: 'What we visit',
+        vehicleAmenities: 'Vehicle Amenities',
+        notes: 'Notes',
+        wifi: 'WiFi',
+        water: 'Water',
+        comfortable: 'Comfortable',
+        safe: 'Safe',
+        tourNotFound: 'Tour not found',
+        backToHome: 'Back to home',
+        enlargeImage: 'Enlarge image',
+        legacyTour: 'This tour does not come from CMS (legacy branch).',
       },
       fr: {
         priceFrom: 'Prix à partir de:',
@@ -48,6 +80,22 @@ export default function TourPage({ params }: TourPageProps) {
         depositRest: 'd\'acompte sur l\'écran suivant. Le reste à la confirmation.',
         reserveNow: 'Réserver maintenant',
         loading: 'Chargement...',
+        // Para TourDetail
+        backToServices: 'Retour aux services',
+        popular: 'Populaire',
+        features: 'Caractéristiques',
+        includes: 'Inclus',
+        visitedPlaces: 'Ce que nous visitons',
+        vehicleAmenities: 'Commodités du Véhicule',
+        notes: 'Notes',
+        wifi: 'WiFi',
+        water: 'Eau',
+        comfortable: 'Confortable',
+        safe: 'Sûr',
+        tourNotFound: 'Tour non trouvé',
+        backToHome: 'Retour à l\'accueil',
+        enlargeImage: 'Agrandir l\'image',
+        legacyTour: 'Ce tour ne provient pas du CMS (branche héritée).',
       },
     }
     return texts[locale] || texts.es
@@ -188,6 +236,7 @@ export default function TourPage({ params }: TourPageProps) {
                 }
               : undefined
           }
+          staticTexts={staticTexts}
         />
       </AnimatedSection>
 

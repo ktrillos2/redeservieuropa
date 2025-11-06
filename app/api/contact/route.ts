@@ -8,7 +8,7 @@ import { renderBrandEmail } from '@/lib/email-templates'
 const schema = z.object({
   nombre: z.string().min(2),
   email: z.string().email(),
-  telefono: z.string().optional(),
+  telefono: z.string().min(1),
   mensaje: z.string().min(10),
 })
 
@@ -21,7 +21,12 @@ export async function POST(req: Request) {
     }
     const { nombre, email, telefono, mensaje } = parsed.data
 
-  const adminList = [process.env.CONTACT_TO, 'info@redeservieuropa.com', process.env.SMTP_USER].filter(Boolean) as string[]
+    // Lista de administradores que recibirán el email
+    // Prioridad: CONTACT_TO (redeservieuropa@gmail.com), luego info@redeservieuropa.com
+    const adminList = [
+      process.env.CONTACT_TO || 'redeservieuropa@gmail.com',
+      'info@redeservieuropa.com'
+    ].filter((v, i, arr) => arr.indexOf(v) === i) // Eliminar duplicados
 
     // Email al admin
     const adminSubject = `Nuevo contacto – ${nombre}`

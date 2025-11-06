@@ -80,56 +80,84 @@ export async function ensureAndGetGeneralInfo(): Promise<GeneralInfo> {
 }
 
 // Header schema seeding/ensure
+export type NavLink = {
+  label: {
+    es: string
+    en?: string
+    fr?: string
+  }
+  href: string
+  type: 'link' | 'tours' | 'transfers' | 'dropdown'
+  subItems?: NavLink[]
+  external?: boolean
+}
+
 export type HeaderDoc = {
   _id: string
   siteTitle?: string
   siteSubtitle?: string
-  logo?: any
-  navLinks?: Array<{ label: string; href?: string; internalHref?: string; external?: boolean }>
-  serviciosMenu?: Array<any>
+  navLinks?: NavLink[]
 }
 
 export async function ensureAndGetHeader(): Promise<HeaderDoc> {
   const token = process.env.SANITY_API_TOKEN
-  const existing = await serverClient.fetch("*[_type=='header' && _id == 'header'][0]")
+  const existing = await serverClient.fetch(`*[_type=='header' && _id == 'header'][0]{
+    _id,
+    siteTitle,
+    siteSubtitle,
+    navLinks
+  }`)
   if (existing) return existing as HeaderDoc
 
+  // Seed inicial con estructura nueva
   const doc: HeaderDoc = {
     _id: 'header',
     siteTitle: 'REDESERVI',
     siteSubtitle: 'PARIS',
-    // Nota: el logo NO se guarda aquí; se consume desde generalInfo
     navLinks: [
-      { label: 'Testimonios', internalHref: '#testimonios', external: false },
-      { label: 'Contacto', internalHref: '#contacto', external: false },
-    ],
-    serviciosMenu: [
-      { _type: 'menuLink', label: 'Traslados', internalHref: '/#traslados', external: false },
-      { _type: 'menuGroup', title: 'Tours París', items: [
-        { label: 'Tour por París (personalizable)', internalHref: '/tour/tour-paris', external: false },
-        { label: 'Tour en acompañamiento por París (No vehículo)', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa un Tour en acompañamiento por París (sin vehículo). ¿Podrían enviarme propuesta y disponibilidad?'), external: true },
-        { label: 'Tour escala (aeropuerto - Tour - aeropuerto)', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa un Tour escala (aeropuerto - Tour - aeropuerto). Tengo una escala y deseo hacer un tour por París entre vuelos. ¿Podrían enviarme opciones, duración y precios?'), external: true },
-      ]},
-      { _type: 'menuGroup', title: 'Tours Bélgica', items: [
-        { label: 'Brujas', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa el Tour a Brujas desde París. ¿Podrían enviarme información y disponibilidad?'), external: true },
-        { label: 'Gante y Brujas', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa el Tour Gante y Brujas desde París. ¿Podrían enviarme información y disponibilidad?'), external: true },
-        { label: 'Bruselas y Brujas', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa el Tour Bruselas y Brujas desde París. ¿Podrían enviarme información y disponibilidad?'), external: true },
-      ]},
-      { _type: 'menuSeparator' },
-      { _type: 'menuLink', label: 'Tour Brujas y Amsterdam (3 días)', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa el Tour Brujas y Amsterdam (3 días). ¿Podrían enviarme itinerario y precios?'), external: true },
-      { _type: 'menuLink', label: 'Tour Mont Saint Michel', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa el Tour a Mont Saint Michel. ¿Podrían enviarme información y disponibilidad?'), external: true },
-      { _type: 'menuLink', label: 'Tour castillo del Valle de Loira', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa el Tour a los Castillos del Valle del Loira. ¿Podrían enviarme opciones y precios?'), external: true },
-      { _type: 'menuLink', label: 'Tour Versailles', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, me interesa el Tour a Versailles. ¿Podrían enviarme información de horarios, entradas y transporte?'), external: true },
-      { _type: 'menuSeparator' },
-      { _type: 'menuLink', label: 'Cotiza tu tour a tu gusto', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, quiero cotizar un tour a mi gusto. Indico a continuación intereses, fechas y número de pasajeros: '), external: true },
-      { _type: 'menuLink', label: 'Billetes paseo en barco Río Sena', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, quiero comprar billetes para el paseo en barco por el Río Sena (con/sin cena). ¿Podrían enviarme opciones y precios?'), external: true },
-      { _type: 'menuLink', label: 'Billetes Disneyland', href: 'https://wa.me/?text=' + encodeURIComponent('Hola, quiero comprar billetes para Disneyland París. ¿Podrían enviarme disponibilidad y precios?'), external: true },
-    ],
+      {
+        label: { es: 'Servicios', en: 'Services', fr: 'Services' },
+        href: '#',
+        type: 'dropdown',
+        subItems: [
+          {
+            label: { es: 'Traslados', en: 'Transfers', fr: 'Transferts' },
+            href: '#traslados',
+            type: 'transfers' // Esto mostrará el listado dinámico
+          },
+          {
+            label: { es: 'Tours', en: 'Tours', fr: 'Tours' },
+            href: '#',
+            type: 'tours' // Esto mostrará el listado dinámico
+          },
+          {
+            label: { es: 'Cotizar servicio personalizado', en: 'Request custom quote', fr: 'Demander un devis personnalisé' },
+            href: '/#hero-booking-form',
+            type: 'link'
+          }
+        ]
+      },
+      {
+        label: { es: 'Testimonios', en: 'Testimonials', fr: 'Témoignages' },
+        href: '#testimonios',
+        type: 'link'
+      },
+      {
+        label: { es: 'Contacto', en: 'Contact', fr: 'Contact' },
+        href: '#contacto',
+        type: 'link'
+      }
+    ]
   }
 
   if (token) {
     await serverClient.transaction().createOrReplace({ _type: 'header', ...doc }).commit()
-    const created = await serverClient.fetch("*[_type=='header' && _id == 'header'][0]")
+    const created = await serverClient.fetch(`*[_type=='header' && _id == 'header'][0]{
+      _id,
+      siteTitle,
+      siteSubtitle,
+      navLinks
+    }`)
     return (created as HeaderDoc) || doc
   }
   return doc

@@ -1,4 +1,4 @@
-import HeaderServer from '@/components/header.server'
+import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { AnimatedSection } from '@/components/animated-section'
 import { getToursList } from '@/sanity/lib/tours'
@@ -14,7 +14,7 @@ export default async function ToursPage() {
   const subtitle = section?.subtitle || ''
   return (
     <main className="min-h-screen">
-      <HeaderServer />
+      <Header />
       <section className="container mx-auto px-4 pt-24 pb-16">
         <AnimatedSection animation="fade-up">
           <h1 className="text-4xl font-bold text-primary mb-3 font-display">{title}</h1>

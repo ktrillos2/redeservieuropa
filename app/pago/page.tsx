@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { useEffect, useRef, useState, useMemo } from "react";
-import HeaderServer from "@/components/header.server";
 import { Footer } from "@/components/footer";
 import { AnimatedSection } from "@/components/animated-section";
 import { useToast } from "@/hooks/use-toast";

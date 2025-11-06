@@ -51,11 +51,11 @@ const XIcon = () => (
 )
 
 export function Header({
-  siteTitle = 'REDESERVI',
-  siteSubtitle = 'PARIS',
-  logoUrl = '/images/logo.png',
-  tours = [],
-  transfers = [],
+  siteTitle,
+  siteSubtitle,
+  logoUrl,
+  tours: toursProp,
+  transfers: transfersProp,
 }: {
   siteTitle?: string
   siteSubtitle?: string
@@ -72,6 +72,55 @@ export function Header({
   const hoverCloseTimeout = useRef<number | null>(null)
   const [toursOpen, setToursOpen] = useState(false)
   const [transfersOpen, setTransfersOpen] = useState(false)
+  
+  // Estado para datos fetched
+  const [headerData, setHeaderData] = useState({
+    siteTitle: siteTitle || 'REDESERVI',
+    siteSubtitle: siteSubtitle || 'PARIS',
+    logoUrl: logoUrl || '/images/logo.png',
+    navLinks: []
+  })
+  const [tours, setTours] = useState(toursProp || [])
+  const [transfers, setTransfers] = useState(transfersProp || [])
+
+  // Fetch data si no se pasan como props
+  useEffect(() => {
+    if (!toursProp || !transfersProp || !siteTitle) {
+      (async () => {
+        try {
+          // Fetch tours
+          if (!toursProp) {
+            const toursRes = await fetch('/api/tours')
+            const toursData = await toursRes.json()
+            setTours(toursData.tours || [])
+          }
+          
+          // Fetch transfers
+          if (!transfersProp) {
+            const transfersRes = await fetch('/api/transfers')
+            const transfersData = await transfersRes.json()
+            setTransfers(transfersData.transfers || [])
+          }
+          
+          // Fetch header data desde Sanity
+          if (!siteTitle) {
+            const headerRes = await fetch('/api/header')
+            if (headerRes.ok) {
+              const headerInfo = await headerRes.json()
+              setHeaderData({
+                siteTitle: headerInfo.siteTitle || 'REDESERVI',
+                siteSubtitle: headerInfo.siteSubtitle || 'PARIS',
+                logoUrl: logoUrl || '/images/logo.png',
+                navLinks: headerInfo.navLinks || []
+              })
+            }
+          }
+        } catch (error) {
+          console.warn('[Header] Error fetching data:', error)
+        }
+      })()
+    }
+  }, [toursProp, transfersProp, siteTitle, logoUrl])
 
   // Resetear el estado del acordeón de servicios cuando se cierra el menú móvil
   useEffect(() => {
@@ -155,8 +204,8 @@ export function Header({
           <Link href="/" className="flex items-center space-x-3">
             <div className={`relative transition-all duration-500 ${compactHeader ? 'h-[110px] w-[70px]' : 'h-[140px] w-[90px]'}`}>
               <Image
-                src={logoUrl}
-                alt={`${siteTitle} ${siteSubtitle}`}
+                src={headerData.logoUrl}
+                alt={`${headerData.siteTitle} ${headerData.siteSubtitle}`}
                 fill
                 className="object-contain animate-float transition-all duration-300"
                 sizes="(max-width: 768px) 70px, 90px"
@@ -167,10 +216,10 @@ export function Header({
               <h1
                 className={`font-bold font-display transition-all duration-300 drop-shadow-lg ${compactHeader ? "text-lg" : "text-4xl"} ${useDarkText ? "!text-black" : "!text-white"}`}
               >
-                {siteTitle}
+                {headerData.siteTitle}
               </h1>
               <p className={`font-display transition-all duration-300 drop-shadow-lg ${compactHeader ? "text-xs" : "text-2xl"} ${useDarkText ? "!text-black" : "!text-white"}`}>
-                {siteSubtitle}
+                {headerData.siteSubtitle}
               </p>
             </div>
           </Link>
@@ -225,9 +274,25 @@ export function Header({
                       {transfersOpen && (
                         <div className="pl-6 py-2 space-y-1 soft-fade-in max-h-60 overflow-y-auto">
                           {transfers.map((transfer) => {
-                            const slug = typeof transfer.slug === 'string' 
-                              ? transfer.slug 
-                              : transfer.slug?.current || `${transfer.from}-${transfer.to}`.toLowerCase().replace(/\s+/g, '-')
+                            // Normalizar slug - puede venir como string directo o como objeto {current: string}
+                            let slug = ''
+                            if (typeof transfer.slug === 'string') {
+                              slug = transfer.slug
+                            } else if (transfer.slug && typeof transfer.slug === 'object' && 'current' in transfer.slug) {
+                              slug = transfer.slug.current
+                            }
+                            
+                            // Si no hay slug, generar uno básico (esto NO debería pasar)
+                            if (!slug) {
+                              console.warn('[Header] Transfer sin slug:', transfer)
+                              slug = `${transfer.from}-${transfer.to}`
+                                .toLowerCase()
+                                .normalize('NFD')
+                                .replace(/\p{Diacritic}/gu, '')
+                                .replace(/[^a-z0-9]+/g, '-')
+                                .replace(/^-+|-+$/g, '')
+                            }
+                            
                             return (
                               <Link
                                 key={transfer._id}

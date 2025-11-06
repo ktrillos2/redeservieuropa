@@ -2,7 +2,7 @@ import HeroServer from "@/components/hero.server"
 import { TransfersSection } from "@/components/transfers-section"
 import { Testimonials } from "@/components/testimonials"
 import { Contact } from "@/components/contact"
-import HeaderServer from "@/components/header.server"
+import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
 import ServicesServer from "@/components/services.server"
@@ -10,7 +10,7 @@ import ServicesServer from "@/components/services.server"
 export default function HomePage() {
   return (
     <main className="min-h-screen">
-  <HeaderServer />
+      <Header />
       <AnimatedSection animation="fade-up">
         {/* Hero consumiendo Sanity */}
         <HeroServer />

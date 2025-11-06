@@ -107,7 +107,22 @@ export const TRANSFERS_LIST_QUERY = `
   priceP7,
   priceP8,
   
-  translations
+  translations {
+    en {
+      from,
+      to,
+      briefInfo,
+      description,
+      duration
+    },
+    fr {
+      from,
+      to,
+      briefInfo,
+      description,
+      duration
+    }
+  }
 }
 `;
 
@@ -135,7 +150,22 @@ export const TRANSFER_BY_SLUG_QUERY = `
   priceP7,
   priceP8,
   
-  translations
+  translations {
+    en {
+      from,
+      to,
+      briefInfo,
+      description,
+      duration
+    },
+    fr {
+      from,
+      to,
+      briefInfo,
+      description,
+      duration
+    }
+  }
 }
 `;
 

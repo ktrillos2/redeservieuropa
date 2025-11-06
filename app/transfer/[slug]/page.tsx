@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from '@/contexts/i18n-context'
-import { client } from '@/sanity/lib/client'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -111,23 +110,41 @@ export default function TransferDetailPage({ params }: { params: Params }) {
     let mounted = true
     ;(async () => {
       try {
-        const query = `*[_type == "transfer" && slug.current == $slug][0]{
-          _id,
-          from,
-          to,
-          slug,
-          briefInfo,
-          description,
-          duration,
-          pricingTable,
-          requireFlightInfo,
-          requireFlightNumber
-        }`
-        const result = await client.fetch(query, { slug: params.slug })
+        // Fetch desde la API en lugar de Sanity client directo
+        // para evitar problemas de CDN y obtener datos actualizados
+        const response = await fetch(`/api/transfers`)
+        const data = await response.json()
+        
         if (!mounted) return
-        console.log("[TransferDetailPage] Transfer cargado desde Sanity para locale:", locale)
-        console.log("[TransferDetailPage] Transfer:", result)
-        setTransfer(result)
+        
+        // Buscar el transfer por slug
+        const foundTransfer = data.transfers?.find((t: any) => {
+          const tSlug = typeof t.slug === 'string' ? t.slug : t.slug?.current
+          return tSlug === params.slug
+        })
+        
+        if (!foundTransfer) {
+          setTransfer(null)
+          setLoading(false)
+          return
+        }
+        
+        // Construir pricingTable desde los campos priceP4, priceP5, etc.
+        const transferWithPricing = {
+          ...foundTransfer,
+          pricingTable: {
+            p4: foundTransfer.priceP4,
+            p5: foundTransfer.priceP5,
+            p6: foundTransfer.priceP6,
+            p7: foundTransfer.priceP7,
+            p8: foundTransfer.priceP8,
+          }
+        }
+        
+        console.log("[TransferDetailPage] Transfer cargado desde API para locale:", locale)
+        console.log("[TransferDetailPage] Transfer:", transferWithPricing)
+        console.log("[TransferDetailPage] Translations:", transferWithPricing?.translations)
+        setTransfer(transferWithPricing)
       } catch (e) {
         console.warn('[TransferDetailPage] Error cargando transfer:', e)
       } finally {
@@ -136,6 +153,26 @@ export default function TransferDetailPage({ params }: { params: Params }) {
     })()
     return () => { mounted = false }
   }, [params.slug, locale])
+
+  // Aplicar traducciones según el locale
+  const translatedTransfer = useMemo(() => {
+    if (!transfer) return null
+    
+    // Si el locale es español, devolver el transfer original
+    if (locale === 'es') return transfer
+    
+    // Si hay traducciones para el locale actual, aplicarlas
+    const translations = transfer.translations?.[locale]
+    if (!translations) return transfer
+    
+    return {
+      ...transfer,
+      from: translations.from || transfer.from,
+      to: translations.to || transfer.to,
+      briefInfo: translations.briefInfo || transfer.briefInfo,
+      description: translations.description || transfer.description,
+    }
+  }, [transfer, locale])
 
   if (loading) {
     return (
@@ -161,7 +198,7 @@ export default function TransferDetailPage({ params }: { params: Params }) {
     )
   }
   
-  const title = `${transfer.from} → ${transfer.to}`
+  const title = `${translatedTransfer?.from || transfer.from} → ${translatedTransfer?.to || transfer.to}`
   const isHourly = /\/h/.test(transfer.from) || transfer.from === 'Tour'
   
   // Construir tabla de precios si existe
@@ -206,8 +243,8 @@ export default function TransferDetailPage({ params }: { params: Params }) {
               <Card className="overflow-hidden">
                 <div className="p-8">
                   <h1 className="text-4xl font-bold font-display mb-3 text-primary">{title}</h1>
-                  {transfer.briefInfo && (
-                    <p className="text-lg text-muted-foreground">{transfer.briefInfo}</p>
+                  {translatedTransfer?.briefInfo && (
+                    <p className="text-lg text-muted-foreground">{translatedTransfer.briefInfo}</p>
                   )}
                 </div>
               </Card>
@@ -226,14 +263,14 @@ export default function TransferDetailPage({ params }: { params: Params }) {
                       <MapPin className="w-5 h-5 text-accent mt-1" />
                       <div>
                         <p className="font-semibold text-sm text-muted-foreground">{staticTexts.origin}</p>
-                        <p className="text-lg font-medium">{transfer.from}</p>
+                        <p className="text-lg font-medium">{translatedTransfer?.from}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
                       <MapPin className="w-5 h-5 text-accent mt-1" />
                       <div>
                         <p className="font-semibold text-sm text-muted-foreground">{staticTexts.destination}</p>
-                        <p className="text-lg font-medium">{transfer.to}</p>
+                        <p className="text-lg font-medium">{translatedTransfer?.to}</p>
                       </div>
                     </div>
                   </div>
@@ -248,9 +285,9 @@ export default function TransferDetailPage({ params }: { params: Params }) {
                     </div>
                   )}
 
-                  {transfer.description && (
+                  {translatedTransfer?.description && (
                     <div className="prose prose-sm max-w-none">
-                      <p className="text-muted-foreground leading-relaxed">{transfer.description}</p>
+                      <p className="text-muted-foreground leading-relaxed">{translatedTransfer.description}</p>
                     </div>
                   )}
                 </CardContent>

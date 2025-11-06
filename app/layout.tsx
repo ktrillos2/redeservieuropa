@@ -23,9 +23,9 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: "REDESERVI PARIS - Transporte Privado de Lujo",
+  title: "REDESERVI PARIS - Transporte Privado",
   description:
-    "Servicio de transporte privado premium en París. Traslados a aeropuertos CDG, Orly, Beauvais y Disneyland. Reserva tu viaje de lujo.",
+    "Servicio de transporte privado en París. Traslados a aeropuertos CDG, Orly, Beauvais y Disneyland. Reserva tu viaje.",
   generator: "v0.app",
   icons: {
     icon: [

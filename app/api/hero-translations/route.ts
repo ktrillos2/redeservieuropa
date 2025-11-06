@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from 'next-sanity'
 import { apiVersion, dataset, projectId } from '@/sanity/env'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 const client = createClient({
   projectId,
   dataset,

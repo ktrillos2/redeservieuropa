@@ -46,7 +46,8 @@ async function acquireMailLock(paymentId: string): Promise<boolean> {
     await patch.commit({ returnDocuments: false })
     return true
   } catch (e) {
-    console.warn('[sync][mailLock] no adquirido (race)', e?.message || e)
+    const error = e as Error
+    console.warn('[sync][mailLock] no adquirido (race)', error?.message || String(e))
     return false
   }
 }
@@ -146,10 +147,11 @@ export async function POST(req: Request) {
               })
             }
           } catch (err) {
+            const error = err as Error
             console.error('[orders/sync] calendar error', { 
               orderId: ord._id, 
               serviceIdx: idx, 
-              error: err?.message || err 
+              error: error?.message || String(err)
             })
           }
         }
@@ -299,12 +301,13 @@ export async function PUT(req: Request) {
           }
           results.push({ orderId: ord._id, serviceIdx: idx, created: Boolean(evt?.id) })
         } catch (err) {
+          const error = err as Error
           console.error('[orders/sync PUT] calendar error', { 
             orderId: ord._id, 
             serviceIdx: idx, 
-            error: err?.message || err 
+            error: error?.message || String(err)
           })
-          results.push({ orderId: ord._id, serviceIdx: idx, error: err?.message || err })
+          results.push({ orderId: ord._id, serviceIdx: idx, error: error?.message || String(err) })
         }
       }
     }

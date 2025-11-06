@@ -54,11 +54,11 @@ export function LanguageSwitcher() {
           />
           
           {/* Menú dropdown */}
-          <div className="absolute right-0 top-full mt-2 min-w-[180px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-50">
+          <div className="absolute right-0 top-full mt-2 min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
             <button
               onClick={() => handleLanguageChange('es')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors ${
-                locale === 'es' ? 'bg-accent/50 font-semibold' : ''
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left text-gray-900 hover:bg-gray-900 hover:text-white transition-colors ${
+                locale === 'es' ? 'bg-gray-100 font-semibold' : ''
               }`}
               type="button"
             >
@@ -68,8 +68,8 @@ export function LanguageSwitcher() {
 
             <button
               onClick={() => handleLanguageChange('en')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors ${
-                locale === 'en' ? 'bg-accent/50 font-semibold' : ''
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left text-gray-900 hover:bg-gray-900 hover:text-white transition-colors ${
+                locale === 'en' ? 'bg-gray-100 font-semibold' : ''
               }`}
               type="button"
             >
@@ -79,8 +79,8 @@ export function LanguageSwitcher() {
 
             <button
               onClick={() => handleLanguageChange('fr')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors ${
-                locale === 'fr' ? 'bg-accent/50 font-semibold' : ''
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left text-gray-900 hover:bg-gray-900 hover:text-white transition-colors ${
+                locale === 'fr' ? 'bg-gray-100 font-semibold' : ''
               }`}
               type="button"
             >

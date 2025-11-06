@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import Link from "next/link"
@@ -16,6 +16,9 @@ import {
 import { ChevronDown, ChevronUp, ShoppingCart } from "lucide-react"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useTranslation } from "@/contexts/i18n-context"
+import { client } from "@/sanity/lib/client"
+import { GENERAL_INFO_QUERY } from "@/sanity/lib/queries"
+import { urlFor } from "@/sanity/lib/image"
 
 const MenuIcon = () => (
   <svg
@@ -60,10 +63,10 @@ export function Header({
   siteTitle?: string
   siteSubtitle?: string
   logoUrl?: string
-  tours?: Array<{ _id: string; title: string; slug: string }>
-  transfers?: Array<{ _id: string; from: string; to: string; slug?: string | { current: string } }>
+  tours?: Array<{ _id: string; title: string; slug: string; translations?: { en?: { title?: string }, fr?: { title?: string } } }>
+  transfers?: Array<{ _id: string; from: string; to: string; slug?: string | { current: string }; translations?: { en?: { from?: string; to?: string }, fr?: { from?: string; to?: string } } }>
 }) {
-  const { t } = useTranslation()
+  const { t, locale, isLoading } = useTranslation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -72,6 +75,7 @@ export function Header({
   const hoverCloseTimeout = useRef<number | null>(null)
   const [toursOpen, setToursOpen] = useState(false)
   const [transfersOpen, setTransfersOpen] = useState(false)
+  const [generalInfo, setGeneralInfo] = useState<any | null>(null)
   
   // Estado para datos fetched
   const [headerData, setHeaderData] = useState({
@@ -83,6 +87,52 @@ export function Header({
   const [tours, setTours] = useState(toursProp || [])
   const [transfers, setTransfers] = useState(transfersProp || [])
 
+  // Traducciones estáticas con fallback en español
+  const staticTexts = useMemo(() => {
+    if (isLoading) {
+      // Mientras carga, mostrar español
+      return {
+        services: 'Servicios',
+        transfers: 'Traslados',
+        tours: 'Tours',
+        testimonials: 'Testimonios',
+        contact: 'Contacto',
+        cart: 'Carrito',
+        customQuote: 'Cotizar servicio personalizado'
+      }
+    }
+    
+    // Usar traducciones del contexto cuando estén disponibles
+    return {
+      services: t('header.services'),
+      transfers: t('header.transfers'),
+      tours: t('header.tours'),
+      testimonials: t('header.testimonials'),
+      contact: t('header.contact'),
+      cart: t('header.cart'),
+      customQuote: locale === 'es' 
+        ? 'Cotizar servicio personalizado'
+        : locale === 'en'
+        ? 'Request custom service quote'
+        : 'Demander un devis personnalisé'
+    }
+  }, [locale, isLoading, t])
+
+  // Cargar general info desde Sanity para logo
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const gi = await client.fetch(GENERAL_INFO_QUERY)
+        if (!mounted) return
+        setGeneralInfo(gi)
+      } catch (e) {
+        console.warn('[Header] No se pudo cargar generalInfo desde Sanity')
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
+
   // Fetch data si no se pasan como props
   useEffect(() => {
     if (!toursProp || !transfersProp || !siteTitle) {
@@ -92,14 +142,26 @@ export function Header({
           if (!toursProp) {
             const toursRes = await fetch('/api/tours')
             const toursData = await toursRes.json()
-            setTours(toursData.tours || [])
+            // Filtrar solo tours con slug válido
+            const validTours = (toursData.tours || []).filter((tour: any) => 
+              tour.slug && tour.slug.length > 0
+            )
+            setTours(validTours)
           }
           
           // Fetch transfers
           if (!transfersProp) {
             const transfersRes = await fetch('/api/transfers')
             const transfersData = await transfersRes.json()
-            setTransfers(transfersData.transfers || [])
+            // Filtrar solo transfers con slug válido
+            const validTransfers = (transfersData.transfers || []).filter((transfer: any) => 
+              transfer.slug && (
+                typeof transfer.slug === 'string' 
+                  ? transfer.slug.length > 0 
+                  : transfer.slug.current && transfer.slug.current.length > 0
+              )
+            )
+            setTransfers(validTransfers)
           }
           
           // Fetch header data desde Sanity
@@ -167,6 +229,41 @@ export function Header({
   // Builder de URL de WhatsApp sin número (abre selector con mensaje)
   const wa = (message: string) => `https://wa.me/?text=${encodeURIComponent(message)}`
 
+  // Helper para obtener título traducido con fallback a español
+  const getTourTitle = (tour: any): string => {
+    if (locale === 'es' || !tour.translations) {
+      return tour.title || 'Tour sin título'
+    }
+    if (locale === 'en' && tour.translations.en?.title) {
+      return tour.translations.en.title
+    }
+    if (locale === 'fr' && tour.translations.fr?.title) {
+      return tour.translations.fr.title
+    }
+    // Fallback a español
+    return tour.title || 'Tour sin título'
+  }
+
+  // Helper para obtener origen/destino traducido con fallback a español
+  const getTransferLabel = (transfer: any): string => {
+    const fromText = locale === 'es' || !transfer.translations 
+      ? transfer.from 
+      : (locale === 'en' && transfer.translations.en?.from) || (locale === 'fr' && transfer.translations.fr?.from) || transfer.from
+    
+    const toText = locale === 'es' || !transfer.translations 
+      ? transfer.to 
+      : (locale === 'en' && transfer.translations.en?.to) || (locale === 'fr' && transfer.translations.fr?.to) || transfer.to
+    
+    return `${fromText || 'Origen'} → ${toText || 'Destino'}`
+  }
+
+  // Obtener logo URL desde Sanity
+  const computedLogoUrl = useMemo(() => {
+    const logo = generalInfo?.logo
+    // Logo del header más pequeño que footer, altura ~140px, pedimos ~2x para nitidez
+    return logo ? urlFor(logo).height(280).url() : headerData.logoUrl
+  }, [generalInfo, headerData.logoUrl])
+
   const HOVER_CLOSE_DELAY = 520 // ms de gracia para cruzar del trigger al contenido sin cierre
 
   const scheduleClose = () => {
@@ -204,7 +301,7 @@ export function Header({
           <Link href="/" className="flex items-center space-x-3">
             <div className={`relative transition-all duration-500 ${compactHeader ? 'h-[110px] w-[70px]' : 'h-[140px] w-[90px]'}`}>
               <Image
-                src={headerData.logoUrl}
+                src={computedLogoUrl}
                 alt={`${headerData.siteTitle} ${headerData.siteSubtitle}`}
                 fill
                 className="object-contain animate-float transition-all duration-300"
@@ -240,7 +337,7 @@ export function Header({
                 onPointerLeave={scheduleClose}
                 className={`px-4 py-2 rounded-lg transition-colors hover:bg-accent/15 cursor-pointer font-bold ${useDarkText ? "text-black" : "!text-white"}`}
               >
-                {t('header.services')}
+                {staticTexts.services}
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
@@ -264,7 +361,7 @@ export function Header({
                         }}
                         className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
                       >
-                        <span>{t('header.transfers')}</span>
+                        <span>{staticTexts.transfers}</span>
                         {transfersOpen ? (
                           <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
                         ) : (
@@ -282,15 +379,10 @@ export function Header({
                               slug = transfer.slug.current
                             }
                             
-                            // Si no hay slug, generar uno básico (esto NO debería pasar)
+                            // Si no hay slug, no renderizar este transfer
                             if (!slug) {
-                              console.warn('[Header] Transfer sin slug:', transfer)
-                              slug = `${transfer.from}-${transfer.to}`
-                                .toLowerCase()
-                                .normalize('NFD')
-                                .replace(/\p{Diacritic}/gu, '')
-                                .replace(/[^a-z0-9]+/g, '-')
-                                .replace(/^-+|-+$/g, '')
+                              console.warn('[Header] Transfer sin slug válido:', transfer)
+                              return null
                             }
                             
                             return (
@@ -299,7 +391,7 @@ export function Header({
                                 href={`/transfer/${slug}`}
                                 className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                               >
-                                {transfer.from} → {transfer.to}
+                                {getTransferLabel(transfer)}
                               </Link>
                             )
                           })}
@@ -321,7 +413,7 @@ export function Header({
                         }}
                         className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
                       >
-                        <span>{t('header.tours')}</span>
+                        <span>{staticTexts.tours}</span>
                         {toursOpen ? (
                           <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
                         ) : (
@@ -336,7 +428,7 @@ export function Header({
                               href={`/tour/${tour.slug}`}
                               className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                             >
-                              {tour.title}
+                              {getTourTitle(tour)}
                             </Link>
                           ))}
                         </div>
@@ -349,7 +441,7 @@ export function Header({
                   {/* Opción de cotización */}
                   <DropdownMenuItem asChild className="rounded-md">
                     <Link href="/#hero-booking-form" className="px-2 py-2 w-full rounded-md font-semibold text-accent">
-                      💬 Cotizar servicio personalizado
+                      💬 {staticTexts.customQuote}
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
@@ -357,10 +449,10 @@ export function Header({
             </DropdownMenu>
             {/* Enlace principal 'Traslados' removido: permanece dentro del submenú Servicios */}
             <Link href="#testimonios" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
-              {t('header.testimonials')}
+              {staticTexts.testimonials}
             </Link>
             <Link href="#contacto" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
-              {t('header.contact')}
+              {staticTexts.contact}
             </Link>
             {/* Selector de idioma (desktop) */}
             <div className={useDarkText ? "text-black" : "text-white"}>
@@ -394,7 +486,7 @@ export function Header({
                 onClick={() => setIsServicesOpenMobile((v) => !v)}
                 className="text-left text-black transition-colors drop-shadow-lg hover:bg-accent/10 rounded-md px-3 py-2.5 text-base font-semibold"
               >
-                {t('header.services')} {isServicesOpenMobile ? "▲" : "▼"}
+                {staticTexts.services} {isServicesOpenMobile ? "▲" : "▼"}
               </button>
               {isServicesOpenMobile && (
                 <div className="pl-4 space-y-4 text-sm font-display">
@@ -402,20 +494,27 @@ export function Header({
                   {transfers.length > 0 && (
                     <div>
                       <div className="font-bold mb-2 text-base text-black">
-                        {t('header.transfers')}
+                        {staticTexts.transfers}
                       </div>
                       <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
                         {transfers.map((transfer) => {
                           const slug = typeof transfer.slug === 'string' 
                             ? transfer.slug 
-                            : transfer.slug?.current || `${transfer.from}-${transfer.to}`.toLowerCase().replace(/\s+/g, '-')
+                            : transfer.slug?.current
+                          
+                          // Si no hay slug válido, no renderizar
+                          if (!slug) {
+                            console.warn('[Header Mobile] Transfer sin slug válido:', transfer)
+                            return null
+                          }
+                          
                           return (
                             <Link 
                               key={transfer._id}
                               href={`/transfer/${slug}`} 
                               className="block text-black/80 hover:text-black hover:underline transition-colors"
                             >
-                              {transfer.from} → {transfer.to}
+                              {getTransferLabel(transfer)}
                             </Link>
                           )
                         })}
@@ -427,7 +526,7 @@ export function Header({
                   {tours.length > 0 && (
                     <div>
                       <div className="font-bold mb-2 text-base text-black">
-                        {t('header.tours')}
+                        {staticTexts.tours}
                       </div>
                       <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
                         {tours.map((tour) => (
@@ -436,7 +535,7 @@ export function Header({
                             href={`/tour/${tour.slug}`} 
                             className="block text-black/80 hover:text-black hover:underline transition-colors"
                           >
-                            {tour.title}
+                            {getTourTitle(tour)}
                           </Link>
                         ))}
                       </div>
@@ -450,7 +549,7 @@ export function Header({
                     href="/#hero-booking-form" 
                     className="block font-semibold text-accent hover:underline px-1 text-base transition-colors"
                   >
-                    💬 Cotizar servicio personalizado
+                    💬 {staticTexts.customQuote}
                   </Link>
                 </div>
               )}
@@ -459,13 +558,13 @@ export function Header({
                 href="#testimonios"
                 className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
               >
-                {t('header.testimonials')}
+                {staticTexts.testimonials}
               </Link>
               <Link
                 href="#contacto"
                 className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
               >
-                {t('header.contact')}
+                {staticTexts.contact}
               </Link>
               {/* Selector de idioma (móvil) */}
               <div className="px-3 py-2">
@@ -479,7 +578,7 @@ export function Header({
                 prefetch={false}
               >
                 <ShoppingCart className="size-5" />
-                <span>{t('header.cart')}</span>
+                <span>{staticTexts.cart}</span>
               </Link>
             </nav>
           </div>

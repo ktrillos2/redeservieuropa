@@ -715,6 +715,49 @@ export default function PaymentPage() {
     return texts[locale] || texts.es;
   }, [locale]);
 
+  // Funciones helper para obtener títulos traducidos
+  const getTourTitle = (tour: TourData): string => {
+    if (!tour) return 'Tour';
+    
+    if (locale === 'es' || !tour.translations) {
+      return tour.title || 'Tour';
+    }
+    if (locale === 'en' && tour.translations.en?.title) {
+      return tour.translations.en.title;
+    }
+    if (locale === 'fr' && tour.translations.fr?.title) {
+      return tour.translations.fr.title;
+    }
+    // Fallback a español
+    return tour.title || 'Tour';
+  };
+
+  const getTransferLabel = (transfer: TransferDoc | undefined, from?: string, to?: string): string => {
+    if (!transfer && (!from || !to)) {
+      return 'Traslado';
+    }
+
+    // Si no hay transfer doc, usar from/to directamente
+    if (!transfer) {
+      return `${from || 'Origen'} → ${to || 'Destino'}`;
+    }
+
+    // Aplicar traducciones según el locale
+    const fromText = locale === 'es' || !transfer.translations 
+      ? transfer.from 
+      : (locale === 'en' && transfer.translations.en?.from) 
+        || (locale === 'fr' && transfer.translations.fr?.from) 
+        || transfer.from;
+    
+    const toText = locale === 'es' || !transfer.translations 
+      ? transfer.to 
+      : (locale === 'en' && transfer.translations.en?.to) 
+        || (locale === 'fr' && transfer.translations.fr?.to) 
+        || transfer.to;
+    
+    return `${fromText || 'Origen'} → ${toText || 'Destino'}`;
+  };
+
   const [destino, setDestino] = useState<BookingData | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
   // Guardar origen/destino al cargar la página (por ejemplo después de redirigir desde la cotización)
@@ -2609,10 +2652,10 @@ export default function PaymentPage() {
     bookingData?.transferDoc?.name ||
     bookingData?.transferData?.name ||
     (bookingData?.transferDoc?.from && bookingData?.transferDoc?.to
-      ? `${bookingData.transferDoc.from} → ${bookingData.transferDoc.to}`
+      ? getTransferLabel(bookingData.transferDoc)
       : "");
   const tourName =
-    bookingData?.tourDoc?.title ||
+    (bookingData?.tourDoc ? getTourTitle(bookingData.tourDoc) : null) ||
     selectedTourTitleFromList ||
     (bookingData?.tourId ? toTitle(bookingData.tourId) : "");
 
@@ -2621,16 +2664,20 @@ export default function PaymentPage() {
     ? bookingData?.eventTitle || "Evento especial"
     : isQuick
       ? bookingData?.quickType === "traslado"
-        ? transferLabel || // 👈 PRIORIDAD al nombre del traslado
-          (bookingData?.origen && bookingData?.destino
-            ? `${bookingData.origen} → ${bookingData.destino}`
+        ? transferLabel || // 👈 Ya usa getTransferLabel con traducciones
+          (bookingData?.transferDoc 
+            ? getTransferLabel(bookingData.transferDoc)
+            : bookingData?.origen && bookingData?.destino
+            ? getTransferLabel(undefined, bookingData.origen, bookingData.destino)
             : "Traslado")
-        : tourName || "Tour"
+        : tourName || "Tour" // 👈 Ya usa getTourTitle con traducciones
       : isTour
-        ? tourName || "Tour"
-        : transferLabel || // 👈 PRIORIDAD al nombre del traslado
-          (bookingData?.origen && bookingData?.destino
-            ? `${bookingData.origen} → ${bookingData.destino}`
+        ? tourName || "Tour" // 👈 Ya usa getTourTitle con traducciones
+        : transferLabel || // 👈 Ya usa getTransferLabel con traducciones
+          (bookingData?.transferDoc 
+            ? getTransferLabel(bookingData.transferDoc)
+            : bookingData?.origen && bookingData?.destino
+            ? getTransferLabel(undefined, bookingData.origen, bookingData.destino)
             : "Traslado");
   // Enviar a WhatsApp cuando el método es efectivo
   const sendWhatsApp = () => {
@@ -4374,49 +4421,29 @@ export default function PaymentPage() {
                                   {it.tipo === "tour" ? (
                                     <div className="text-xs text-muted-foreground">
                                       {truncate(
-                                        it.serviceSubLabel ||
-                                          toursList?.find(
-                                            (t) =>
-                                              t.slug === it.selectedTourSlug ||
-                                              t.title === it.selectedTourSlug
-                                          )?.title ||
-                                          toTitle(it.selectedTourSlug) ||
-                                          "Tour",
+                                        // Primero intentar con tourDoc si existe
+                                        it.tourDoc 
+                                          ? getTourTitle(it.tourDoc)
+                                          : it.serviceSubLabel ||
+                                            toursList?.find(
+                                              (t) =>
+                                                t.slug === it.selectedTourSlug ||
+                                                t.title === it.selectedTourSlug
+                                            )?.title ||
+                                            toTitle(it.selectedTourSlug) ||
+                                            "Tour",
                                         30
                                       )}
                                     </div>
                                   ) : (
                                     <div className="text-xs text-muted-foreground">
-                                      {/* Preferimos siempre lo que viene del transferDoc, formateado */}
-                                      {(() => {
-                                        const formatLocation = (text: string) => {
-                                          return text
-                                            .replace(/-/g, ' ')
-                                            .split(' ')
-                                            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                                            .join(' ');
-                                        };
-                                        
-                                        const from = it.transferDoc?.from 
-                                          ? formatLocation(it.transferDoc.from)
-                                          : it.origen 
-                                          ? formatLocation(it.origen)
-                                          : it.pickupAddress || "";
-                                        
-                                        const to = it.transferDoc?.to 
-                                          ? formatLocation(it.transferDoc.to)
-                                          : it.destino 
-                                          ? formatLocation(it.destino)
-                                          : it.dropoffAddress || "";
-
-                                        return (
-                                          <>
-                                            {from}
-                                            {from && to ? " → " : ""}
-                                            {to}
-                                          </>
-                                        );
-                                      })()}
+                                      {/* Usar la función helper para traducciones */}
+                                      {truncate(
+                                        it.transferDoc 
+                                          ? getTransferLabel(it.transferDoc)
+                                          : getTransferLabel(undefined, it.origen, it.destino),
+                                        40
+                                      )}
                                     </div>
                                   )}
 
@@ -4675,7 +4702,9 @@ export default function PaymentPage() {
                               })();
 
                               if(!selectedTourNameFromList){
-                                selectedTourNameFromList = toTitleCase(bookingData.tourDoc?.title);
+                                selectedTourNameFromList = bookingData.tourDoc 
+                                  ? getTourTitle(bookingData.tourDoc)
+                                  : toTitleCase(bookingData.tourDoc?.title);
                               }
 
                               
@@ -4700,26 +4729,10 @@ export default function PaymentPage() {
                                 bookingData?.destino ||
                                 "";
 
-                              // Construir título del traslado desde transferDoc.from y transferDoc.to
+                              // Construir título del traslado desde transferDoc con traducciones
                               let transferTitle = "";
                               if (!isTourCurrent && bookingData?.transferDoc) {
-                                // Función para formatear: quitar guiones y capitalizar primera letra de cada palabra
-                                const formatLocation = (text: string) => {
-                                  return text
-                                    .replace(/-/g, ' ')
-                                    .split(' ')
-                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                                    .join(' ');
-                                };
-                                
-                                const from = bookingData.transferDoc.from ? formatLocation(bookingData.transferDoc.from) : "";
-                                const to = bookingData.transferDoc.to ? formatLocation(bookingData.transferDoc.to) : "";
-                                
-                                if (from && to) {
-                                  transferTitle = `${from} → ${to}`;
-                                } else if (from || to) {
-                                  transferTitle = from || to;
-                                }
+                                transferTitle = getTransferLabel(bookingData.transferDoc);
                               }
 
                               // Descripción base (single)
@@ -4751,38 +4764,16 @@ export default function PaymentPage() {
                                     );
                                     
                                     if (!isItemTour) {
-                                      // Función para formatear: quitar guiones y capitalizar primera letra de cada palabra
-                                      const formatLocation = (text: string) => {
-                                        return text
-                                          .replace(/-/g, ' ')
-                                          .split(' ')
-                                          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                                          .join(' ');
-                                      };
-                                      
-                                      // Preferir transferDoc si existe, sino usar origen/destino
-                                      const from = it.transferDoc?.from 
-                                        ? formatLocation(it.transferDoc.from)
-                                        : it.origen 
-                                        ? formatLocation(it.origen)
-                                        : "";
-                                      
-                                      const to = it.transferDoc?.to 
-                                        ? formatLocation(it.transferDoc.to)
-                                        : it.destino 
-                                        ? formatLocation(it.destino)
-                                        : "";
-
-                                      if (from && to) {
-                                        itemTransferTitle = `${from} → ${to}`;
-                                      } else if (from || to) {
-                                        itemTransferTitle = from || to;
-                                      }
+                                      // Usar la función helper para obtener el título traducido
+                                      itemTransferTitle = it.transferDoc 
+                                        ? getTransferLabel(it.transferDoc)
+                                        : getTransferLabel(undefined, it.origen, it.destino);
                                     }
 
                                     if(isItemTour){
                                       const foundTour = toursList.find(t=>t.slug===it.selectedTourSlug || t.title===it.selectedTourSlug);
-                                      itemTourTitle = foundTour?.title || '';
+                                      // Usar la función helper para obtener el título traducido
+                                      itemTourTitle = foundTour ? getTourTitle(foundTour) : '';
                                       // Guardar el tour completo con traducciones
                                       if (foundTour) {
                                         it.tourData = {

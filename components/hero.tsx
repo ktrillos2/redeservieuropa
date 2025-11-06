@@ -199,21 +199,6 @@ export function Hero({
     }
   }, [locale, clientHeroTranslations]);
 
-  // Debug: Verificar que los transfers llegan con traducciones
-  useEffect(() => {
-    if (transfersList && transfersList.length > 0) {
-      console.log('[Hero Debug] Total transfers:', transfersList.length);
-      console.log('[Hero Debug] Primer transfer:', {
-        from: transfersList[0]?.from,
-        to: transfersList[0]?.to,
-        translations: transfersList[0]?.translations
-      });
-      console.log('[Hero Debug] Transfers con traducciones:', 
-        transfersList.filter(t => t.translations).length
-      );
-    }
-  }, [transfersList]);
-
   // Aplicar traducciones del hero según el idioma seleccionado
   // Usar useMemo para que se recalculen cuando cambie el locale
   const translatedTitle = useMemo(() => {
@@ -515,16 +500,6 @@ export function Hero({
     
     // Buscar el transfer usando el label original
     const transfer = transfersList.find(t => t.from === originalLabel);
-    
-    console.log('[Hero] getOriginLabel:', {
-      key: k,
-      originalLabel,
-      hasTransfer: !!transfer,
-      hasTranslations: !!transfer?.translations,
-      locale,
-      translatedEN: transfer?.translations?.en?.from,
-      translatedFR: transfer?.translations?.fr?.from
-    });
     
     if (!transfer || !transfer.translations) {
       // Sin traducciones, retornar el label original en español
@@ -1001,6 +976,9 @@ if (bookingData.tipoReserva === "traslado") {
     duration: (selectedTransfer as any)?.duration,
     popular: (selectedTransfer as any)?.popular,
     order: (selectedTransfer as any)?.order,
+    
+    // ⭐ NUEVO: Traducciones
+    translations: (selectedTransfer as any)?.translations,
   };
 
   console.warn('para testeo',bookingData)
@@ -1075,6 +1053,7 @@ if (bookingData.tipoReserva === "traslado") {
       isPopular: (selectedTour as any).isPopular === true || (selectedTour as any).isPopular === "yes",
       mainImage: (selectedTour as any).mainImage,
       slug: tourSlug ? { current: tourSlug } : undefined,
+      translations: (selectedTour as any)?.translations,
     }
 
     // mismo helper que ya tenías arriba

@@ -44,6 +44,11 @@ export type TransferDoc = {
   pricingTable?: TransferPricingTable
   // Orden opcional
   order?: number
+  // Traducciones
+  translations?: {
+    en?: { from?: string; to?: string }
+    fr?: { from?: string; to?: string }
+  }
 }
 
 // =====================================

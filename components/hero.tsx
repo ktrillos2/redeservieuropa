@@ -199,6 +199,21 @@ export function Hero({
     }
   }, [locale, clientHeroTranslations]);
 
+  // Debug: Verificar que los transfers llegan con traducciones
+  useEffect(() => {
+    if (transfersList && transfersList.length > 0) {
+      console.log('[Hero Debug] Total transfers:', transfersList.length);
+      console.log('[Hero Debug] Primer transfer:', {
+        from: transfersList[0]?.from,
+        to: transfersList[0]?.to,
+        translations: transfersList[0]?.translations
+      });
+      console.log('[Hero Debug] Transfers con traducciones:', 
+        transfersList.filter(t => t.translations).length
+      );
+    }
+  }, [transfersList]);
+
   // Aplicar traducciones del hero según el idioma seleccionado
   // Usar useMemo para que se recalculen cuando cambie el locale
   const translatedTitle = useMemo(() => {
@@ -488,8 +503,45 @@ export function Hero({
     () => Object.keys(transfersIdx.byOrigin || {}),
     [transfersIdx]
   );
-  const getOriginLabel = (k?: string) =>
-    (k && transfersIdx.byOrigin?.[k]?.label) || k || "";
+  const getOriginLabel = (k?: string) => {
+    if (!k) return "";
+    
+    // k es la clave slug-like (normalizada)
+    // Obtener el label original del índice
+    const originData = transfersIdx.byOrigin?.[k];
+    if (!originData) return k;
+    
+    const originalLabel = originData.label;
+    
+    // Buscar el transfer usando el label original
+    const transfer = transfersList.find(t => t.from === originalLabel);
+    
+    console.log('[Hero] getOriginLabel:', {
+      key: k,
+      originalLabel,
+      hasTransfer: !!transfer,
+      hasTranslations: !!transfer?.translations,
+      locale,
+      translatedEN: transfer?.translations?.en?.from,
+      translatedFR: transfer?.translations?.fr?.from
+    });
+    
+    if (!transfer || !transfer.translations) {
+      // Sin traducciones, retornar el label original en español
+      return originalLabel;
+    }
+    
+    // Aplicar traducciones según el locale
+    if (locale === 'en' && transfer.translations.en?.from) {
+      return transfer.translations.en.from;
+    }
+    if (locale === 'fr' && transfer.translations.fr?.from) {
+      return transfer.translations.fr.from;
+    }
+    
+    // Fallback a español
+    return originalLabel;
+  };
 
   // Destinos disponibles para el origen seleccionado y helper de label
   const destinationKeys = useMemo(() => {
@@ -499,11 +551,41 @@ export function Hero({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingData?.origen, transfersIdx]);
+  
   const getDestinationLabel = (k?: string) => {
     if (!k || !bookingData?.origen) return k || "";
-    return (
-      transfersIdx.byOrigin?.[bookingData.origen]?.destinations?.[k]?.label || k
+    
+    // k y bookingData.origen son claves slug-like (normalizadas)
+    // Obtener los labels originales del índice
+    const originData = transfersIdx.byOrigin?.[bookingData.origen];
+    if (!originData) return k;
+    
+    const destinationData = originData.destinations?.[k];
+    if (!destinationData) return k;
+    
+    const originalFromLabel = originData.label;
+    const originalToLabel = destinationData.label;
+    
+    // Buscar el transfer usando los labels originales
+    const transfer = transfersList.find(
+      t => t.from === originalFromLabel && t.to === originalToLabel
     );
+    
+    if (!transfer || !transfer.translations) {
+      // Sin traducciones, retornar el label original en español
+      return originalToLabel;
+    }
+    
+    // Aplicar traducciones según el locale
+    if (locale === 'en' && transfer.translations.en?.to) {
+      return transfer.translations.en.to;
+    }
+    if (locale === 'fr' && transfer.translations.fr?.to) {
+      return transfer.translations.fr.to;
+    }
+    
+    // Fallback a español
+    return originalToLabel;
   };
 
   const handlePrimaryScroll = () => {
@@ -520,6 +602,40 @@ export function Hero({
         return;
       }
     }
+  };
+
+  // Helper functions para obtener títulos traducidos
+  const getTourTitle = (tour: any): string => {
+    if (locale === 'es' || !tour.translations) {
+      return tour.title || 'Tour sin título';
+    }
+    if (locale === 'en' && tour.translations.en?.title) {
+      return tour.translations.en.title;
+    }
+    if (locale === 'fr' && tour.translations.fr?.title) {
+      return tour.translations.fr.title;
+    }
+    // Fallback a español
+    return tour.title || 'Tour sin título';
+  };
+
+  const getTransferLabel = (from?: string, to?: string): string => {
+    // Buscar el transfer completo con traducciones
+    const transfer = transfersList.find(t => t.from === from && t.to === to);
+    
+    if (!transfer) {
+      return `${from || 'Origen'} → ${to || 'Destino'}`;
+    }
+
+    const fromText = locale === 'es' || !transfer.translations 
+      ? transfer.from 
+      : (locale === 'en' && transfer.translations.en?.from) || (locale === 'fr' && transfer.translations.fr?.from) || transfer.from;
+    
+    const toText = locale === 'es' || !transfer.translations 
+      ? transfer.to 
+      : (locale === 'en' && transfer.translations.en?.to) || (locale === 'fr' && transfer.translations.fr?.to) || transfer.to;
+    
+    return `${fromText || 'Origen'} → ${toText || 'Destino'}`;
   };
 
   // Helpers de precios desde módulo compartido
@@ -1675,9 +1791,9 @@ if (bookingData.tipoReserva === "traslado") {
                                             key={idx}
                                             value={t.slug || t.title}
                                             className="whitespace-normal max-w-[400px]" // muestra el texto completo
-                                            title={t.title}
+                                            title={getTourTitle(t)}
                                           >
-                                            {t.title}
+                                            {getTourTitle(t)}
                                           </SelectItem>
                                         ))}
                                       </SelectContent>

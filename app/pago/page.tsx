@@ -234,6 +234,10 @@ type TourData = {
   title: string;
   mainImageUrl?: string;
   requirements?: Requirements;
+  translations?: {
+    en?: { title?: string };
+    fr?: { title?: string };
+  };
 };
 
 type CommonBookingFields = {
@@ -4777,7 +4781,15 @@ export default function PaymentPage() {
                                     }
 
                                     if(isItemTour){
-                                      itemTourTitle = toursList.find(t=>t.slug===it.selectedTourSlug || t.title===it.selectedTourSlug)?.title || '';
+                                      const foundTour = toursList.find(t=>t.slug===it.selectedTourSlug || t.title===it.selectedTourSlug);
+                                      itemTourTitle = foundTour?.title || '';
+                                      // Guardar el tour completo con traducciones
+                                      if (foundTour) {
+                                        it.tourData = {
+                                          title: foundTour.title,
+                                          translations: foundTour.translations
+                                        };
+                                      }
                                     }
                                     
                                     return {

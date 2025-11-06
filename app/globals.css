@@ -124,8 +124,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
+  }
+  main {
+    margin: 0;
+    padding: 0;
   }
   h1, h2, h3, h4, h5, h6, [data-slot="card-title"] {
     /* Usamos la variable display con fallback para evitar errores si --font-playfair no está inyectada aún */

@@ -150,7 +150,8 @@ export function Hero({
   const { locale } = useTranslation();
 
   // Estado para las traducciones del hero cargadas dinámicamente
-  const [clientHeroTranslations, setClientHeroTranslations] = useState(heroTranslations);
+  // Inicializamos con null para forzar carga desde API (no usar props del servidor que pueden estar cacheadas)
+  const [clientHeroTranslations, setClientHeroTranslations] = useState<typeof heroTranslations | null>(null);
 
   // Cargar traducciones del hero cuando cambie el locale
   // SIEMPRE hace fetch desde la API para obtener datos frescos (sin cache)
@@ -176,7 +177,7 @@ export function Hero({
           }
         } else {
           console.warn('[Hero] Error en respuesta API:', response.status);
-          // Fallback a las props del servidor si la API falla
+          // Fallback a las props del servidor solo si la API falla
           setClientHeroTranslations(heroTranslations);
         }
       } catch (error) {

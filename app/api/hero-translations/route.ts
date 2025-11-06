@@ -3,6 +3,7 @@ import { createClient } from 'next-sanity'
 import { apiVersion, dataset, projectId } from '@/sanity/env'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const runtime = 'nodejs'
 
 const client = createClient({
@@ -11,6 +12,7 @@ const client = createClient({
   apiVersion,
   useCdn: false,
   token: process.env.SANITY_API_TOKEN,
+  perspective: 'published', // Forzar contenido publicado más reciente
 })
 
 const HERO_TRANSLATIONS_QUERY = `*[_type == "hero" && _id == "hero"][0]{
@@ -26,7 +28,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid locale' }, { status: 400 })
     }
 
-    const hero = await client.fetch(HERO_TRANSLATIONS_QUERY)
+    // Fetch con opción de no cachear en GROQ
+    const hero = await client.fetch(HERO_TRANSLATIONS_QUERY, {}, { 
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    })
 
     if (!hero || !hero.translations) {
       return NextResponse.json({ translations: null }, { status: 200 })

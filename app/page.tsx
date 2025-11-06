@@ -7,6 +7,10 @@ import { Footer } from "@/components/footer"
 import { AnimatedSection } from "@/components/animated-section"
 import ServicesServer from "@/components/services.server"
 
+// Forzar renderizado dinámico para que siempre obtenga datos frescos de Sanity
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function HomePage() {
   return (
     <main className="min-h-screen">

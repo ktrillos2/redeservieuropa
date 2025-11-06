@@ -142,10 +142,21 @@ export function Header({
           if (!toursProp) {
             const toursRes = await fetch('/api/tours')
             const toursData = await toursRes.json()
-            // Filtrar solo tours con slug válido
-            const validTours = (toursData.tours || []).filter((tour: any) => 
-              tour.slug && tour.slug.length > 0
-            )
+            // Filtrar solo tours con slug válido y título
+            const validTours = (toursData.tours || []).filter((tour: any) => {
+              const hasValidSlug = tour.slug && tour.slug.length > 0
+              const hasTitle = tour.title && tour.title.trim().length > 0
+              
+              if (!hasValidSlug) {
+                console.warn('[Header] Tour sin slug válido:', tour._id, tour.title)
+              }
+              if (!hasTitle) {
+                console.warn('[Header] Tour sin título:', tour._id)
+              }
+              
+              return hasValidSlug && hasTitle
+            })
+            console.log(`[Header] Tours válidos: ${validTours.length} de ${toursData.tours?.length || 0}`)
             setTours(validTours)
           }
           
@@ -154,13 +165,20 @@ export function Header({
             const transfersRes = await fetch('/api/transfers')
             const transfersData = await transfersRes.json()
             // Filtrar solo transfers con slug válido
-            const validTransfers = (transfersData.transfers || []).filter((transfer: any) => 
-              transfer.slug && (
+            const validTransfers = (transfersData.transfers || []).filter((transfer: any) => {
+              const hasValidSlug = transfer.slug && (
                 typeof transfer.slug === 'string' 
                   ? transfer.slug.length > 0 
                   : transfer.slug.current && transfer.slug.current.length > 0
               )
-            )
+              
+              if (!hasValidSlug) {
+                console.warn('[Header] Transfer sin slug válido:', transfer._id, transfer.from, transfer.to)
+              }
+              
+              return hasValidSlug
+            })
+            console.log(`[Header] Transfers válidos: ${validTransfers.length} de ${transfersData.transfers?.length || 0}`)
             setTransfers(validTransfers)
           }
           
@@ -422,15 +440,28 @@ export function Header({
                       </DropdownMenuItem>
                       {toursOpen && (
                         <div className="pl-6 py-2 space-y-1 soft-fade-in max-h-60 overflow-y-auto">
-                          {tours.map((tour) => (
-                            <Link
-                              key={tour._id}
-                              href={`/tour/${tour.slug}`}
-                              className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                            >
-                              {getTourTitle(tour)}
-                            </Link>
-                          ))}
+                          {tours.length === 0 && (
+                            <div className="text-sm text-muted-foreground px-2 py-1.5">
+                              {locale === 'es' ? 'No hay tours disponibles' : locale === 'en' ? 'No tours available' : 'Aucun tour disponible'}
+                            </div>
+                          )}
+                          {tours.map((tour) => {
+                            // Verificar que el tour tenga slug y título válidos
+                            if (!tour.slug || !tour.title) {
+                              console.warn('[Header] Tour inválido (sin slug o título):', tour._id)
+                              return null
+                            }
+                            
+                            return (
+                              <Link
+                                key={tour._id}
+                                href={`/tour/${tour.slug}`}
+                                className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                              >
+                                {getTourTitle(tour)}
+                              </Link>
+                            )
+                          })}
                         </div>
                       )}
                     </>
@@ -529,15 +560,28 @@ export function Header({
                         {staticTexts.tours}
                       </div>
                       <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
-                        {tours.map((tour) => (
-                          <Link 
-                            key={tour._id}
-                            href={`/tour/${tour.slug}`} 
-                            className="block text-black/80 hover:text-black hover:underline transition-colors"
-                          >
-                            {getTourTitle(tour)}
-                          </Link>
-                        ))}
+                        {tours.length === 0 && (
+                          <div className="text-sm text-black/60 px-2 py-1">
+                            {locale === 'es' ? 'No hay tours disponibles' : locale === 'en' ? 'No tours available' : 'Aucun tour disponible'}
+                          </div>
+                        )}
+                        {tours.map((tour) => {
+                          // Verificar que el tour tenga slug y título válidos
+                          if (!tour.slug || !tour.title) {
+                            console.warn('[Header Mobile] Tour inválido (sin slug o título):', tour._id)
+                            return null
+                          }
+                          
+                          return (
+                            <Link 
+                              key={tour._id}
+                              href={`/tour/${tour.slug}`} 
+                              className="block text-black/80 hover:text-black hover:underline transition-colors"
+                            >
+                              {getTourTitle(tour)}
+                            </Link>
+                          )
+                        })}
                       </div>
                     </div>
                   )}

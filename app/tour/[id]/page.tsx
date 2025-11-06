@@ -162,11 +162,26 @@ export default function TourPage({ params }: TourPageProps) {
   }
 
   if (!tour || !translatedTour) {
+    console.warn('[TourPage] Tour no encontrado para slug:', params.id)
     return (
       <main className="min-h-screen">
         <Header />
-        <div className="container mx-auto px-4 pt-24 pb-16">
-          <p className="text-center text-muted-foreground">Tour no encontrado</p>
+        <div className="container mx-auto px-4 pt-24 pb-16 text-center">
+          <h1 className="text-3xl font-bold mb-4">{staticTexts.tourNotFound}</h1>
+          <p className="text-muted-foreground mb-6">
+            {locale === 'es' 
+              ? `No pudimos encontrar el tour "${params.id}"`
+              : locale === 'en'
+              ? `We couldn't find the tour "${params.id}"`
+              : `Nous n'avons pas pu trouver le tour "${params.id}"`
+            }
+          </p>
+          <Link 
+            href="/#servicios" 
+            className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 transition-opacity"
+          >
+            {staticTexts.backToHome}
+          </Link>
         </div>
         <Footer />
       </main>

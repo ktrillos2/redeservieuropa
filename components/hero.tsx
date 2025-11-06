@@ -43,6 +43,22 @@ import {
 } from "@/sanity/lib/transfers";
 import { useTranslation } from "@/contexts/i18n-context";
 
+// Traducciones locales como fallback mientras carga
+const LOCAL_TRANSLATIONS = {
+  en: {
+    title: 'Transport',
+    highlight: 'Comfortable and safe',
+  },
+  fr: {
+    title: 'Transport',
+    highlight: 'Confortable et sûr',
+  },
+  es: {
+    title: 'Transporte',
+    highlight: 'Cómodo y Seguro',
+  }
+}
+
 export function Hero({
   // Props de la sección Hero
   title = "Transporte",
@@ -111,6 +127,14 @@ export function Hero({
       secondaryCta?: { label?: string };
       bookingForm?: any;
     };
+    es?: {
+      title?: string;
+      highlight?: string;
+      description?: any;
+      primaryCta?: { label?: string };
+      secondaryCta?: { label?: string };
+      bookingForm?: any;
+    };
   };
   events?: SliderEventItem[];
   toursList?: {
@@ -129,31 +153,41 @@ export function Hero({
   const [clientHeroTranslations, setClientHeroTranslations] = useState(heroTranslations);
 
   // Cargar traducciones del hero cuando cambie el locale
+  // SIEMPRE hace fetch desde la API para obtener datos frescos (sin cache)
   useEffect(() => {
     async function loadHeroTranslations() {
-      if (locale === 'es') {
-        // Para español, usar las props originales del servidor
-        setClientHeroTranslations(heroTranslations);
-        return;
-      }
-
       try {
-        // Fetch las traducciones del hero desde Sanity
-        const response = await fetch(`/api/hero-translations?locale=${locale}`);
+        // Fetch las traducciones del hero desde Sanity (para TODOS los idiomas, incluyendo español)
+        // Agregamos cache: 'no-store' y timestamp para forzar request fresco
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/api/hero-translations?locale=${locale}&t=${timestamp}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+          },
+        });
+        
         if (response.ok) {
           const data = await response.json();
-          console.log('[Hero] Traducciones cargadas para', locale, data);
+          console.log('[Hero] Traducciones cargadas desde API para', locale, data);
           if (data.translations) {
             setClientHeroTranslations(data.translations);
           }
+        } else {
+          console.warn('[Hero] Error en respuesta API:', response.status);
+          // Fallback a las props del servidor si la API falla
+          setClientHeroTranslations(heroTranslations);
         }
       } catch (error) {
         console.error('[Hero] Error cargando traducciones:', error);
+        // Fallback a las props del servidor en caso de error
+        setClientHeroTranslations(heroTranslations);
       }
     }
 
     loadHeroTranslations();
-  }, [locale, heroTranslations]);
+  }, [locale]);
 
   // Debug: Verificar locale y traducciones
   useEffect(() => {
@@ -167,214 +201,223 @@ export function Hero({
   // Aplicar traducciones del hero según el idioma seleccionado
   // Usar useMemo para que se recalculen cuando cambie el locale
   const translatedTitle = useMemo(() => {
-    if (locale === 'es' || !clientHeroTranslations) return title;
-    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
-    const result = translation?.title || title;
-    console.log('[Hero Debug] translatedTitle:', result, 'para locale:', locale);
-    return result;
+    // Primero, intentar usar las traducciones de Sanity desde la API
+    if (clientHeroTranslations) {
+      const translation = locale === 'en' ? clientHeroTranslations.en : 
+                         locale === 'fr' ? clientHeroTranslations.fr : 
+                         clientHeroTranslations.es;
+      if (translation?.title) {
+        console.log('[Hero Debug] translatedTitle desde Sanity:', translation.title, 'para locale:', locale);
+        return translation.title;
+      }
+    }
+    
+    // Fallback a traducciones locales
+    const localTranslation = LOCAL_TRANSLATIONS[locale as keyof typeof LOCAL_TRANSLATIONS];
+    if (localTranslation?.title) {
+      console.log('[Hero Debug] translatedTitle desde LOCAL:', localTranslation.title, 'para locale:', locale);
+      return localTranslation.title;
+    }
+    
+    // Último fallback: prop del servidor
+    return title;
   }, [locale, clientHeroTranslations, title]);
 
   const translatedHighlight = useMemo(() => {
-    if (locale === 'es' || !clientHeroTranslations) return highlight;
-    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
-    return translation?.highlight || highlight;
+    // Primero, intentar usar las traducciones de Sanity desde la API
+    if (clientHeroTranslations) {
+      const translation = locale === 'en' ? clientHeroTranslations.en : 
+                         locale === 'fr' ? clientHeroTranslations.fr : 
+                         clientHeroTranslations.es;
+      if (translation?.highlight) {
+        return translation.highlight;
+      }
+    }
+    
+    // Fallback a traducciones locales
+    const localTranslation = LOCAL_TRANSLATIONS[locale as keyof typeof LOCAL_TRANSLATIONS];
+    if (localTranslation?.highlight) {
+      return localTranslation.highlight;
+    }
+    
+    // Último fallback: prop del servidor
+    return highlight;
   }, [locale, clientHeroTranslations, highlight]);
 
   const translatedDescription = useMemo(() => {
-    if (locale === 'es' || !clientHeroTranslations) return description;
-    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
-    return translation?.description || description;
+    if (!clientHeroTranslations) return description;
+    const translation = locale === 'en' ? clientHeroTranslations.en : 
+                       locale === 'fr' ? clientHeroTranslations.fr : 
+                       clientHeroTranslations.es;
+    const result = translation?.description || description;
+    console.log('[Hero Debug] translatedDescription:', result, 'para locale:', locale);
+    return result;
   }, [locale, clientHeroTranslations, description]);
 
   const translatedPrimaryCtaLabel = useMemo(() => {
-    if (locale === 'es' || !clientHeroTranslations) return primaryCtaLabel;
-    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
-    return translation?.primaryCta?.label || primaryCtaLabel;
+    if (!clientHeroTranslations) return primaryCtaLabel;
+    const translation = locale === 'en' ? clientHeroTranslations.en : 
+                       locale === 'fr' ? clientHeroTranslations.fr : 
+                       clientHeroTranslations.es;
+    const result = translation?.primaryCta?.label || primaryCtaLabel;
+    console.log('[Hero Debug] translatedPrimaryCtaLabel:', result, 'para locale:', locale);
+    return result;
   }, [locale, clientHeroTranslations, primaryCtaLabel]);
 
   const translatedSecondaryCtaLabel = useMemo(() => {
-    if (locale === 'es' || !clientHeroTranslations) return secondaryCtaLabel;
-    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
-    return translation?.secondaryCta?.label || secondaryCtaLabel;
+    if (!clientHeroTranslations) return secondaryCtaLabel;
+    const translation = locale === 'en' ? clientHeroTranslations.en : 
+                       locale === 'fr' ? clientHeroTranslations.fr : 
+                       clientHeroTranslations.es;
+    const result = translation?.secondaryCta?.label || secondaryCtaLabel;
+    console.log('[Hero Debug] translatedSecondaryCtaLabel:', result, 'para locale:', locale);
+    return result;
   }, [locale, clientHeroTranslations, secondaryCtaLabel]);
 
   const translatedBookingForm = useMemo(() => {
-    if (locale === 'es' || !clientHeroTranslations) return bookingForm;
-    const translation = locale === 'en' ? clientHeroTranslations.en : clientHeroTranslations.fr;
+    if (!clientHeroTranslations) return bookingForm;
+    const translation = locale === 'en' ? clientHeroTranslations.en : 
+                       locale === 'fr' ? clientHeroTranslations.fr : 
+                       clientHeroTranslations.es;
     return translation?.bookingForm ? { ...bookingForm, ...translation.bookingForm } : bookingForm;
   }, [locale, clientHeroTranslations, bookingForm]);
 
-  // Traducciones estáticas para el formulario de reserva
+  // Traducciones del formulario desde Sanity
   const bookingTexts = useMemo(() => {
-    const texts = {
-      es: {
-        transferLabel: 'Traslado',
-        tourLabel: 'Tour',
-        quotationTransfer: 'Cotización Traslado',
-        quotationTour: 'Cotización Tour',
-        quotation: 'Cotización Rápida',
-        back: 'Volver',
-        origin: 'Origen',
-        originPlaceholder: 'Seleccionar origen',
-        destination: 'Destino',
-        destinationPlaceholder: 'Seleccionar destino',
-        selectOriginFirst: 'Seleccione primero el origen',
-        noDestinations: 'No hay destinos disponibles',
-        date: 'Fecha',
-        time: 'Hora',
-        passengers: 'Pasajeros',
-        children: 'Niños',
-        vehiclePlaceholder: 'Seleccionar tipo de vehículo',
-        vehicleLabel: 'Tipo de vehículo',
-        car: 'Coche',
-        minivan: 'Minivan',
-        van: 'Van',
-        tourTypePlaceholder: 'Seleccionar tipo de tour',
-        tourTypeLabel: 'Tipo de tour',
-        tourLabel2: 'Tour',
-        dayTour: 'Tour Diurno',
-        nightTour: 'Tour Nocturno',
-        stopoverTour: 'Tour de Escala',
-        selectTour: 'Seleccionar un tour',
-        passengersSingular: 'Pasajero',
-        passengersPlural: 'Pasajeros',
-        childrenSingular: 'niño',
-        childrenPlural: 'niños',
-        childrenQuantity: 'Cantidad de niños',
-        passengersMax: 'Número de pasajeros (máx.',
-        quote: 'Cotizar',
-        missingFields: 'Campos faltantes:',
-        timeValidation: 'La hora debe ser al menos 45 minutos después de la hora actual',
+    // Si hay traducciones del bookingForm desde Sanity, usarlas
+    if (translatedBookingForm) {
+      const bf = translatedBookingForm;
+      return {
+        // Type picker
+        transferLabel: bf.typePicker?.trasladoLabel || (locale === 'es' ? 'Traslado' : locale === 'en' ? 'Transfer' : 'Transfert'),
+        tourLabel: bf.typePicker?.tourLabel || (locale === 'es' ? 'Tour' : 'Tour'),
+        
+        // Titles
+        quotationTransfer: locale === 'es' ? 'Cotización Traslado' : locale === 'en' ? 'Transfer Quote' : 'Devis Transfert',
+        quotationTour: locale === 'es' ? 'Cotización Tour' : locale === 'en' ? 'Tour Quote' : 'Devis Tour',
+        quotation: locale === 'es' ? 'Cotización Rápida' : locale === 'en' ? 'Quick Quote' : 'Devis Rapide',
+        back: locale === 'es' ? 'Volver' : locale === 'en' ? 'Back' : 'Retour',
+        bookYourService: bf.title || (locale === 'es' ? 'Reserva tu Servicio' : locale === 'en' ? 'Book Your Service' : 'Réservez Votre Service'),
+        bookingTypeLabel: bf.typePicker?.label || (locale === 'es' ? 'Tipo de reserva' : locale === 'en' ? 'Service Type' : 'Type de Service'),
+        
+        // Origin
+        origin: bf.originField?.label || (locale === 'es' ? 'Origen' : locale === 'en' ? 'Origin' : 'Origine'),
+        originPlaceholder: bf.originField?.placeholder || (locale === 'es' ? 'Seleccionar origen' : locale === 'en' ? 'Select origin' : 'Sélectionnez l\'origine'),
+        
+        // Destination
+        destination: bf.destinationField?.label || (locale === 'es' ? 'Destino' : locale === 'en' ? 'Destination' : 'Destination'),
+        destinationPlaceholder: bf.destinationField?.placeholder || (locale === 'es' ? 'Seleccionar destino' : locale === 'en' ? 'Select destination' : 'Sélectionnez la destination'),
+        selectOriginFirst: bf.destinationField?.selectOriginFirst || (locale === 'es' ? 'Seleccione primero el origen' : locale === 'en' ? 'Select origin first' : 'Sélectionnez d\'abord l\'origine'),
+        noDestinations: bf.destinationField?.noDestinations || (locale === 'es' ? 'No hay destinos disponibles' : locale === 'en' ? 'No destinations available' : 'Aucune destination disponible'),
+        
+        // Date & Time
+        date: bf.dateField?.label || (locale === 'es' ? 'Fecha' : locale === 'en' ? 'Date' : 'Date'),
+        time: bf.timeField?.label || (locale === 'es' ? 'Hora' : locale === 'en' ? 'Time' : 'Heure'),
+        
+        // Passengers & Children
+        passengers: bf.passengersField?.label || (locale === 'es' ? 'Pasajeros' : locale === 'en' ? 'Passengers' : 'Passagers'),
+        children: bf.childrenField?.label || (locale === 'es' ? 'Niños' : locale === 'en' ? 'Children' : 'Enfants'),
+        passengersSingular: locale === 'es' ? 'Pasajero' : locale === 'en' ? 'Passenger' : 'Passager',
+        passengersPlural: locale === 'es' ? 'Pasajeros' : locale === 'en' ? 'Passengers' : 'Passagers',
+        childrenSingular: locale === 'es' ? 'niño' : locale === 'en' ? 'child' : 'enfant',
+        childrenPlural: locale === 'es' ? 'niños' : locale === 'en' ? 'children' : 'enfants',
+        childrenQuantity: locale === 'es' ? 'Cantidad de niños' : locale === 'en' ? 'Number of children' : 'Nombre d\'enfants',
+        passengersMax: locale === 'es' ? 'Número de pasajeros (máx.' : locale === 'en' ? 'Number of passengers (max.' : 'Nombre de passagers (max.',
+        
+        // Vehicle
+        vehiclePlaceholder: bf.vehicleField?.placeholder || (locale === 'es' ? 'Seleccionar tipo de vehículo' : locale === 'en' ? 'Select vehicle type' : 'Sélectionnez le véhicule'),
+        vehicleLabel: bf.vehicleField?.label || (locale === 'es' ? 'Tipo de vehículo' : locale === 'en' ? 'Vehicle type' : 'Véhicule'),
+        car: bf.vehicleField?.labelCoche || (locale === 'es' ? 'Coche' : locale === 'en' ? 'Car' : 'Voiture'),
+        minivan: bf.vehicleField?.labelMinivan || (locale === 'es' ? 'Minivan' : 'Minivan'),
+        van: bf.vehicleField?.labelVan || (locale === 'es' ? 'Van' : 'Van'),
+        
+        // Tour type
+        tourTypePlaceholder: bf.tourTypeField?.placeholder || (locale === 'es' ? 'Seleccionar tipo de tour' : locale === 'en' ? 'Select tour type' : 'Sélectionnez le type'),
+        tourTypeLabel: bf.tourTypeField?.label || (locale === 'es' ? 'Tipo de tour' : locale === 'en' ? 'Tour type' : 'Type de Tour'),
+        tourLabel2: locale === 'es' ? 'Tour' : 'Tour',
+        dayTour: bf.tourTypeField?.dayLabel || (locale === 'es' ? 'Tour Diurno' : locale === 'en' ? 'Day Tour' : 'Tour de Jour'),
+        nightTour: bf.tourTypeField?.nightLabel || (locale === 'es' ? 'Tour Nocturno' : locale === 'en' ? 'Night Tour' : 'Tour de Nuit'),
+        stopoverTour: bf.tourTypeField?.stopoverTour || (locale === 'es' ? 'Tour de Escala' : locale === 'en' ? 'Stopover Tour' : 'Tour d\'Escale'),
+        selectTour: bf.tourSelectField?.label || (locale === 'es' ? 'Seleccionar un tour' : locale === 'en' ? 'Select a tour' : 'Sélectionner un tour'),
+        
+        // Button
+        quote: bf.buttons?.quote || (locale === 'es' ? 'Cotizar' : locale === 'en' ? 'Get Quote' : 'Obtenir un Devis'),
+        
+        // Messages
+        missingFields: locale === 'es' ? 'Campos faltantes:' : locale === 'en' ? 'Missing fields:' : 'Champs manquants:',
+        timeValidation: locale === 'es' ? 'La hora debe ser al menos 45 minutos después de la hora actual' : locale === 'en' ? 'Time must be at least 45 minutes from now' : 'L\'heure doit être au moins 45 minutes à partir de maintenant',
+        
         // Field labels for error messages
-        fieldBookingType: 'Tipo de reserva',
-        fieldOrigin: 'Origen',
-        fieldDestination: 'Destino',
-        fieldDate: 'Fecha',
-        fieldTime: 'Hora',
-        fieldPassengers: 'Pasajeros',
-        fieldTourCategory: 'Categoría de tour',
-        fieldVehicle: 'Tipo de vehículo',
-        fieldTour: 'Tour',
-        // Form titles and labels
-        bookYourService: 'Reserva tu Servicio',
-        bookingTypeLabel: 'Tipo de reserva',
+        fieldBookingType: locale === 'es' ? 'Tipo de reserva' : locale === 'en' ? 'Booking type' : 'Type de réservation',
+        fieldOrigin: locale === 'es' ? 'Origen' : locale === 'en' ? 'Origin' : 'Origine',
+        fieldDestination: locale === 'es' ? 'Destino' : locale === 'en' ? 'Destination' : 'Destination',
+        fieldDate: locale === 'es' ? 'Fecha' : locale === 'en' ? 'Date' : 'Date',
+        fieldTime: locale === 'es' ? 'Hora' : locale === 'en' ? 'Time' : 'Heure',
+        fieldPassengers: locale === 'es' ? 'Pasajeros' : locale === 'en' ? 'Passengers' : 'Passagers',
+        fieldTourCategory: locale === 'es' ? 'Categoría de tour' : locale === 'en' ? 'Tour category' : 'Catégorie de tour',
+        fieldVehicle: locale === 'es' ? 'Tipo de vehículo' : locale === 'en' ? 'Vehicle type' : 'Type de véhicule',
+        fieldTour: locale === 'es' ? 'Tour' : locale === 'en' ? 'Tour' : 'Tour',
+        
         // Vehicle capacity labels
-        peopleCapacity: 'personas',
-        passengersCapacity: 'pasajeros',
-      },
-      en: {
-        transferLabel: 'Transfer',
-        tourLabel: 'Tour',
-        quotationTransfer: 'Transfer Quote',
-        quotationTour: 'Tour Quote',
-        quotation: 'Quick Quote',
-        back: 'Back',
-        origin: 'Origin',
-        originPlaceholder: 'Select origin',
-        destination: 'Destination',
-        destinationPlaceholder: 'Select destination',
-        selectOriginFirst: 'Select origin first',
-        noDestinations: 'No destinations available',
-        date: 'Date',
-        time: 'Time',
-        passengers: 'Passengers',
-        children: 'Children',
-        vehiclePlaceholder: 'Select vehicle type',
-        vehicleLabel: 'Vehicle type',
-        car: 'Car',
-        minivan: 'Minivan',
-        van: 'Van',
-        tourTypePlaceholder: 'Select tour type',
-        tourTypeLabel: 'Tour type',
-        tourLabel2: 'Tour',
-        dayTour: 'Day Tour',
-        nightTour: 'Night Tour',
-        stopoverTour: 'Stopover Tour',
-        selectTour: 'Select a tour',
-        passengersSingular: 'Passenger',
-        passengersPlural: 'Passengers',
-        childrenSingular: 'child',
-        childrenPlural: 'children',
-        childrenQuantity: 'Number of children',
-        passengersMax: 'Number of passengers (max.',
-        quote: 'Get Quote',
-        missingFields: 'Missing fields:',
-        timeValidation: 'Time must be at least 45 minutes from now',
-        // Field labels for error messages
-        fieldBookingType: 'Booking type',
-        fieldOrigin: 'Origin',
-        fieldDestination: 'Destination',
-        fieldDate: 'Date',
-        fieldTime: 'Time',
-        fieldPassengers: 'Passengers',
-        fieldTourCategory: 'Tour category',
-        fieldVehicle: 'Vehicle type',
-        fieldTour: 'Tour',
-        // Form titles and labels
-        bookYourService: 'Book Your Service',
-        bookingTypeLabel: 'Booking type',
-        // Vehicle capacity labels
-        peopleCapacity: 'people',
-        passengersCapacity: 'passengers',
-      },
-      fr: {
-        transferLabel: 'Transfert',
-        tourLabel: 'Tour',
-        quotationTransfer: 'Devis Transfert',
-        quotationTour: 'Devis Tour',
-        quotation: 'Devis Rapide',
-        back: 'Retour',
-        origin: 'Origine',
-        originPlaceholder: 'Sélectionner l\'origine',
-        destination: 'Destination',
-        destinationPlaceholder: 'Sélectionner la destination',
-        selectOriginFirst: 'Sélectionnez d\'abord l\'origine',
-        noDestinations: 'Aucune destination disponible',
-        date: 'Date',
-        time: 'Heure',
-        passengers: 'Passagers',
-        children: 'Enfants',
-        vehiclePlaceholder: 'Sélectionner le type de véhicule',
-        vehicleLabel: 'Type de véhicule',
-        car: 'Voiture',
-        minivan: 'Minivan',
-        van: 'Van',
-        tourTypePlaceholder: 'Sélectionner le type de tour',
-        tourTypeLabel: 'Type de tour',
-        tourLabel2: 'Tour',
-        dayTour: 'Tour de Jour',
-        nightTour: 'Tour de Nuit',
-        stopoverTour: 'Tour d\'Escale',
-        selectTour: 'Sélectionner un tour',
-        passengersSingular: 'Passager',
-        passengersPlural: 'Passagers',
-        childrenSingular: 'enfant',
-        childrenPlural: 'enfants',
-        childrenQuantity: 'Nombre d\'enfants',
-        passengersMax: 'Nombre de passagers (max.',
-        quote: 'Obtenir un Devis',
-        missingFields: 'Champs manquants:',
-        timeValidation: 'L\'heure doit être au moins 45 minutes après l\'heure actuelle',
-        // Field labels for error messages
-        fieldBookingType: 'Type de réservation',
-        fieldOrigin: 'Origine',
-        fieldDestination: 'Destination',
-        fieldDate: 'Date',
-        fieldTime: 'Heure',
-        fieldPassengers: 'Passagers',
-        fieldTourCategory: 'Catégorie de tour',
-        fieldVehicle: 'Type de véhicule',
-        fieldTour: 'Tour',
-        // Form titles and labels
-        bookYourService: 'Réservez Votre Service',
-        bookingTypeLabel: 'Type de réservation',
-        // Vehicle capacity labels
-        peopleCapacity: 'personnes',
-        passengersCapacity: 'passagers',
-      },
+        peopleCapacity: locale === 'es' ? 'personas' : locale === 'en' ? 'people' : 'personnes',
+        passengersCapacity: locale === 'es' ? 'pasajeros' : locale === 'en' ? 'passengers' : 'passagers',
+      };
+    }
+
+    // Fallback to Spanish
+    return {
+      transferLabel: 'Traslado',
+      tourLabel: 'Tour',
+      quotationTransfer: 'Cotización Traslado',
+      quotationTour: 'Cotización Tour',
+      quotation: 'Cotización Rápida',
+      back: 'Volver',
+      origin: 'Origen',
+      originPlaceholder: 'Seleccionar origen',
+      destination: 'Destino',
+      destinationPlaceholder: 'Seleccionar destino',
+      selectOriginFirst: 'Seleccione primero el origen',
+      noDestinations: 'No hay destinos disponibles',
+      date: 'Fecha',
+      time: 'Hora',
+      passengers: 'Pasajeros',
+      children: 'Niños',
+      vehiclePlaceholder: 'Seleccionar tipo de vehículo',
+      vehicleLabel: 'Tipo de vehículo',
+      car: 'Coche',
+      minivan: 'Minivan',
+      van: 'Van',
+      tourTypePlaceholder: 'Seleccionar tipo de tour',
+      tourTypeLabel: 'Tipo de tour',
+      tourLabel2: 'Tour',
+      dayTour: 'Tour Diurno',
+      nightTour: 'Tour Nocturno',
+      stopoverTour: 'Tour de Escala',
+      selectTour: 'Seleccionar un tour',
+      passengersSingular: 'Pasajero',
+      passengersPlural: 'Pasajeros',
+      childrenSingular: 'niño',
+      childrenPlural: 'niños',
+      childrenQuantity: 'Cantidad de niños',
+      passengersMax: 'Número de pasajeros (máx.',
+      quote: 'Cotizar',
+      missingFields: 'Campos faltantes:',
+      timeValidation: 'La hora debe ser al menos 45 minutos después de la hora actual',
+      fieldBookingType: 'Tipo de reserva',
+      fieldOrigin: 'Origen',
+      fieldDestination: 'Destino',
+      fieldDate: 'Fecha',
+      fieldTime: 'Hora',
+      fieldPassengers: 'Pasajeros',
+      fieldTourCategory: 'Categoría de tour',
+      fieldVehicle: 'Tipo de vehículo',
+      fieldTour: 'Tour',
+      bookYourService: 'Reserva tu Servicio',
+      bookingTypeLabel: 'Tipo de reserva',
+      peopleCapacity: 'personas',
+      passengersCapacity: 'pasajeros',
     };
-    return texts[locale] || texts.es;
-  }, [locale]);
+  }, [locale, translatedBookingForm]);
 
   // Hooks de estado
   const [bookingData, setBookingData] = useState({

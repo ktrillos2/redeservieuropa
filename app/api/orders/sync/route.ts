@@ -178,7 +178,7 @@ export async function POST(req: Request) {
       
       const acquired = await acquireMailLock(paymentId)
       // Eliminar el ! para el lock ya adquirido
-      if (true) {
+      if (acquired) {
         // Aplanar todos los servicios de todas las órdenes y ordenar por fecha + hora
         const allServices = orders.flatMap(o => o.services || [])
           .sort((a, b) => {

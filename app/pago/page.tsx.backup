@@ -2998,34 +2998,19 @@ export default function PaymentPage() {
     const reasons: string[] = [];
     const cartLen = carritoState?.length ?? 0;
 
-    // 1) Si hay 2+ cotizaciones, SOLO valida el carrito y contacto
+    // 1) Si hay 2+ cotizaciones, valida el carrito
     if (cartLen >= 2) {
       reasons.push(...validateCartItems(carritoState));
-      
-      // Validar información de contacto (sin direcciones que no existen en UI)
-      const bd = bookingData || {};
-      if (!String(bd.contactName || "").trim())
-        reasons.push(pageTexts.v_fullName);
-      if (!String(bd.contactPhone || "").trim())
-        reasons.push(pageTexts.v_validPhone);
-      const email = String(bd.contactEmail || "");
-      if (!email.trim()) {
-        reasons.push(pageTexts.v_validEmail);
-      } else {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        if (!emailRegex.test(email))
-          reasons.push(pageTexts.invalidFormat);
-      }
-    } else {
-      // 2) Si hay 0-1 cotizaciones, valida la cotización completa (incluye direcciones)
-      reasons.push(
-        ...validateSingleBooking(
-          bookingData,
-          paymentPickupAddress,
-          paymentDropoffAddress
-        )
-      );
     }
+
+    // 2) Valida siempre la cotización actual (la “larga”)
+    reasons.push(
+      ...validateSingleBooking(
+        bookingData,
+        paymentPickupAddress,
+        paymentDropoffAddress
+      )
+    );
 
     // ➕ Regla extra SOLO para TRASLADOS que requieran datos de vuelo
     try {

@@ -432,6 +432,50 @@ export default function PaymentPage() {
         step3Description: 'Disfruta de tu traslado puntual y cómodo',
         backToServices: 'Volver a servicios',
         clickHere: 'pulsa',
+        // Traducciones del Modal
+        modalNewQuote: 'Nueva cotización',
+        modalEditQuote: 'Editar cotización',
+        modalBookingType: 'Tipo de reserva',
+        modalTransfer: 'Traslado',
+        modalTour: 'Tour',
+        modalQuoteTransfer: 'Cotización Traslado',
+        modalQuoteTour: 'Cotización Tour',
+        modalQuote: 'Cotización',
+        modalSelectOrigin: 'Seleccionar origen',
+        modalSelectDestination: 'Seleccionar destino',
+        modalSelectDestFirst: 'Selecciona el origen primero',
+        modalNoDestinations: 'No hay destinos disponibles',
+        modalPassengersMax: 'Número de pasajeros (máx. 56)',
+        modalChildrenLabel: 'Niños (0-12)',
+        modalChildrenQuantity: 'Cantidad de niños',
+        modalChild: 'niño',
+        modalChildren: 'niños',
+        modalVehicleType: 'Tipo de vehículo',
+        modalSelectVehicle: 'Selecciona: Coche, Minivan o Van',
+        modalCar4: 'Coche (4 personas)',
+        modalMinivan6: 'Minivan (6 pasajeros)',
+        modalVan8: 'Van (8 pasajeros)',
+        modalTourType: 'Tipo de tour',
+        modalSelectTourType: 'Selecciona una opción',
+        modalTourDay: 'Tour diurno',
+        modalTourNight: 'Tour nocturno',
+        modalTourStopover: 'Tour escala',
+        modalSelectTour: 'Selecciona un tour',
+        modalAddressesLuggage: 'Direcciones y equipaje',
+        modalOriginExact: 'Origen - Ubicación exacta',
+        modalDestExact: 'Destino - Ubicación exacta',
+        modalFlightTrain: 'Número de Vuelo o tren',
+        modalFlightOptional: '(opcional)',
+        modalFlightRequired: '(obligatorio; Si no es aeropuerto o estación de trenes, escriba N/A)',
+        modalFlightPlaceholder: 'AF1234, BA456, etc.',
+        modalSuitcases23: '# Maletas 23kg',
+        modalSuitcases10: '# Maletas 10kg',
+        modalPrevious: 'Atrás',
+        modalNextStep: 'Siguiente',
+        modalAddToCart: 'Añadir al carrito',
+        modalSaveChanges: 'Guardar cambios',
+        modalLuggageNote5: 'Equipaje: no superior a 3 maletas de 23kg y 3 maletas de 10kg.',
+        modalLuggageNote6: 'Equipaje: no superior a 2 maletas de 10kg + 1 mochila por pasajero.',
       },
       en: {
         // Títulos y encabezados
@@ -1924,9 +1968,9 @@ export default function PaymentPage() {
     if (step === 3) {
       // ✅ Validar direcciones SIEMPRE (tanto para traslados como para tours)
       if (!mf.pickupAddress || String(mf.pickupAddress).trim() === "")
-        errs.pickupAddress = "Requerido";
+        errs.pickupAddress = pageTexts.v_pickupAddress;
       if (!mf.dropoffAddress || String(mf.dropoffAddress).trim() === "")
-        errs.dropoffAddress = "Requerido";
+        errs.dropoffAddress = pageTexts.v_dropoffAddress;
 
       const p = Math.max(
         1,
@@ -2191,8 +2235,8 @@ export default function PaymentPage() {
     if (!mf.vehicle) errs.vehicle = "Requerido";
     
     // ✅ SIEMPRE validar direcciones (tanto para traslados como para tours)
-    if (!mf.pickupAddress?.trim()) errs.pickupAddress = "Requerido";
-    if (!mf.dropoffAddress?.trim()) errs.dropoffAddress = "Requerido";
+    if (!mf.pickupAddress?.trim()) errs.pickupAddress = pageTexts.v_pickupAddress;
+    if (!mf.dropoffAddress?.trim()) errs.dropoffAddress = pageTexts.v_dropoffAddress;
     
     // Validaciones específicas por tipo
     if (mf.tipo === "traslado") {

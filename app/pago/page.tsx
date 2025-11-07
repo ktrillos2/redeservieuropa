@@ -4810,9 +4810,13 @@ export default function PaymentPage() {
                                 paymentDropoffAddress,
                                 payFullNow: body.payFullNow,
                                 ninosMenores9: bookingData?.ninosMenores9 || "",
-                                // Agregar título del traslado si se encontró
+                                // Agregar título del tour traducido si es tour
+                                ...(isTourCurrent && tourName ? { tourTitle: tourName } : {}),
+                                // Agregar título del traslado traducido si se encontró
                                 ...(transferTitle && !isTourCurrent ? { transferTitle } : {}),
                               };
+                              
+                              console.log('🌍 [Frontend] Enviando locale al backend:', locale);
                               
                               // ==== 3) Crear pago en backend ====
                               const res = await fetch("/api/mollie/create", {
@@ -4825,6 +4829,7 @@ export default function PaymentPage() {
                                   referralSource:
                                     bookingData?.referralSource || "",
                                   payFullNow: body.payFullNow,
+                                  locale, // 👈 Agregar el idioma seleccionado
 
                                   // Reserva principal
                                   booking: bookingForSubmit,

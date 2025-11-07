@@ -74,10 +74,12 @@ export async function POST(req: Request) {
       pickupAddress,dropoffAddress,
       flightNumber,
       luggage23kg,luggage10kg,ninos,isNightTime,
-      payFullNow,depositPercent
+      payFullNow,depositPercent,
+      translations
     },
     calendar{eventId,htmlLink},
-    payment{currency,method,requestedMethod,payFullNow,depositPercent}
+    payment{currency,method,requestedMethod,payFullNow,depositPercent},
+    locale
   }`,
   { pid: paymentId }
 )
@@ -147,6 +149,11 @@ export async function POST(req: Request) {
     if (!lock) return NextResponse.json({ ok: true, skipped: true })
 
     const contact = orders.find(o => o.contact?.email)?.contact
+    const locale = orders[0]?.locale || 'es' // 👈 Obtener el idioma de la primera orden
+    
+    console.log('🌍 [Webhook] Locale recuperado de la orden:', locale)
+    console.log('📦 [Webhook] Primera orden completa:', JSON.stringify(orders[0], null, 2))
+    
     // Ordenar servicios por fecha y hora (del más cercano al más lejano)
     const services = orders.flatMap(o => o.services || [])
       .sort((a, b) => {
@@ -172,6 +179,7 @@ export async function POST(req: Request) {
           currency: 'EUR',
           contact,
           services,
+          locale, // 👈 Log del idioma
         })
 
     const adminHtml = renderAdminNewServicesEmailMulti({
@@ -182,6 +190,7 @@ export async function POST(req: Request) {
   requestedMethod: orders[0]?.payment?.requestedMethod,
   contact,
   services,
+  locale, // 👈 Pasar el idioma al email del admin
 })
     const clientHtml = contact
       ? renderClientThanksEmailMulti({
@@ -190,6 +199,7 @@ export async function POST(req: Request) {
           currency: 'EUR',
           contact,
           services,
+          locale, // 👈 Pasar el idioma al email del cliente
         })
       : null
       

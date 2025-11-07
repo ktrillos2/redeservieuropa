@@ -81,6 +81,8 @@ export async function POST(req: Request) {
 
     // 3) Crear UNA ÚNICA orden en Sanity con todos los servicios
     try {
+      console.log('🌍 [Mollie Create] Body completo recibido:', JSON.stringify(body, null, 2))
+      
       const items: any[] = Array.isArray(body?.carrito) ? body.carrito : []
       const allServices: any[] = []
       
@@ -89,6 +91,9 @@ export async function POST(req: Request) {
       const contactEmail = body?.contact?.email || booking?.contactEmail || booking?.email || ''
       const contactPhone = body?.contact?.phone || booking?.contactPhone || booking?.phone || ''
       const referralSource = body?.referralSource || booking?.referralSource || booking?.comoNosConocio || booking?.heardFrom || null
+      const locale = body?.locale || 'es' // 👈 Extraer el idioma
+      
+      console.log('🌍 [Mollie Create] Locale extraído:', locale)
       
       // Flags de pago
       const payFullNow = Boolean(body?.payFullNow || booking?.payFullNow)
@@ -102,6 +107,7 @@ export async function POST(req: Request) {
       const buildServiceObject = (src: any) => {
         console.log('🔍 [buildServiceObject] Datos recibidos:', {
           transferTitle: src?.transferTitle,
+          tourTitle: src?.tourTitle,
           serviceLabel: src?.serviceLabel,
           pickupAddress: src?.pickupAddress,
           dropoffAddress: src?.dropoffAddress,
@@ -117,15 +123,27 @@ export async function POST(req: Request) {
           src?.tipo === 'tour' ||
           !!src?.categoriaTour
 
-        const tourTitle =
-          src?.tourDoc?.title ||
-          src?.tourData?.title ||
-          src?.tourTitle ||
-          (typeof src?.selectedTourSlug === 'string' ? src.selectedTourSlug : undefined)
+        // 👇 Obtener título del tour traducido
+        let tourTitle = src?.tourTitle || src?.tourDoc?.title || src?.tourData?.title || ''
+        
+        // Si no viene tourTitle pero tenemos translations, aplicar según locale
+        if (!tourTitle && src?.tourData?.translations) {
+          if (locale === 'en' && src.tourData.translations.en?.title) {
+            tourTitle = src.tourData.translations.en.title
+          } else if (locale === 'fr' && src.tourData.translations.fr?.title) {
+            tourTitle = src.tourData.translations.fr.title
+          } else {
+            tourTitle = src.tourData.title || src.tourDoc?.title || ''
+          }
+        }
+        
+        if (!tourTitle && typeof src?.selectedTourSlug === 'string') {
+          tourTitle = src.selectedTourSlug
+        }
 
-        // 👇 Usar transferTitle si viene del frontend (ya formateado)
+        // 👇 Usar transferTitle traducido si viene del frontend (ya formateado según locale)
         const trasladoTitle =
-          src?.transferTitle || // 👈 PRIMERO: usar transferTitle que viene formateado desde el frontend
+          src?.transferTitle || // 👈 PRIMERO: usar transferTitle que viene formateado desde el frontend con traducción
           src?.serviceLabel ||
           `${src?.pickupAddress || ''}${src?.pickupAddress && src?.dropoffAddress ? ' → ' : ''}${src?.dropoffAddress || ''}`
 
@@ -184,6 +202,12 @@ export async function POST(req: Request) {
           notes: src.specialRequests || undefined,
           payFullNow: isPayingFullNow,
           depositPercent: calculatedDepositPercent, // 👈 Calculado automáticamente
+          // 👇 Guardar traducciones si están disponibles
+          translations: isTour && src?.tourData?.translations 
+            ? src.tourData.translations 
+            : !isTour && src?.transferDoc?.translations
+            ? src.transferDoc.translations
+            : undefined,
         }
       }
 
@@ -234,6 +258,7 @@ export async function POST(req: Request) {
           referralSource: referralSource,
         },
         services: allServices, // 👈 Array de servicios
+        locale, // 👈 Guardar el idioma en la orden
         metadata: { source: 'web', createdAt: new Date().toISOString() },
       }
 

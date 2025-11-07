@@ -522,6 +522,33 @@ export default function GraciasPage() {
             if (j.orders && Array.isArray(j.orders) && j.orders.length > 0) {
               setOrders(j.orders)
               if (j.orders[0]?.payment?.status) setStatus(j.orders[0].payment.status)
+              
+              // 6) Enviar email traducido con el locale actual
+              try {
+                const contact = j.orders[0]?.contact
+                const services = j.orders.flatMap((o: any) => o.services || [])
+                
+                if (contact?.email && services.length > 0) {
+                  // Leer el locale directamente del localStorage para asegurar que es el correcto
+                  const currentLocale = (localStorage.getItem('locale') as 'es' | 'en' | 'fr') || 'es'
+                  console.log('🌍 [Gracias] Locale del contexto:', locale)
+                  console.log('🌍 [Gracias] Locale del localStorage:', currentLocale)
+                  
+                  await fetch('/api/orders/send-translated-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      paymentId: pid,
+                      locale: currentLocale, // 👈 Usar el locale del localStorage directamente
+                      contact,
+                      services,
+                    }),
+                  })
+                  console.log('✅ Email traducido solicitado en idioma:', currentLocale)
+                }
+              } catch (emailErr) {
+                console.error('Error enviando email traducido:', emailErr)
+              }
             } else {
               // Si todavía no hay órdenes, intenta fallback local
               try {

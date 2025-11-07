@@ -2460,7 +2460,9 @@ export default function PaymentPage() {
     const passengers = Number(bd.passengers ?? bd.pasajeros ?? 0);
     const date = String(bd.date ?? bd.fecha ?? "");
     const time = String(bd.time ?? bd.hora ?? "");
-    const needsAddresses = !bd.isEvent && !bd.isTourQuick && !bd.tourId;
+    
+    // SIEMPRE requerir direcciones (tanto para tours como para traslados)
+    const needsAddresses = true;
 
     if (!(passengers > 0)) reasons.push("Indica la cantidad de pasajeros.");
     if (!date.trim()) reasons.push("Selecciona la fecha del servicio.");
@@ -2524,19 +2526,18 @@ export default function PaymentPage() {
         reasons.push("Una cotización del carrito no tiene hora.");
         break;
       }
-      if (it.tipo === "traslado") {
-        if (!String(it.pickupAddress || "").trim()) {
-          reasons.push(
-            "Una cotización del carrito no tiene dirección de recogida."
-          );
-          break;
-        }
-        if (!String(it.dropoffAddress || "").trim()) {
-          reasons.push(
-            "Una cotización del carrito no tiene dirección de destino."
-          );
-          break;
-        }
+      // SIEMPRE requerir direcciones (tanto para tours como para traslados)
+      if (!String(it.pickupAddress || "").trim()) {
+        reasons.push(
+          "Una cotización del carrito no tiene dirección de recogida."
+        );
+        break;
+      }
+      if (!String(it.dropoffAddress || "").trim()) {
+        reasons.push(
+          "Una cotización del carrito no tiene dirección de destino."
+        );
+        break;
       }
     }
     return reasons;

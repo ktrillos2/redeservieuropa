@@ -97,6 +97,7 @@ export function EventsSlider({ className, events: eventsProp }: { className?: st
           eventTitle: ev.title,
           eventShortInfo: ev.shortInfo || "",
           eventImages: Array.isArray(ev.images) ? ev.images : (ev.image ? [ev.image] : []),
+          eventTranslations: ev.translations, // Guardar traducciones
           tourId: ev.id,
           passengers: 1,
           date: d,
@@ -117,7 +118,12 @@ export function EventsSlider({ className, events: eventsProp }: { className?: st
           totalPrice: ev.pricePerPerson,
         }
 
+        // Limpiar el carrito antes de agregar el evento
+        localStorage.removeItem("carritoCotizaciones")
+        
+        // Guardar solo el evento en bookingData
         localStorage.setItem("bookingData", JSON.stringify(bookingData))
+        
         router.push("/pago")
       } catch (e) {
         console.error("No se pudo preparar el pago del evento:", e)

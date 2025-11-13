@@ -304,6 +304,9 @@ export default function PaymentPage() {
         passenger: 'Pasajero',
         slots: 'Cupos',
         select: 'Selecciona',
+        pricePerSlot: 'Precio por cupo',
+        depositPercent: 'Depósito ({percent}%)',
+        balanceOnServiceDay: 'Saldo el día del servicio',
         // Campos de formulario
         pickupAddress: 'Dirección de Recogida',
         dropoffAddress: 'Dirección de Entrega',
@@ -626,6 +629,9 @@ export default function PaymentPage() {
         passenger: 'Passager',
         slots: 'Places',
         select: 'Sélectionner',
+        pricePerSlot: 'Prix par place',
+        depositPercent: 'Acompte ({percent}%)',
+        balanceOnServiceDay: 'Solde le jour du service',
         // Campos de formulario
         pickupAddress: 'Adresse de Prise en Charge',
         dropoffAddress: 'Adresse de Dépose',
@@ -992,6 +998,9 @@ export default function PaymentPage() {
         passenger: 'Passager',
         slots: 'Places',
         select: 'Sélectionner',
+        pricePerSlot: 'Prix par place',
+        depositPercent: 'Acompte ({percent}%)',
+        balanceOnServiceDay: 'Solde le jour du service',
         // Campos de formulario
         pickupAddress: 'Adresse de Prise en Charge',
         dropoffAddress: 'Adresse de Dépose',
@@ -3350,16 +3359,43 @@ export default function PaymentPage() {
                           <EventImagesCarousel
                             images={bookingData.eventImages}
                             shortInfo={bookingData.eventShortInfo}
+                            translations={bookingData.eventTranslations}
+                            locale={locale}
                           />
+                        )}
+                      {/* Si no hay imágenes pero hay shortInfo, mostrarlo */}
+                      {bookingData.isEvent &&
+                        bookingData.eventShortInfo &&
+                        (!bookingData.eventImages || bookingData.eventImages.length === 0) && (
+                          <div className="text-sm text-muted-foreground border-l-2 border-accent/60 pl-3">
+                            {(() => {
+                              const translations = bookingData.eventTranslations;
+                              if (!translations) return bookingData.eventShortInfo;
+                              
+                              if (locale === 'en' && translations.en?.shortInfo) {
+                                return translations.en.shortInfo;
+                              }
+                              
+                              if (locale === 'fr' && translations.fr?.shortInfo) {
+                                return translations.fr.shortInfo;
+                              }
+                              
+                              return bookingData.eventShortInfo;
+                            })()}
+                          </div>
                         )}
                       <div className="flex items-center justify-between">
                         <span className="font-medium">
                           {bookingData.isEvent ? `${pageTexts.event}:` : `${pageTexts.service}:`}
                         </span>
                         <div className="flex items-center gap-2 relative">
-                          {isTour ? (
+                          {bookingData.isEvent ? (
                             <Badge className="bg-accent text-accent-foreground">
-                              {bookingData.tourData.title || "Tour"}
+                              {bookingData.eventTitle || "Evento especial"}
+                            </Badge>
+                          ) : isTour ? (
+                            <Badge className="bg-accent text-accent-foreground">
+                              {bookingData.tourData?.title || "Tour"}
                             </Badge>
                           ) : (
                             <Badge className="bg-accent text-accent-foreground">
@@ -4302,9 +4338,34 @@ export default function PaymentPage() {
                             </p>
                           </>
                         ) : bookingData.isEvent ? (
+                          (() => {
+                            // Traducciones locales para eventos
+                            const eventTexts = {
+                              es: {
+                                pricePerSlot: 'Precio por cupo',
+                                slots: 'Cupos',
+                                deposit: 'Depósito (20%)',
+                                balance: 'Saldo el día del servicio'
+                              },
+                              en: {
+                                pricePerSlot: 'Price per slot',
+                                slots: 'Slots',
+                                deposit: 'Deposit (20%)',
+                                balance: 'Balance on service day'
+                              },
+                              fr: {
+                                pricePerSlot: 'Prix par place',
+                                slots: 'Places',
+                                deposit: 'Acompte (20%)',
+                                balance: 'Solde le jour du service'
+                              }
+                            };
+                            const t = eventTexts[locale as keyof typeof eventTexts] || eventTexts.es;
+                            
+                            return (
                           <>
                             <div className="flex justify-between text-sm">
-                              <span>Precio por cupo</span>
+                              <span>{t.pricePerSlot}</span>
                               <span>
                                 {bookingData.pricePerPerson ??
                                   bookingData.totalPrice}
@@ -4312,18 +4373,20 @@ export default function PaymentPage() {
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span>Cupos</span>
+                              <span>{t.slots}</span>
                               <span>x{bookingData.passengers || 1}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span>Depósito (20%)</span>
+                              <span>{t.deposit}</span>
                               <span>{fmtMoney(deposit)}€</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span>Saldo el día del servicio</span>
+                              <span>{t.balance}</span>
                               <span>{fmtMoney(remaining)}€</span>
                             </div>
                           </>
+                            );
+                          })()
                         ) : ["tour-paris", "tour-nocturno"].includes(
                             bookingData.tourId || ""
                           ) ? (
@@ -4509,29 +4572,29 @@ export default function PaymentPage() {
                             {/* Depósito/Saldo para traslados */}
                             <div className="flex justify-between text-sm">
                               <span>
-                                Depósito ({Math.round(depositPercent * 100)}%)
+                                {locale === 'en' ? `Deposit (${Math.round(depositPercent * 100)}%)` : locale === 'fr' ? `Acompte (${Math.round(depositPercent * 100)}%)` : `Depósito (${Math.round(depositPercent * 100)}%)`}
                               </span>
                               <span>{fmtMoney(deposit)}€</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span>Saldo el día del servicio</span>
+                              <span>{locale === 'en' ? 'Balance on service day' : locale === 'fr' ? 'Solde le jour du service' : 'Saldo el día del servicio'}</span>
                               <span>{fmtMoney(remaining)}€</span>
                             </div>
                           </>
                         ) : (
                           <>
                             <div className="flex justify-between text-sm">
-                              <span>Subtotal</span>
+                              <span>{locale === 'en' ? 'Subtotal' : locale === 'fr' ? 'Sous-total' : 'Subtotal'}</span>
                               <span>{fmtMoney(bookingData.totalPrice)}€</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span>
-                                Depósito ({Math.round(depositPercent * 100)}%)
+                                {locale === 'en' ? `Deposit (${Math.round(depositPercent * 100)}%)` : locale === 'fr' ? `Acompte (${Math.round(depositPercent * 100)}%)` : `Depósito (${Math.round(depositPercent * 100)}%)`}
                               </span>
                               <span>{fmtMoney(deposit)}€</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span>Saldo el día del servicio</span>
+                              <span>{locale === 'en' ? 'Balance on service day' : locale === 'fr' ? 'Solde le jour du service' : 'Saldo el día del servicio'}</span>
                               <span>{fmtMoney(remaining)}€</span>
                             </div>
                           </>
@@ -4829,33 +4892,41 @@ export default function PaymentPage() {
                         <>
                           <div className="flex justify-between">
                             <span>
-                              Total a pagar ahora{" "}
-                              {payFullNow
-                                ? "(100%)"
-                                : `(depósito ${depositPercentInt}%)`}
+                              {locale === 'en' 
+                                ? `Total to pay now ${payFullNow ? "(100%)" : `(deposit ${depositPercentInt}%)`}` 
+                                : locale === 'fr' 
+                                ? `Total à payer maintenant ${payFullNow ? "(100%)" : `(acompte ${depositPercentInt}%)`}` 
+                                : `Total a pagar ahora ${payFullNow ? "(100%)" : `(depósito ${depositPercentInt}%)`}`}
                             </span>
                             <span>{fmtMoney(amountNow)}€</span>
                           </div>
                           {!payFullNow && (
                             <div className="flex justify-between">
-                              <span>Saldo el día del servicio</span>
+                              <span>
+                                {locale === 'en' ? 'Balance on service day' : locale === 'fr' ? 'Solde le jour du service' : 'Saldo el día del servicio'}
+                              </span>
                               <span>{fmtMoney(remaining)}€</span>
                             </div>
                           )}
                           <p className="text-xs text-muted-foreground">
                             {pageTexts.payWithCardOrPaypal}{" "}
                             {payFullNow
-                              ? "Se cobrará el total ahora."
-                              : `Si prefieres, marca "¿Deseas pagar todo ahora?" para abonar el 100%. En caso contrario, se cobrará el depósito del ${depositPercentInt}% y el resto se paga el día del servicio.`}
+                              ? (locale === 'en' ? 'The full amount will be charged now.' : locale === 'fr' ? 'Le montant total sera débité maintenant.' : 'Se cobrará el total ahora.')
+                              : (locale === 'en' 
+                                  ? `If you prefer, check "Do you want to pay in full now?" to pay 100%. Otherwise, the ${depositPercentInt}% deposit will be charged and the rest is paid on the day of service.`
+                                  : locale === 'fr'
+                                  ? `Si vous préférez, cochez "Voulez-vous payer la totalité maintenant ?" pour payer 100%. Sinon, l'acompte de ${depositPercentInt}% sera débité et le reste sera payé le jour du service.`
+                                  : `Si prefieres, marca "¿Deseas pagar todo ahora?" para abonar el 100%. En caso contrario, se cobrará el depósito del ${depositPercentInt}% y el resto se paga el día del servicio.`)}
                           </p>
                           <p className="text-[11px] text-muted-foreground mt-1">
                             {pageTexts.surchargeNotes}
                             {typeof clientHour === "number" && (
                               <span className="ml-1 text-xs">
-                                Hora local detectada: {clientHour}:00{" "}
-                                {clientHour >= 21 || clientHour < 6
-                                  ? "(recargo aplicado)"
-                                  : ""}
+                                {locale === 'en' 
+                                  ? `Local time detected: ${clientHour}:00 ${clientHour >= 21 || clientHour < 6 ? "(surcharge applied)" : ""}`
+                                  : locale === 'fr'
+                                  ? `Heure locale détectée: ${clientHour}:00 ${clientHour >= 21 || clientHour < 6 ? "(supplément appliqué)" : ""}`
+                                  : `Hora local detectada: ${clientHour}:00 ${clientHour >= 21 || clientHour < 6 ? "(recargo aplicado)" : ""}`}
                               </span>
                             )}
                           </p>
@@ -6455,13 +6526,51 @@ export default function PaymentPage() {
 function EventImagesCarousel({
   images,
   shortInfo,
+  translations,
+  locale,
 }: {
   images: string[];
   shortInfo?: string;
+  translations?: {
+    en?: { shortInfo?: string };
+    fr?: { shortInfo?: string };
+  };
+  locale?: string;
 }) {
   const apiRef = useRef<CarouselApi | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isHover, setIsHover] = useState(false);
+
+  // Obtener la descripción traducida
+  const getTranslatedShortInfo = () => {
+    // Debug: verificar qué datos tenemos
+    console.log('EventImagesCarousel - locale:', locale);
+    console.log('EventImagesCarousel - shortInfo:', shortInfo);
+    console.log('EventImagesCarousel - translations:', translations);
+    
+    // Si no hay traducciones, usar el español base
+    if (!translations) {
+      console.log('No translations available, using base shortInfo');
+      return shortInfo;
+    }
+    
+    // Según el idioma, buscar la traducción
+    if (locale === 'en' && translations.en?.shortInfo) {
+      console.log('Using English translation:', translations.en.shortInfo);
+      return translations.en.shortInfo;
+    }
+    
+    if (locale === 'fr' && translations.fr?.shortInfo) {
+      console.log('Using French translation:', translations.fr.shortInfo);
+      return translations.fr.shortInfo;
+    }
+    
+    // Fallback: usar el español base
+    console.log('Using fallback Spanish shortInfo');
+    return shortInfo;
+  };
+
+  const displayShortInfo = getTranslatedShortInfo();
 
   useEffect(() => {
     const start = () => {
@@ -6529,8 +6638,8 @@ function EventImagesCarousel({
           ))}
         </CarouselContent>
       </Carousel>
-      {shortInfo && (
-        <p className="mt-3 text-sm text-muted-foreground">{shortInfo}</p>
+      {displayShortInfo && (
+        <p className="mt-3 text-sm text-muted-foreground">{displayShortInfo}</p>
       )}
     </div>
   );

@@ -30,31 +30,83 @@ export default defineType({
     }),
     defineField({ name: 'isActive', title: 'Activo', type: 'boolean', initialValue: true }),
     defineField({ name: 'order', title: 'Orden', type: 'number' }),
+    
+    // ✅ TRADUCCIONES
     defineField({
       name: 'translations',
       title: 'Traducciones',
       type: 'object',
+      description: 'Traducciones del evento a otros idiomas (inglés y francés)',
+      options: { collapsible: true, collapsed: true },
       fields: [
+        // INGLÉS
         defineField({
           name: 'en',
           title: 'English',
           type: 'object',
+          options: { collapsible: true, collapsed: true },
           fields: [
-            defineField({ name: 'title', title: 'Title', type: 'string' }),
-            defineField({ name: 'shortInfo', title: 'Short Info', type: 'text', rows: 3 }),
-            defineField({ name: 'description', title: 'Description', type: 'text', rows: 6 }),
-            defineField({ name: 'meetingPoint', title: 'Meeting Point', type: 'string' }),
+            defineField({ 
+              name: 'title', 
+              title: 'Title', 
+              type: 'string',
+              description: 'Event title in English'
+            }),
+            defineField({ 
+              name: 'shortInfo', 
+              title: 'Short Info', 
+              type: 'text', 
+              rows: 3,
+              description: 'Brief description shown in payment summary'
+            }),
+            defineField({ 
+              name: 'description', 
+              title: 'Description', 
+              type: 'text', 
+              rows: 6,
+              description: 'Full event description'
+            }),
+            defineField({ 
+              name: 'meetingPoint', 
+              title: 'Meeting Point', 
+              type: 'string',
+              description: 'Where participants should meet'
+            }),
           ],
         }),
+        // FRANCÉS
         defineField({
           name: 'fr',
           title: 'Français',
           type: 'object',
+          options: { collapsible: true, collapsed: true },
           fields: [
-            defineField({ name: 'title', title: 'Titre', type: 'string' }),
-            defineField({ name: 'shortInfo', title: 'Info Courte', type: 'text', rows: 3 }),
-            defineField({ name: 'description', title: 'Description', type: 'text', rows: 6 }),
-            defineField({ name: 'meetingPoint', title: 'Point de Rencontre', type: 'string' }),
+            defineField({ 
+              name: 'title', 
+              title: 'Titre', 
+              type: 'string',
+              description: 'Titre de l\'événement en français'
+            }),
+            defineField({ 
+              name: 'shortInfo', 
+              title: 'Info Courte', 
+              type: 'text', 
+              rows: 3,
+              description: 'Description brève affichée dans le résumé de paiement'
+            }),
+            defineField({ 
+              name: 'description', 
+              title: 'Description', 
+              type: 'text', 
+              rows: 6,
+              description: 'Description complète de l\'événement'
+            }),
+            defineField({ 
+              name: 'meetingPoint', 
+              title: 'Point de Rencontre', 
+              type: 'string',
+              description: 'Où les participants doivent se retrouver'
+            }),
           ],
         }),
       ],

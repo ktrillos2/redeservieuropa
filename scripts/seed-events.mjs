@@ -43,8 +43,22 @@ async function run() {
   const items = [
     {
       _id: 'event-tour-paris-nocturno',
-  _type: 'events',
+      _type: 'events',
       title: 'Tour París Nocturno',
+      translations: {
+        en: {
+          title: 'Paris Night Tour',
+          shortInfo: 'Explore Paris illuminated with an English-speaking guide. Limited spots, photo stops included.',
+          description: 'Discover the magic of Paris by night on a panoramic tour with strategic photo stops. Ideal for couples and families.',
+          meetingPoint: 'Disneyland Paris – Meeting point',
+        },
+        fr: {
+          title: 'Visite Nocturne de Paris',
+          shortInfo: 'Parcourez Paris illuminé avec un guide francophone. Places limitées, arrêts photo inclus.',
+          description: 'Découvrez la magie de Paris la nuit lors d\'un tour panoramique avec des arrêts photo stratégiques. Idéal pour les couples et les familles.',
+          meetingPoint: 'Disneyland Paris – Point de rencontre',
+        }
+      },
       image: await maybeUploadImage('vehicles/stepway-paris-2.jpg', 'tour-paris-nocturno.jpg'),
       pricePerPerson: 200,
       date: '2025-10-15',
@@ -59,42 +73,6 @@ async function run() {
       ],
       isActive: true,
       order: 1,
-    },
-    {
-      _id: 'event-shuttle-disney',
-  _type: 'events',
-      title: 'Shuttle a Disneyland (Ida/Vuelta)',
-      image: await maybeUploadImage('family-transport-to-disneyland-paris-castle.jpg', 'disney-shuttle.jpg'),
-      pricePerPerson: 60,
-      date: '2025-10-20',
-      time: '09:00',
-      meetingPoint: 'París Centro',
-      shortInfo: 'Traslado cómodo ida y vuelta el mismo día. Punto de encuentro en París Centro.',
-      description: 'Viaja a Disneyland Paris con comodidad y seguridad. Servicio ideal para familias, con horarios coordinados y retorno el mismo día.',
-      gallery: [
-        await maybeUploadImage('family-transport-to-disneyland-paris-castle.jpg', 'disney-shuttle-1.jpg'),
-        await maybeUploadImage('elegant-transport-service-orly-airport-paris.jpg', 'disney-shuttle-2.jpg'),
-      ],
-      isActive: true,
-      order: 2,
-    },
-    {
-      _id: 'event-maraton-paris',
-  _type: 'events',
-      title: 'Traslado especial Maratón París',
-      image: await maybeUploadImage('vehicles/stepway-paris-4.jpg', 'maraton-paris.jpg'),
-      pricePerPerson: 45,
-      date: '2025-11-02',
-      time: '06:30',
-      meetingPoint: 'Aeropuerto CDG – Terminal 2',
-      shortInfo: 'Salidas tempranas para corredores. Incluye espacio para equipaje ligero.',
-      description: 'Traslado puntual para corredores participantes de la Maratón de París. Asegura tu lugar con salida temprana y espacio para tu equipaje.',
-      gallery: [
-        await maybeUploadImage('vehicles/stepway-paris-4.jpg', 'maraton-paris-1.jpg'),
-        await maybeUploadImage('vehicles/stepway-paris-1.jpg', 'maraton-paris-2.jpg'),
-      ],
-      isActive: true,
-      order: 3,
     },
   ]
 

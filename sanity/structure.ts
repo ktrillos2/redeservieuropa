@@ -35,13 +35,15 @@ export const structure: StructureResolver = (S) =>
             .schemaType('header')
             .documentId('header')
         ),
-      // Lista de Traslados (documentos múltiples)
+      // Singleton Tours Section
       S.listItem()
-        .title('Traslados')
-        .id('transfersList')
+        .title('Sección: Nuestros Tours')
+        .id('toursSection')
         .child(
-          S.documentTypeList('transfers')
-            .title('Traslados')
+          S.editor()
+            .id('toursSectionEditor')
+            .schemaType('toursSection')
+            .documentId('toursSection')
         ),
       // Singleton Transfers Section Content (usar ID único distinto al _id del doc para evitar colisión)
       S.listItem()
@@ -52,16 +54,6 @@ export const structure: StructureResolver = (S) =>
             .id('transfersSectionContentEditor')
             .schemaType('transfersSectionContent')
             .documentId('transfersSectionContent')
-        ),
-      // Singleton Tours Section
-      S.listItem()
-        .title('Sección: Nuestros Tours')
-        .id('toursSection')
-        .child(
-          S.editor()
-            .id('toursSectionEditor')
-            .schemaType('toursSection')
-            .documentId('toursSection')
         ),
       // Singleton Testimonials Section
       S.listItem()
@@ -118,10 +110,33 @@ export const structure: StructureResolver = (S) =>
             .title('Usuarios de Mensajes')
         ),
       S.divider(),
+      // Tours, Traslados y Eventos
+      S.listItem()
+        .title('Tours')
+        .id('toursList')
+        .child(
+          S.documentTypeList('tour')
+            .title('Tours')
+        ),
+      S.listItem()
+        .title('Traslados')
+        .id('transfersList')
+        .child(
+          S.documentTypeList('transfers')
+            .title('Traslados')
+        ),
+      S.listItem()
+        .title('Eventos')
+        .id('eventsList')
+        .child(
+          S.documentTypeList('events')
+            .title('Eventos')
+        ),
+      S.divider(),
       // Fallback: other document lists (excluir singletons para evitar IDs duplicados)
     ...S.documentTypeListItems().filter((item) => ![
       'generalInfo','header','toursSection','testimonialsSection','contactSection','footerSection','hero','transfersSectionContent','order',
       // Evitar duplicados: ya tenemos entradas dedicadas para estos
-      'whatsappTemplate','messageUser'
+      'whatsappTemplate','messageUser','transfers','events','event','tour'
     ].includes(item.getId() || '')),
     ])

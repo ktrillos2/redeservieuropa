@@ -182,7 +182,18 @@ export async function getToursForMenu(locale: Locale = 'es'): Promise<TourMenuIt
   try {
     const tours = await serverClient.fetch(TOURS_LIST_QUERY)
     const translatedTours = getTranslatedTours(tours || [], locale)
-    return translatedTours.map((t: any) => ({
+    
+    // Filtrar tours que tengan los campos mínimos necesarios
+    const validTours = translatedTours.filter((t: any) => {
+      const hasValidSlug = t.slug || (typeof t.slug === 'object' && t.slug?.current)
+      const hasSummary = t.summary && t.summary.trim().length > 0
+      const hasPricing = t.pricingTable || t.pricingMode || (t.booking && t.booking.startingPriceEUR)
+      
+      // Solo incluir tours que tengan slug válido, resumen y algún tipo de pricing
+      return hasValidSlug && hasSummary && hasPricing
+    })
+    
+    return validTours.map((t: any) => ({
       _id: t._id,
       title: t.title || 'Tour sin título',
       slug: typeof t.slug === 'string' ? t.slug : t.slug?.current || t._id

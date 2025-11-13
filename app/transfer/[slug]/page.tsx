@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from '@/contexts/i18n-context'
-import { notFound } from 'next/navigation'
+import { notFound, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -17,6 +17,7 @@ export default function TransferDetailPage({ params }: { params: Params }) {
   const [transfer, setTransfer] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const { locale } = useTranslation()
+  const router = useRouter()
 
   // Traducciones estáticas locales
   const staticTexts = useMemo(() => {
@@ -218,6 +219,46 @@ export default function TransferDetailPage({ params }: { params: Params }) {
     ? '/tour/tour-nocturno'
     : `/pago?transfer=${encodeURIComponent(transfer.slug?.current || '')}`
 
+  // Función para limpiar carrito y navegar a reserva
+  const handleReserveClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    
+    // Limpiar datos antiguos del carrito
+    localStorage.removeItem("carritoCotizaciones")
+    
+    // Crear nuevo bookingData para el traslado
+    const newBookingData = {
+      tipoReserva: "traslado",
+      quickType: "traslado",
+      origen: translatedTransfer?.from || transfer.from,
+      destino: translatedTransfer?.to || transfer.to,
+      pickupAddress: translatedTransfer?.from || transfer.from,
+      dropoffAddress: translatedTransfer?.to || transfer.to,
+      passengers: 4, // Valor por defecto
+      date: "",
+      time: "",
+      flightNumber: "",
+      luggage23kg: 0,
+      luggage10kg: 0,
+      extraLuggage: false,
+      isNightTime: false,
+      contactName: "",
+      contactPhone: "",
+      contactEmail: "",
+      basePrice: basePrice || 0,
+      totalPrice: basePrice || 0,
+      transferSlug: transfer.slug?.current || params.slug,
+      requireFlightInfo: transfer.requireFlightInfo || false,
+      requireFlightNumber: transfer.requireFlightNumber || false,
+    }
+    
+    // Guardar el nuevo bookingData
+    localStorage.setItem("bookingData", JSON.stringify(newBookingData))
+    
+    // Navegar a la página de pago
+    router.push(reserveHref)
+  }
+
   const euro = new Intl.NumberFormat(locale === 'en' ? 'en-US' : locale === 'fr' ? 'fr-FR' : 'es-ES', { 
     style: "currency", 
     currency: "EUR", 
@@ -387,11 +428,12 @@ export default function TransferDetailPage({ params }: { params: Params }) {
                       </Button>
                     </Link>
                   ) : (
-                    <Link href={reserveHref} className="block">
-                      <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg py-6">
-                        {staticTexts.bookNow}
-                      </Button>
-                    </Link>
+                    <Button 
+                      onClick={handleReserveClick}
+                      className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg py-6"
+                    >
+                      {staticTexts.bookNow}
+                    </Button>
                   )}
 
                   <p className="text-xs text-center text-muted-foreground">

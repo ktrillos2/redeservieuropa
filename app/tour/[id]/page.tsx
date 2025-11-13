@@ -10,8 +10,18 @@ import { computePriceForPax, getStartingPriceEUR } from "@/sanity/lib/price"
 import Link from "next/link"
 import { useEffect, useState, useMemo } from "react"
 import { useTranslation } from "@/contexts/i18n-context"
-import { client } from "@/sanity/lib/client"
+import { createClient } from "next-sanity"
 import { TOUR_BY_SLUG_QUERY } from "@/sanity/lib/queries"
+import { useRouter } from "next/navigation"
+import { apiVersion, dataset, projectId } from "@/sanity/env"
+
+// Cliente sin CDN para obtener datos frescos
+const freshClient = createClient({
+  projectId,
+  dataset,
+  apiVersion,
+  useCdn: false,
+})
 
 interface TourPageProps {
   params: { id: string } // slug en la URL
@@ -21,6 +31,7 @@ export default function TourPage({ params }: TourPageProps) {
   const [tour, setTour] = useState<TourDoc | null>(null)
   const [loading, setLoading] = useState(true)
   const { locale } = useTranslation()
+  const router = useRouter()
 
   // Traducciones estáticas locales (textos de UI que no vienen de Sanity)
   const staticTexts = useMemo(() => {
@@ -134,7 +145,7 @@ export default function TourPage({ params }: TourPageProps) {
     let mounted = true
     ;(async () => {
       try {
-        const result = await client.fetch(TOUR_BY_SLUG_QUERY, { slug: params.id })
+        const result = await freshClient.fetch(TOUR_BY_SLUG_QUERY, { slug: params.id })
         if (!mounted) return
         console.log("[TourPage] Tour cargado desde Sanity para locale:", locale)
         console.log("[TourPage] Tour:", result)
@@ -213,6 +224,39 @@ export default function TourPage({ params }: TourPageProps) {
     `&tourId=${encodeURIComponent(tour?._id || params.id)}` +
     (translatedTour?.title ? `&tourTitle=${encodeURIComponent(translatedTour.title)}` : "")
 
+  // Función para limpiar carrito y navegar a reserva
+  const handleReserveClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    
+    // Limpiar datos antiguos del carrito
+    localStorage.removeItem("carritoCotizaciones")
+    
+    // Crear nuevo bookingData para el tour
+    const newBookingData = {
+      tipoReserva: "tour",
+      quickType: "tour",
+      isTourQuick: true,
+      tourId: tour?._id || params.id,
+      selectedTourSlug: params.id,
+      tourTitle: translatedTour?.title || "Tour",
+      tourData: translatedTour,
+      passengers: 4, // Valor por defecto
+      date: "",
+      time: "",
+      contactName: "",
+      contactPhone: "",
+      contactEmail: "",
+      basePrice: startingPrice || 0,
+      totalPrice: startingPrice || 0,
+    }
+    
+    // Guardar el nuevo bookingData
+    localStorage.setItem("bookingData", JSON.stringify(newBookingData))
+    
+    // Navegar a la página de pago
+    router.push(reserveHref)
+  }
+
   return (
     <main className="min-h-screen">
       <Header />
@@ -271,12 +315,12 @@ export default function TourPage({ params }: TourPageProps) {
               {staticTexts.depositNote} <strong>{staticTexts.depositPercent}</strong> {staticTexts.depositRest}
             </p>
           </div>
-          <Link
-            href={reserveHref}
+          <button
+            onClick={handleReserveClick}
             className="inline-flex items-center justify-center rounded-md bg-accent text-accent-foreground px-4 text-center py-2 hover:bg-accent/90 transition-colors"
           >
             {staticTexts.reserveNow}
-          </Link>
+          </button>
         </div>
       </section>
 

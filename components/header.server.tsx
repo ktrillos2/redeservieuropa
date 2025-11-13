@@ -2,6 +2,8 @@ import { ensureAndGetGeneralInfo, ensureAndGetHeader, getToursForMenu, getTransf
 import { Header } from './header'
 import { urlFor } from '@/sanity/lib/image'
 
+export const revalidate = 0 // Forzar revalidación en cada request
+
 export default async function HeaderServer() {
   const headerDoc = await ensureAndGetHeader()
   const info = await ensureAndGetGeneralInfo()

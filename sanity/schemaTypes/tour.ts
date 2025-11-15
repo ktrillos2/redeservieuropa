@@ -220,6 +220,33 @@ export default defineType({
       options: { hotspot: true },
     }),
 
+    defineField({
+      name: 'gallery',
+      title: 'Galería de imágenes',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'image',
+          options: { hotspot: true },
+          fields: [
+            defineField({
+              name: 'alt',
+              title: 'Texto alternativo',
+              type: 'string',
+              description: 'Descripción de la imagen para accesibilidad'
+            }),
+            defineField({
+              name: 'caption',
+              title: 'Título/Leyenda',
+              type: 'string',
+              description: 'Texto que se mostrará debajo de la imagen'
+            })
+          ]
+        })
+      ],
+      description: 'Galería adicional de imágenes del tour (opcional). Se mostrará en la página individual del tour.',
+    }),
+
     // ✅ TRADUCCIONES
     defineField({
       name: 'translations',

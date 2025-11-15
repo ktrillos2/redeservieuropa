@@ -66,6 +66,7 @@ export const TOUR_BY_SLUG_QUERY = `
   summary,
   description,
   mainImage,
+  gallery,
   route{origin, destination, circuitName, roundTrip},
   features,
   includes,
@@ -79,6 +80,7 @@ export const TOUR_BY_SLUG_QUERY = `
   isPopular,
   orderRank,
   requirements{ requireTime, requireFlightNumber },
+  overCapacityNote,
   translations
 }
 `

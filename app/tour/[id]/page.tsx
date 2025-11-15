@@ -272,6 +272,7 @@ export default function TourPage({ params }: TourPageProps) {
                   summary: translatedTour.summary,
                   description: translatedTour.description, // Portable Text
                   mainImageUrl,
+                  gallery: translatedTour.gallery, // Galería de imágenes
 
                   // --- ruta y listas ---
                   route: translatedTour.route,

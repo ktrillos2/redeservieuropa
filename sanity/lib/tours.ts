@@ -85,6 +85,7 @@ export type TourDoc = {
   summary?: string
   description?: any // Portable Text (array de bloques)
   mainImage?: any
+  gallery?: any[] // Galería de imágenes adicionales
   orderRank?: string
 
   // --- RUTA DEL TOUR ---

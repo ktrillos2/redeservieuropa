@@ -26,6 +26,7 @@ interface TourDetailProps {
     description?: any // PortableText
     mainImage?: any
     mainImageUrl?: string
+    gallery?: any[] // Galería de imágenes adicionales
 
     // ruta y listas
     route?: { origin?: string; destination?: string; circuitName?: string; roundTrip?: boolean }
@@ -161,12 +162,22 @@ export function TourDetail({ tourId, tourFromCms, staticTexts: passedStaticTexts
   const galleryImages = useMemo<string[]>(() => {
     if (tourFromCms) {
       const imgs: string[] = []
+      // Agregar imagen principal
       if (tourFromCms.mainImageUrl) imgs.push(tourFromCms.mainImageUrl)
       else if (tourFromCms.mainImage) {
         try {
           const u = urlFor(tourFromCms.mainImage).width(1600).url()
           if (u) imgs.push(u)
         } catch {}
+      }
+      // Agregar imágenes de la galería
+      if (tourFromCms.gallery && Array.isArray(tourFromCms.gallery)) {
+        tourFromCms.gallery.forEach((img: any) => {
+          try {
+            const u = urlFor(img).width(1600).url()
+            if (u) imgs.push(u)
+          } catch {}
+        })
       }
       return imgs
     }
@@ -213,7 +224,7 @@ export function TourDetail({ tourId, tourFromCms, staticTexts: passedStaticTexts
                         <DialogTrigger asChild>
                           <button
                             aria-label={staticTexts.enlargeImage}
-                            className="relative group block w-full h-64 md:h-96 overflow-hidden"
+                            className="relative group block w-full h-52 md:h-150 overflow-hidden rounded-lg cursor-pointer"
                           >
                             <img src={src} alt={`${tourFromCms.title} - imagen ${idx + 1}`} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />

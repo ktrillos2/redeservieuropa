@@ -6596,7 +6596,7 @@ function EventImagesCarousel({
       onMouseLeave={() => setIsHover(false)}
     >
       <Carousel
-        className="w-full h-56 sm:h-64 rounded-lg overflow-hidden"
+        className="w-full h-48 sm:h-56 rounded-lg overflow-hidden"
         opts={{ align: "start", loop: true }}
         setApi={(api) => {
           // @ts-ignore: embla type channel
@@ -6611,7 +6611,7 @@ function EventImagesCarousel({
                   <button
                     type="button"
                     aria-label={`Ampliar imagen ${idx + 1}`}
-                    className="relative block w-full h-56 sm:h-64"
+                    className="relative block w-full h-48 sm:h-56 rounded-lg overflow-hidden"
                   >
                     <img
                       src={src}

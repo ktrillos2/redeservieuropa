@@ -45,7 +45,20 @@ export default function RootLayout({
 }>) {
   return (
   <html lang="es" className={`${jost.variable} ${playfair.variable} antialiased`}>
-      <head />
+      <head>
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-6RK2YQR7CF"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-6RK2YQR7CF');
+            `,
+          }}
+        />
+      </head>
       <body className="font-sans">
       <I18nProvider>
         <Suspense fallback={null}>{children}<SpeedInsights /></Suspense>

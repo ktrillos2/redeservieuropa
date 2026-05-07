@@ -89,7 +89,8 @@ export async function createCalendarEvent(
     location?: string;
     attendees?: Array<{ email: string; displayName?: string }>;
   },
-  dedupeKey?: string
+  dedupeKey?: string,
+  includeAttendees: boolean = false
 ) {
   const calendar = getCalendar();
   const calendarId = payload.calendarId || process.env.GOOGLE_CALENDAR_ID || "primary";
@@ -132,15 +133,15 @@ export async function createCalendarEvent(
     }
   }
 
-  // 2) INSERT: primero intenta sin attendees; si quieres gatear por env, cambia a true.
+  // 2) INSERT: primero intenta con el flag solicitado
   try {
     const res = await calendar.events.insert({
       calendarId,
       requestBody: {
         id: eventId,
-        ...makeBody(false), // <-- sin attendees
+        ...makeBody(includeAttendees),
       },
-      sendUpdates: "none",
+      sendUpdates: includeAttendees ? "all" : "none",
     });
     return res.data;
   } catch (err: any) {
@@ -312,29 +313,21 @@ export function buildOrderEventPayload(order: any) {
   const summary = `[${String(tag)}] ${titleBase}`
   const description = lines.join('\n')
 
-  if (useDefaultTz) {
-    return {
-      summary,
-      description,
-      start: { dateTime: startLocal, timeZone: undefined as unknown as string },
-      end:   { dateTime: endStr,   timeZone: undefined as unknown as string },
-      location: order?.service?.pickupAddress
-        ? `${order.service.pickupAddress}${order?.service?.dropoffAddress ? ` → ${order.service.dropoffAddress}` : ''}`
-        : undefined,
-      // sin attendees
-    } as any
-  }
-
-  return {
+  const payload: any = {
     summary,
     description,
-    start: { dateTime: startLocal, timeZone: tz },
-    end:   { dateTime: endStr,   timeZone: tz },
+    start: { dateTime: startLocal, timeZone: useDefaultTz ? undefined : tz },
+    end:   { dateTime: endStr,   timeZone: useDefaultTz ? undefined : tz },
     location: order?.service?.pickupAddress
       ? `${order.service.pickupAddress}${order?.service?.dropoffAddress ? ` → ${order.service.dropoffAddress}` : ''}`
       : undefined,
-    // sin attendees
   }
+
+  if (order?.contact?.email) {
+    payload.attendees = [{ email: order.contact.email, displayName: order.contact.name || undefined }]
+  }
+
+  return payload
 }
 
 function capitalize(str: string) {

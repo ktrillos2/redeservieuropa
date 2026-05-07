@@ -111,6 +111,7 @@ export async function POST(req: Request) {
       passengers: s?.passengers,
       payFullNow: s?.payFullNow,
       depositPercent: s?.depositPercent,
+      calendarLink: idx === 0 ? (order.calendar as any)?.htmlLink : undefined,
     }))
     console.log('[send-mail][DEBUG] Servicios:', services)
     
@@ -157,7 +158,7 @@ export async function POST(req: Request) {
     // Idempotencia estricta: intentar adquirir el lock
     console.log('[send-mail][mailLock] Intentando adquirir lock para paymentId:', paymentId)
     const acquired = await acquireMailLock(paymentId)
-    if (true) {
+    if (!acquired) {
       console.warn('[send-mail][mailLock] No se pudo adquirir el lock, correos ya enviados o en proceso.')
       return NextResponse.json({ ok: true, skipped: true, reason: 'mailLock-already-acquired' })
     }

@@ -123,8 +123,7 @@ export async function POST(req: Request) {
         })
         
         try {
-          
-          const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}:${idx}`)
+          const evt = await createCalendarEvent(payload, `${paymentId}:${ord._id}:${idx}`, true)
           if (evt?.id) {
             console.log('[webhook] event created', { 
               orderId: ord._id, 
@@ -133,6 +132,19 @@ export async function POST(req: Request) {
               date: service.date,
               time: service.time
             })
+            // Guardamos el link para el correo
+            service.calendarLink = evt.htmlLink
+
+            // Solo actualizamos el primero de la orden si hay varios
+            if (idx === 0) {
+              await serverClient.patch(ord._id).set({
+                calendar: {
+                  eventId: evt.id,
+                  htmlLink: evt.htmlLink,
+                  createdAt: new Date().toISOString()
+                }
+              }).commit().catch(e => console.error('[webhook] error committing calendar to sanity', e))
+            }
           }
         } catch (err) {
           console.error('[webhook] calendar error', { 

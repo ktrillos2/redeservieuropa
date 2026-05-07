@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         })
         
         try {
-          const evt = await createCalendarEvent(payload, `${paymentId}:${order._id}:${idx}`)
+          const evt = await createCalendarEvent(payload, `${paymentId}:${order._id}:${idx}`, true)
           if (evt?.id) {
             createdEvents.push({ orderId: order._id, serviceIdx: idx, eventId: evt.id, htmlLink: evt.htmlLink })
             console.log('[calendar/create] event created', { 
@@ -63,6 +63,16 @@ export async function POST(req: NextRequest) {
               serviceIdx: idx, 
               eventId: evt.id 
             })
+            // Solo actualizamos el primero de la orden si hay varios
+            if (idx === 0) {
+              await serverClient.patch(order._id).set({
+                calendar: {
+                  eventId: evt.id,
+                  htmlLink: evt.htmlLink,
+                  createdAt: new Date().toISOString()
+                }
+              }).commit().catch(e => console.error('[calendar/create] error committing calendar to sanity', e))
+            }
           }
         } catch (err) {
           console.error('[calendar/create] error', { 

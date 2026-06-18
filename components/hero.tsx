@@ -1022,7 +1022,7 @@ if (bookingData.tipoReserva === "traslado") {
   };
 
   try { localStorage.setItem("bookingData", JSON.stringify(data)); } catch {}
-  router.push("/pago");
+  router.push("/checkout");
   return;
 }
 
@@ -1121,7 +1121,7 @@ if (bookingData.tipoReserva === "traslado") {
 
     try { localStorage.setItem("bookingData", JSON.stringify(data)) } catch {}
 
-    router.push(`/pago${tourSlug ? `?tour=${encodeURIComponent(tourSlug)}` : ""}`)
+    router.push(`/checkout${tourSlug ? `?tour=${encodeURIComponent(tourSlug)}` : ""}`)
   } catch (e) {
     console.error("No se pudo preparar el pago:", e)
   }
@@ -1156,9 +1156,9 @@ if (bookingData.tipoReserva === "traslado") {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-primary pt-20">
       {/* Background with Paris landmarks */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/80">
+      <div className="absolute inset-0 bg-black">
         <div
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-70"
           style={{
             backgroundImage: backgroundUrl
               ? `url('${backgroundUrl}')`
@@ -1167,61 +1167,33 @@ if (bookingData.tipoReserva === "traslado") {
             backgroundPosition: "center",
           }}
         />
-        <div className="absolute inset-0 bg-primary/40"></div>
+        {/* Gradiente oscuro para asegurar contraste máximo con el texto blanco */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/40"></div>
+        <div className="absolute inset-0 bg-primary/20 mix-blend-multiply"></div>
       </div>
 
       <div className="relative z-10 container mx-auto px-4 pt-16 pb-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Hero Content */}
-          <AnimatedSection animation="slide-left">
-            <div className="text-white">
-              <h1 className="font-bold mb-6 text-balance text-white drop-shadow-lg text-5xl font-display">
+          <AnimatedSection animation="slide-left" className="flex flex-col justify-center">
+            <div className="text-white max-w-xl">
+              <h1 className="mb-4 text-balance text-white drop-shadow-md text-4xl md:text-5xl lg:text-6xl font-display leading-tight">
                 {translatedTitle}
-                <span className="text-accent block animate-pulse drop-shadow-lg">
+                <span className="text-accent block mt-2 font-light">
                   {translatedHighlight}
                 </span>
               </h1>
+              
               {events && events.length > 0 && (
-                <div className="mb-6">
+                <div className="mb-8 mt-6">
                   <EventsSlider events={events} />
                 </div>
               )}
-              <div className="mb-8 text-white/95 text-pretty drop-shadow-md text-justify">
-                {(() => {
-                  let text = "";
-                  if (Array.isArray(translatedDescription)) {
-                    try {
-                      text = (translatedDescription as any[])
-                        .map((block) => {
-                          if (
-                            block?._type === "block" &&
-                            Array.isArray(block.children)
-                          ) {
-                            return block.children
-                              .map((c: any) => c?.text || "")
-                              .join("");
-                          }
-                          return "";
-                        })
-                        .filter(Boolean)
-                        .join(" ");
-                    } catch {
-                      text = "";
-                    }
-                  } else {
-                    text = String(translatedDescription || "");
-                  }
-                  text = text
-                    .replace(/\s*\n+\s*/g, " ")
-                    .replace(/\s{2,}/g, " ")
-                    .trim();
-                  return <p className="text-xl leading-relaxed">{text}</p>;
-                })()}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4">
+              
+              <div className="flex flex-col sm:flex-row gap-4 mt-8">
                 <Button
                   size="lg"
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground transform hover:scale-105 transition-all duration-300 shadow-lg"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg px-8 h-14 text-base tracking-wide font-light rounded-sm transition-all hover:scale-[1.02]"
                   onClick={handlePrimaryScroll}
                 >
                   {translatedPrimaryCtaLabel}
@@ -1229,11 +1201,27 @@ if (bookingData.tipoReserva === "traslado") {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-2 border-white text-white hover:bg-white hover:text-primary bg-transparent transform hover:scale-105 transition-all duration-300 shadow-lg backdrop-blur-sm"
+                  className="border border-white/40 text-white hover:bg-white hover:text-primary bg-white/5 backdrop-blur-sm shadow-lg px-8 h-14 text-base tracking-wide font-light rounded-sm transition-all hover:scale-[1.02]"
                   onClick={handleSecondaryScroll}
                 >
                   {translatedSecondaryCtaLabel}
                 </Button>
+              </div>
+
+              {/* Minimalist badges instead of a huge block of text */}
+              <div className="flex flex-col sm:flex-row gap-6 mt-12 opacity-90">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-white/10 rounded-full backdrop-blur-md border border-white/20">
+                    <Clock className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="font-light tracking-widest text-xs uppercase text-white/90">Disponible 24/7</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-white/10 rounded-full backdrop-blur-md border border-white/20">
+                    <Car className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="font-light tracking-widest text-xs uppercase text-white/90">Transporte Privado</span>
+                </div>
               </div>
             </div>
           </AnimatedSection>

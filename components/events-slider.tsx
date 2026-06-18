@@ -124,7 +124,7 @@ export function EventsSlider({ className, events: eventsProp }: { className?: st
         // Guardar solo el evento en bookingData
         localStorage.setItem("bookingData", JSON.stringify(bookingData))
         
-        router.push("/pago")
+        router.push("/checkout")
       } catch (e) {
         console.error("No se pudo preparar el pago del evento:", e)
       }

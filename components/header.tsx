@@ -102,14 +102,19 @@ export function Header({
       }
     }
     
-    // Usar traducciones del contexto cuando estén disponibles
+    // Usar traducciones del contexto cuando estén disponibles y no sean la key
+    const getT = (key: string, fallback: string) => {
+      const res = t(key);
+      return res === key ? fallback : res;
+    };
+
     return {
-      services: t('header.services'),
-      transfers: t('header.transfers'),
-      tours: t('header.tours'),
-      testimonials: t('header.testimonials'),
-      contact: t('header.contact'),
-      cart: t('header.cart'),
+      services: getT('header.services', 'Servicios'),
+      transfers: getT('header.transfers', 'Traslados'),
+      tours: getT('header.tours', 'Tours'),
+      testimonials: getT('header.testimonials', 'Testimonios'),
+      contact: getT('header.contact', 'Contacto'),
+      cart: getT('header.cart', 'Carrito'),
       customQuote: locale === 'es' 
         ? 'Cotizar servicio personalizado'
         : locale === 'en'
@@ -339,163 +344,116 @@ export function Header({
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-10 md:space-x-12 font-display">
-            {/* Menú Servicios con submenús */}
-            <DropdownMenu open={servicesOpen} onOpenChange={setServicesOpen}>
-              <DropdownMenuTrigger
-                onMouseEnter={() => {
-                  cancelClose()
-                  setServicesOpen(true)
-                }}
-                onPointerEnter={() => {
-                  cancelClose()
-                  setServicesOpen(true)
-                }}
-                onMouseLeave={scheduleClose}
-                onPointerLeave={scheduleClose}
-                className={`px-4 py-2 rounded-lg transition-colors hover:bg-accent/15 cursor-pointer font-bold ${useDarkText ? "text-black" : "!text-white"}`}
-              >
+          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8 font-sans text-[16px] lg:text-[17px] font-medium z-50">
+            {/* Servicios Dropdown */}
+            <div 
+              className="relative group/nav"
+              onMouseEnter={() => { cancelClose(); setServicesOpen(true); }}
+              onMouseLeave={scheduleClose}
+            >
+              <button className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full transition-all duration-300 hover:bg-white/20 hover:backdrop-blur-md ${useDarkText ? "text-gray-900 hover:bg-black/5" : "!text-white drop-shadow-md"}`}>
                 {staticTexts.services}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="min-w-64 px-1.5 py-1.5 max-h-[500px] overflow-y-auto"
-                onMouseEnter={cancelClose}
-                onPointerEnter={cancelClose}
-                onMouseLeave={scheduleClose}
-                onPointerLeave={scheduleClose}
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${servicesOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Modern Mega Menu */}
+              <div 
+                className={`absolute top-full left-1/2 -translate-x-[30%] mt-4 w-[750px] bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-border/50 overflow-hidden transition-all duration-400 origin-top ${servicesOpen ? "opacity-100 translate-y-0 visible" : "opacity-0 translate-y-4 invisible"}`}
               >
-                <DropdownMenuGroup>
-                  {/* Sección Traslados dinámicos */}
+                <div className="p-6 grid grid-cols-2 gap-8 font-sans">
+                  {/* Columna 1: Traslados */}
                   {transfers.length > 0 && (
-                    <>
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          setTransfersOpen((v) => !v)
-                          setServicesOpen(true)
-                        }}
-                        className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
-                      >
-                        <span>{staticTexts.transfers}</span>
-                        {transfersOpen ? (
-                          <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                        ) : (
-                          <ChevronDown className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                        )}
-                      </DropdownMenuItem>
-                      {transfersOpen && (
-                        <div className="pl-6 py-2 space-y-1 soft-fade-in max-h-60 overflow-y-auto">
-                          {transfers.map((transfer) => {
-                            // Normalizar slug - puede venir como string directo o como objeto {current: string}
-                            let slug = ''
-                            if (typeof transfer.slug === 'string') {
-                              slug = transfer.slug
-                            } else if (transfer.slug && typeof transfer.slug === 'object' && 'current' in transfer.slug) {
-                              slug = transfer.slug.current
-                            }
-                            
-                            // Si no hay slug, no renderizar este transfer
-                            if (!slug) {
-                              console.warn('[Header] Transfer sin slug válido:', transfer)
-                              return null
-                            }
-                            
-                            return (
-                              <Link
-                                key={transfer._id}
-                                href={`/transfer/${slug}`}
-                                className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                              >
-                                {getTransferLabel(transfer)}
-                              </Link>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </>
+                    <div className="flex flex-col">
+                      <div className="mb-4 flex items-center gap-2 text-[13px] font-bold text-accent uppercase tracking-widest border-b border-gray-100 pb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                        {staticTexts.transfers}
+                      </div>
+                      <div className="space-y-1 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+                        {transfers.map((transfer) => {
+                          let slug = ''
+                          if (typeof transfer.slug === 'string') slug = transfer.slug
+                          else if (transfer.slug && typeof transfer.slug === 'object' && 'current' in transfer.slug) slug = transfer.slug.current
+                          if (!slug) return null
+                          
+                          return (
+                            <Link
+                              key={transfer._id}
+                              href={`/transfer/${slug}`}
+                              className="block px-3 py-2 text-[14px] text-gray-700 hover:text-accent hover:bg-accent/10 rounded-xl transition-all leading-snug"
+                              onClick={() => setServicesOpen(false)}
+                            >
+                              {getTransferLabel(transfer)}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
                   )}
 
-                  {/* Sección Tours dinámicos */}
-                  {tours.length > 0 && (
-                    <>
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          setToursOpen((v) => !v)
-                          setServicesOpen(true)
-                        }}
-                        className="group justify-between hover:bg-accent hover:text-accent-foreground transition-colors rounded-md px-2 py-2"
-                      >
-                        <span>{staticTexts.tours}</span>
-                        {toursOpen ? (
-                          <ChevronUp className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                        ) : (
-                          <ChevronDown className="size-4 text-muted-foreground transition-colors group-hover:!text-accent-foreground" />
-                        )}
-                      </DropdownMenuItem>
-                      {toursOpen && (
-                        <div className="pl-6 py-2 space-y-1 soft-fade-in max-h-60 overflow-y-auto">
-                          {tours.length === 0 && (
-                            <div className="text-sm text-muted-foreground px-2 py-1.5">
-                              {locale === 'es' ? 'No hay tours disponibles' : locale === 'en' ? 'No tours available' : 'Aucun tour disponible'}
-                            </div>
-                          )}
+                  {/* Columna 2: Tours & Cotizar */}
+                  <div className="flex flex-col">
+                    {tours.length > 0 && (
+                      <div className="mb-6 flex flex-col flex-grow">
+                        <div className="mb-4 flex items-center gap-2 text-[13px] font-bold text-accent uppercase tracking-widest border-b border-gray-100 pb-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                          {staticTexts.tours}
+                        </div>
+                        <div className="space-y-1 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
                           {tours.map((tour) => {
-                            // Verificar que el tour tenga slug y título válidos
-                            if (!tour.slug || !tour.title) {
-                              console.warn('[Header] Tour inválido (sin slug o título):', tour._id)
-                              return null
-                            }
-                            
+                            if (!tour.slug || !tour.title) return null
                             return (
                               <Link
                                 key={tour._id}
                                 href={`/tour/${tour.slug}`}
-                                className="block rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                                className="block px-3 py-2 text-[14px] text-gray-700 hover:text-accent hover:bg-accent/10 rounded-xl transition-all leading-snug"
+                                onClick={() => setServicesOpen(false)}
                               >
                                 {getTourTitle(tour)}
                               </Link>
                             )
                           })}
                         </div>
-                      )}
-                    </>
-                  )}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                  <DropdownMenuSeparator />
+                {/* Footer del Mega Menu (Botón Cotizar a todo el ancho) */}
+                <div className="p-4 bg-gray-50 border-t border-gray-100">
+                  <Link 
+                    href="/#hero-booking-form" 
+                    className="relative overflow-hidden group flex items-center justify-center gap-2 w-full bg-[#021e29] !text-white transition-all p-4 rounded-xl font-medium text-[16px] tracking-wide shadow-md hover:shadow-xl hover:shadow-[#021e29]/20 hover:-translate-y-0.5"
+                    onClick={() => setServicesOpen(false)}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <span className="relative z-10 flex items-center gap-2 !text-white">
+                      <span className="text-accent text-xl">✨</span> 
+                      {staticTexts.customQuote}
+                    </span>
+                  </Link>
+                </div>
+              </div>
+            </div>
 
-                  {/* Opción de cotización */}
-                  <DropdownMenuItem asChild className="rounded-md">
-                    <Link href="/#hero-booking-form" className="px-2 py-2 w-full rounded-md font-semibold text-accent">
-                      💬 {staticTexts.customQuote}
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {/* Enlace principal 'Traslados' removido: permanece dentro del submenú Servicios */}
-            <Link href="#testimonios" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
+            <Link href="#testimonios" className={`px-4 py-2.5 rounded-full transition-all duration-300 hover:bg-white/20 hover:backdrop-blur-md ${useDarkText ? "text-gray-900 hover:bg-black/5" : "!text-white drop-shadow-md"}`}>
               {staticTexts.testimonials}
             </Link>
-            <Link href="#contacto" className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}>
+            <Link href="#contacto" className={`px-4 py-2.5 rounded-full transition-all duration-300 hover:bg-white/20 hover:backdrop-blur-md ${useDarkText ? "text-gray-900 hover:bg-black/5" : "!text-white drop-shadow-md"}`}>
               {staticTexts.contact}
             </Link>
-            {/* Selector de idioma (desktop) */}
-            <div className={useDarkText ? "text-black" : "text-white"}>
+            
+            {/* Selector de idioma */}
+            <div className={`px-2 transition-colors ${useDarkText ? "text-gray-900" : "!text-white drop-shadow-md"}`}>
               <LanguageSwitcher />
             </div>
-            {/* Icono de carrito persistente (desktop) */}
+            
+            {/* Icono de carrito */}
             <Link
-              href="/pago"
+              href="/checkout"
               aria-label="Ver cotizaciones"
-              className={`transition-colors drop-shadow-lg hover:opacity-80 ${useDarkText ? "text-black" : "!text-white"}`}
+              className={`p-2.5 rounded-full transition-all duration-300 hover:bg-white/20 hover:backdrop-blur-md hover:-translate-y-0.5 ${useDarkText ? "text-gray-900 hover:bg-black/5" : "!text-white drop-shadow-md"}`}
             >
-              <ShoppingCart className="size-6" />
+              <ShoppingCart className="w-[22px] h-[22px]" />
             </Link>
           </nav>
 
@@ -509,124 +467,119 @@ export function Header({
           </Button>
         </div>
 
-  {isMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-border bg-background/95 backdrop-blur-sm soft-fade-in">
-            <nav className="flex flex-col space-y-4 pt-4 font-display px-2">
-              {/* Servicios (acordeón simple en móvil) */}
-              <button
-                onClick={() => setIsServicesOpenMobile((v) => !v)}
-                className="text-left text-black transition-colors drop-shadow-lg hover:bg-accent/10 rounded-md px-3 py-2.5 text-base font-semibold"
-              >
-                {staticTexts.services} {isServicesOpenMobile ? "▲" : "▼"}
-              </button>
-              {isServicesOpenMobile && (
-                <div className="pl-4 space-y-4 text-sm font-display">
-                  {/* Traslados dinámicos */}
-                  {transfers.length > 0 && (
-                    <div>
-                      <div className="font-bold mb-2 text-base text-black">
-                        {staticTexts.transfers}
+        {/* Mobile Menu */}
+        <div 
+          className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${isMenuOpen ? "max-h-[85vh] opacity-100 mt-4" : "max-h-0 opacity-0 mt-0"}`}
+        >
+          <div className="overflow-y-auto max-h-[80vh] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100">
+            <nav className="flex flex-col p-4 space-y-2 font-sans">
+              {/* Servicios Acordeón */}
+              <div className="rounded-2xl border border-gray-100 overflow-hidden bg-gray-50/50">
+                <button
+                  onClick={() => setIsServicesOpenMobile((v) => !v)}
+                  className="w-full flex items-center justify-between p-4 text-lg font-bold text-gray-900 font-sans"
+                >
+                  {staticTexts.services}
+                  <ChevronDown className={`w-5 h-5 text-accent transition-transform duration-300 ${isServicesOpenMobile ? "rotate-180" : ""}`} />
+                </button>
+                
+                <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isServicesOpenMobile ? "max-h-[1000px] opacity-100 pb-4" : "max-h-0 opacity-0"}`}>
+                  <div className="px-4 space-y-6">
+                    {/* Traslados */}
+                    {transfers.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 text-[13px] font-bold text-accent uppercase tracking-widest mb-3">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                          {staticTexts.transfers}
+                        </div>
+                        <div className="space-y-1 border-l-2 border-gray-100 ml-1 pl-3">
+                          {transfers.map((transfer) => {
+                            const slug = typeof transfer.slug === 'string' ? transfer.slug : transfer.slug?.current
+                            if (!slug) return null
+                            return (
+                              <Link 
+                                key={transfer._id}
+                                href={`/transfer/${slug}`} 
+                                className="block py-2 text-[14px] text-gray-600 hover:text-accent transition-colors leading-snug"
+                                onClick={() => setIsMenuOpen(false)}
+                              >
+                                {getTransferLabel(transfer)}
+                              </Link>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
-                        {transfers.map((transfer) => {
-                          const slug = typeof transfer.slug === 'string' 
-                            ? transfer.slug 
-                            : transfer.slug?.current
-                          
-                          // Si no hay slug válido, no renderizar
-                          if (!slug) {
-                            console.warn('[Header Mobile] Transfer sin slug válido:', transfer)
-                            return null
-                          }
-                          
-                          return (
-                            <Link 
-                              key={transfer._id}
-                              href={`/transfer/${slug}`} 
-                              className="block text-black/80 hover:text-black hover:underline transition-colors"
-                            >
-                              {getTransferLabel(transfer)}
-                            </Link>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Tours dinámicos */}
-                  {tours.length > 0 && (
-                    <div>
-                      <div className="font-bold mb-2 text-base text-black">
-                        {staticTexts.tours}
+                    {/* Tours */}
+                    {tours.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 text-[13px] font-bold text-accent uppercase tracking-widest mb-3">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                          {staticTexts.tours}
+                        </div>
+                        <div className="space-y-1 border-l-2 border-gray-100 ml-1 pl-3">
+                          {tours.map((tour) => {
+                            if (!tour.slug || !tour.title) return null
+                            return (
+                              <Link 
+                                key={tour._id}
+                                href={`/tour/${tour.slug}`} 
+                                className="block py-2 text-[14px] text-gray-600 hover:text-accent transition-colors leading-snug"
+                                onClick={() => setIsMenuOpen(false)}
+                              >
+                                {getTourTitle(tour)}
+                              </Link>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
-                        {tours.length === 0 && (
-                          <div className="text-sm text-black/60 px-2 py-1">
-                            {locale === 'es' ? 'No hay tours disponibles' : locale === 'en' ? 'No tours available' : 'Aucun tour disponible'}
-                          </div>
-                        )}
-                        {tours.map((tour) => {
-                          // Verificar que el tour tenga slug y título válidos
-                          if (!tour.slug || !tour.title) {
-                            console.warn('[Header Mobile] Tour inválido (sin slug o título):', tour._id)
-                            return null
-                          }
-                          
-                          return (
-                            <Link 
-                              key={tour._id}
-                              href={`/tour/${tour.slug}`} 
-                              className="block text-black/80 hover:text-black hover:underline transition-colors"
-                            >
-                              {getTourTitle(tour)}
-                            </Link>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  <div className="border-t border-border pt-3 mt-3"></div>
-
-                  {/* Opción de cotización */}
-                  <Link 
-                    href="/#hero-booking-form" 
-                    className="block font-semibold text-accent hover:underline px-1 text-base transition-colors"
-                  >
-                    💬 {staticTexts.customQuote}
-                  </Link>
+                    {/* Cotizar Móvil */}
+                    <Link 
+                      href="/#hero-booking-form" 
+                      className="flex items-center justify-center gap-2 w-full bg-accent/10 text-accent hover:bg-accent hover:text-white transition-colors p-3.5 rounded-xl font-medium mt-2 font-sans"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      ✨ {staticTexts.customQuote}
+                    </Link>
+                  </div>
                 </div>
-              )}
-              {/* Enlace principal 'Traslados' removido en móvil: permanece en el submenú de Servicios */}
+              </div>
+
               <Link
                 href="#testimonios"
-                className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
+                className="p-4 text-lg font-bold text-gray-900 rounded-2xl hover:bg-gray-50 transition-colors font-sans"
+                onClick={() => setIsMenuOpen(false)}
               >
                 {staticTexts.testimonials}
               </Link>
+              
               <Link
                 href="#contacto"
-                className="text-black transition-colors drop-shadow-lg hover:opacity-80 px-3 py-2.5 text-base font-semibold rounded-md hover:bg-accent/10"
+                className="p-4 text-lg font-bold text-gray-900 rounded-2xl hover:bg-gray-50 transition-colors font-sans"
+                onClick={() => setIsMenuOpen(false)}
               >
                 {staticTexts.contact}
               </Link>
-              {/* Selector de idioma (móvil) */}
-              <div className="px-3 py-2">
-                <LanguageSwitcher />
+
+              <div className="flex items-center justify-between p-4 mt-2 border-t border-gray-100">
+                <div className="text-gray-900">
+                  <LanguageSwitcher />
+                </div>
+                <Link
+                  href="/checkout"
+                  className="flex items-center justify-center w-12 h-12 bg-accent/10 text-accent rounded-full hover:bg-accent hover:text-white transition-colors"
+                  aria-label="Ver cotizaciones"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                </Link>
               </div>
-              {/* Icono de carrito de compras (móvil) */}
-              <Link
-                href="/pago"
-                className="inline-flex items-center gap-2 text-black transition-colors rounded-md px-3 py-2.5 w-fit font-semibold text-base hover:bg-accent/10"
-                aria-label="Ver cotizaciones (carrito)"
-                prefetch={false}
-              >
-                <ShoppingCart className="size-5" />
-                <span>{staticTexts.cart}</span>
-              </Link>
             </nav>
           </div>
-        )}
+        </div>
       </div>
     </header>
   )

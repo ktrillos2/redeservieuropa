@@ -215,6 +215,18 @@ export const TESTIMONIALS_SECTION_QUERY = `
 }
 `
 
+export const USER_TESTIMONIALS_QUERY = `
+*[_type == "userTestimonial" && isApproved == true] | order(_createdAt desc) {
+  _id,
+  name,
+  location,
+  rating,
+  comment,
+  service,
+  _createdAt
+}
+`
+
 export const CONTACT_SECTION_QUERY = `
 *[_type == "contactSection" && _id == "contactSection"][0]{
   _id,

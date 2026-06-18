@@ -21,7 +21,7 @@ export const tourData: Record<string, TourInfo> = {
   "cdg-paris": {
     title: "Traslado CDG ↔ París",
     description:
-      "Servicio premium de traslado desde/hacia el aeropuerto Charles de Gaulle al centro de París. Nuestros conductores profesionales te esperarán en la terminal con un cartel con tu nombre.",
+      "Servicio de traslado desde/hacia el aeropuerto Charles de Gaulle al centro de París. Nuestros conductores profesionales te esperarán en la terminal con un cartel con tu nombre.",
     basePrice: 65,
     duration: "45-60 min",
     distance: "35 km",
@@ -65,7 +65,7 @@ export const tourData: Record<string, TourInfo> = {
       { label: "Grupo 6-7 pax", price: 103 },
       { label: "Grupo 8 pax", price: 113 },
       { label: "Servicio VIP Welcome", price: 125, description: "Incluye meet & greet prioritario y asistencia extra equipaje" },
-      { label: "Vehículo de Lujo Executive", price: 155, description: "Sedán premium / Business Class" },
+      { label: "Vehículo de Lujo Executive", price: 155, description: "Sedán ejecutivo / Business Class" },
     ],
     pricing: {
       1: 65,
@@ -124,7 +124,7 @@ export const tourData: Record<string, TourInfo> = {
       { label: "Grupo 6 pax", price: 95 },
       { label: "Grupo 7 pax", price: 104 },
       { label: "Grupo 8 pax", price: 108 },
-      { label: "Vehículo Premium", price: 135, description: "Sedán ejecutivo (bajo disponibilidad)" },
+      { label: "Vehículo Ejecutivo", price: 135, description: "Sedán ejecutivo (bajo disponibilidad)" },
       { label: "Servicio Express Prioritario", price: 125, description: "Salida inmediata + coordinación avanzada" },
     ],
     pricing: {
@@ -234,7 +234,7 @@ export const tourData: Record<string, TourInfo> = {
       "WiFi a bordo",
       "Agua de cortesía",
       "Cargadores USB",
-      "Vehículo premium",
+      "Vehículo privado",
       "Climatización bizona",
       "Fotos en paradas",
     ],
@@ -245,7 +245,7 @@ export const tourData: Record<string, TourInfo> = {
       { label: "Tour 3h nocturno", hours: 3, price: 195 },
       { label: "Tour 4h diurno", hours: 4, price: 220 },
       { label: "Tour 4h nocturno", hours: 4, price: 260 },
-      { label: "Tour Fotográfico Premium", hours: 3, price: 240, description: "Incluye paradas extendidas y asistencia para fotos" },
+      { label: "Tour Fotográfico Privado", hours: 3, price: 240, description: "Incluye paradas extendidas y asistencia para fotos" },
     ],
   },
   "paris-dl-dl": {

@@ -28,7 +28,7 @@ async function main() {
     _id: docId,
     _type: 'footerSection',
     description:
-      'Servicio premium de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.',
+      'Servicio de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.',
     showStars: true,
     statsText: '+1000 clientes satisfechos',
     columns: [

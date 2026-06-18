@@ -103,7 +103,7 @@ async function run() {
     _id: 'testimonialsSection',
     _type: 'testimonialsSection',
     title: 'Lo que Dicen Nuestros Clientes',
-    subtitle: 'Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.',
+    subtitle: 'Más de 1000 clientes satisfechos confían en nuestro servicio de transporte privado.',
     testimonials,
   }
 

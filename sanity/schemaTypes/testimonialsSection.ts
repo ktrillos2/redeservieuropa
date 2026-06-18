@@ -47,7 +47,7 @@ export default defineType({
   type: 'document',
   fields: [
     defineField({ name: 'title', title: 'Título', type: 'string', initialValue: 'Lo que Dicen Nuestros Clientes' }),
-    defineField({ name: 'subtitle', title: 'Subtítulo', type: 'text', rows: 3, initialValue: 'Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.' }),
+    defineField({ name: 'subtitle', title: 'Subtítulo', type: 'text', rows: 3, initialValue: 'Más de 1000 clientes satisfechos confían en nuestro servicio de transporte privado.' }),
     defineField({ name: 'testimonials', title: 'Testimonios', type: 'array', of: [{ type: testimonialItem.name }] }),
     defineField({
       name: 'translations',

@@ -7,7 +7,7 @@ export default defineType({
   type: 'document',
   fields: [
     defineField({ name: 'title', title: 'Título', type: 'string', initialValue: 'Nuestros Traslados' }),
-    defineField({ name: 'subtitle', title: 'Subtítulo', type: 'text', rows: 3, initialValue: 'Tarifas transparentes para todos nuestros servicios de transporte premium en París.' }),
+    defineField({ name: 'subtitle', title: 'Subtítulo', type: 'text', rows: 3, initialValue: 'Tarifas transparentes para todos nuestros servicios de transporte privado en París.' }),
     defineField({ name: 'highlight', title: 'Texto Destacado', type: 'string', description: 'Pequeño texto introductorio o claim.' }),
     defineField({ name: 'footnote', title: 'Nota al pie', type: 'string', initialValue: '* Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.' }),
     defineField({ name: 'cta', title: 'CTA', type: 'object', fields: [

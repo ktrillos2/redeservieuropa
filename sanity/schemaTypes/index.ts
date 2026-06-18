@@ -7,6 +7,7 @@ import tour from './tour'
 import transfers from './transfers'
 import toursSection from './toursSection'
 import testimonialsSection, { testimonialItem } from './testimonialsSection'
+import userTestimonial from './userTestimonial'
 import contactSection from './contactSection'
 import footerSection, { footerColumn } from './footerSection'
 import transfersSectionContent from './transfersSection'
@@ -23,19 +24,20 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     menuSeparator,
     header,
     hero,
-  event,
-  tour,
-  transfers,
-  transfersSectionContent,
+    event,
+    tour,
+    transfers,
+    transfersSectionContent,
     toursSection,
     testimonialItem,
     testimonialsSection,
+    userTestimonial,
     contactSection,
     footerColumn,
     footerSection,
-     order,
-     whatsappTemplate,
-     messageUser,
-     translation,
+    order,
+    whatsappTemplate,
+    messageUser,
+    translation,
   ],
 }

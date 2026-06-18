@@ -145,12 +145,19 @@ export default function TourPage({ params }: TourPageProps) {
     let mounted = true
     ;(async () => {
       try {
-        const result = await freshClient.fetch(TOUR_BY_SLUG_QUERY, { slug: params.id })
+        const response = await fetch('/api/tours')
+        const data = await response.json()
+        
         if (!mounted) return
-        console.log("[TourPage] Tour cargado desde Sanity para locale:", locale)
-        console.log("[TourPage] Tour:", result)
-        console.log("[TourPage] Translations disponibles:", result?.translations)
-        setTour(result)
+        
+        const foundTour = data.tours?.find((t: any) => {
+          const tSlug = typeof t.slug === 'string' ? t.slug : t.slug?.current
+          return tSlug === params.id
+        })
+        
+        console.log("[TourPage] Tour cargado desde API para locale:", locale)
+        console.log("[TourPage] Tour:", foundTour)
+        setTour(foundTour || null)
       } catch (e) {
         console.warn('[TourPage] Error cargando tour:', e)
       } finally {
@@ -218,7 +225,7 @@ export default function TourPage({ params }: TourPageProps) {
 
   // URL a /pago con el tour seleccionado (tu página de pago ya reconoce estas señales)
   const reserveHref =
-    `/pago?quickType=tour` +
+    `/checkout?quickType=tour` +
     `&isTourQuick=1` +
     `&selectedTourSlug=${encodeURIComponent(params.id)}` +
     `&tourId=${encodeURIComponent(tour?._id || params.id)}` +

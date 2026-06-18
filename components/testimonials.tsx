@@ -3,11 +3,19 @@ import { AnimatedSection } from "@/components/animated-section"
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Star, Quote } from "lucide-react"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { client } from "@/sanity/lib/client"
-import { TESTIMONIALS_SECTION_QUERY } from "@/sanity/lib/queries"
+import { TESTIMONIALS_SECTION_QUERY, USER_TESTIMONIALS_QUERY } from "@/sanity/lib/queries"
 import { urlFor } from "@/sanity/lib/image"
 import { useTranslation } from "@/contexts/i18n-context"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
+import { TestimonialFormModal } from "./testimonial-form-modal"
 
 const testimonialsLocal = [
   {
@@ -18,7 +26,7 @@ const testimonialsLocal = [
     comment:
       "Servicio excepcional. El conductor fue muy puntual y el vehículo impecable. Definitivamente lo recomiendo para traslados en París.",
     service: "CDG → París",
-  avatar: "/business-man-smiling.jpg",
+    avatar: "/business-man-smiling.jpg",
   },
   {
     id: 2,
@@ -28,7 +36,7 @@ const testimonialsLocal = [
     comment:
       "Perfecto para familias. Nos llevaron a Disneyland sin problemas, el conductor conocía muy bien la ruta y fue muy amable con los niños.",
     service: "París → Disneyland",
-  avatar: "/family-transport-to-disneyland-paris-castle.jpg",
+    avatar: "/family-transport-to-disneyland-paris-castle.jpg",
   },
   {
     id: 3,
@@ -38,7 +46,7 @@ const testimonialsLocal = [
     comment:
       "El tour nocturno por París fue increíble. Vimos todos los monumentos iluminados y el conductor nos dio excelentes recomendaciones.",
     service: "Tour Nocturno",
-  avatar: "/elegant-paris-skyline-with-eiffel-tower-and-luxury.jpg",
+    avatar: "/elegant-paris-skyline-with-eiffel-tower-and-luxury.jpg",
   },
   {
     id: 4,
@@ -48,7 +56,7 @@ const testimonialsLocal = [
     comment:
       "Muy profesional y confiable. Llegué tarde por el vuelo y me esperaron sin costo adicional. Excelente servicio al cliente.",
     service: "Orly → París",
-  avatar: "/professional-man-smiling.png",
+    avatar: "/professional-man-smiling.png",
   },
   {
     id: 5,
@@ -58,21 +66,15 @@ const testimonialsLocal = [
     comment:
       "Comodidad y elegancia en cada detalle. El vehículo era muy limpio y cómodo. Una experiencia de lujo a precio justo.",
     service: "Beauvais → París",
-  avatar: "/professional-woman-smiling.png",
+    avatar: "/professional-woman-smiling.png",
   },
 ]
 
 export function Testimonials() {
-  const [currentIndex, setCurrentIndex] = useState(0)
   const [data, setData] = useState<any | null>(null)
   const [items, setItems] = useState<any[]>(testimonialsLocal)
+  const [api, setApi] = useState<any>()
   const { locale } = useTranslation()
-
-  // Traducciones estáticas locales (solo para elementos de UI que no vienen de Sanity)
-  const staticTexts = useMemo(() => {
-    // No hay textos estáticos adicionales por ahora, todo viene de Sanity
-    return {}
-  }, [locale])
 
   // Aplicar traducciones de Sanity según el idioma
   const translatedData = useMemo(() => {
@@ -110,14 +112,25 @@ export function Testimonials() {
     let mounted = true
     ;(async () => {
       try {
-        const res = await client.fetch(TESTIMONIALS_SECTION_QUERY)
+        const [sectionRes, userRes] = await Promise.all([
+          client.fetch(TESTIMONIALS_SECTION_QUERY),
+          client.fetch(USER_TESTIMONIALS_QUERY)
+        ])
+        
         if (!mounted) return
-        console.log("[Testimonials] Datos cargados desde Sanity para locale:", locale)
-        console.log("[Testimonials] Data:", res)
-        console.log("[Testimonials] Translations disponibles:", res?.translations)
-        setData(res)
-        if (Array.isArray(res?.testimonials) && res.testimonials.length > 0) {
-          setItems(res.testimonials)
+        
+        setData(sectionRes)
+        
+        let combined = []
+        // Los testimonios de los usuarios (aprobados) van primero
+        if (Array.isArray(userRes)) {
+           combined = [...userRes]
+        }
+        if (Array.isArray(sectionRes?.testimonials)) {
+           combined = [...combined, ...sectionRes.testimonials]
+        }
+        if (combined.length > 0) {
+          setItems(combined.map((t, i) => ({ ...t, id: t._id || i })))
         }
       } catch (e) {
         console.warn('[Testimonials] No se pudo cargar testimonios desde Sanity, usando fallback local.')
@@ -126,97 +139,122 @@ export function Testimonials() {
     return () => { mounted = false }
   }, [locale])
 
+  // Auto-play basic logic
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 3) % translatedItems.length)
-    }, 6000)
-    return () => clearInterval(timer)
-  }, [translatedItems.length])
-
-  const getVisibleTestimonials = () => {
-    const visible = []
-    for (let i = 0; i < 3; i++) {
-      visible.push(translatedItems[(currentIndex + i) % translatedItems.length])
-    }
-    return visible
-  }
+    if (!api) return
+    const interval = setInterval(() => {
+      api.scrollNext()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [api])
 
   return (
-    <section id="testimonios" className="py-20 bg-background">
+    <section id="testimonios" className="py-20 bg-background relative overflow-hidden">
+      {/* Decorative gradient orb */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
+      
       <div className="container mx-auto px-4">
-        <AnimatedSection animation="fade-up" className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4 text-primary text-balance font-display">
-            {translatedData?.title || 'Lo que Dicen Nuestros Clientes'}
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            {translatedData?.subtitle || 'Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.'}
-          </p>
+        <AnimatedSection animation="fade-up" className="text-center mb-16 relative">
+          <div className="flex flex-col md:flex-row md:items-end justify-between max-w-7xl mx-auto mb-4 gap-6">
+            <div className="text-left max-w-2xl">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-primary text-balance font-display">
+                {translatedData?.title || 'Lo que Dicen Nuestros Clientes'}
+              </h2>
+              <p className="text-xl text-muted-foreground text-pretty">
+                {translatedData?.subtitle || 'Más de 1000 clientes satisfechos confían en nuestro servicio de transporte privado.'}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <TestimonialFormModal />
+            </div>
+          </div>
         </AnimatedSection>
 
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 stagger-animation">
-            {getVisibleTestimonials().map((testimonial, index) => (
-              <AnimatedSection key={testimonial.id} animation="fade-up" delay={index * 200}>
-              <Card
-                className="bg-card border-border shadow-lg transform hover:scale-105 transition-all duration-500 overflow-hidden"
-              >
-                <CardHeader className="p-0">
-                  <div className="h-48 w-full overflow-hidden">
-                    {testimonial.avatar?.asset ? (
-                      <img
-                        src={urlFor(testimonial.avatar).width(1200).height(800).url()}
-                        alt={testimonial.name}
-                        className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <img
-                        src={testimonial.avatar || "/placeholder.svg"}
-                        alt={testimonial.name}
-                        className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-500"
-                      />
-                    )}
-                  </div>
-                </CardHeader>
+          <Carousel
+            setApi={setApi}
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            className="w-full relative"
+          >
+            <CarouselContent className="-ml-4 md:-ml-6 py-4">
+              {translatedItems.map((testimonial, index) => (
+                <CarouselItem key={testimonial.id || index} className="pl-4 md:pl-6 basis-full sm:basis-1/2 lg:basis-1/3">
+                  <AnimatedSection animation="fade-up" delay={index * 100} className="h-full">
+                    <Card className="h-full flex flex-col bg-card/80 backdrop-blur-sm border-border shadow-lg transform hover:scale-[1.02] transition-all duration-300 overflow-hidden group">
+                      <CardHeader className="p-0 shrink-0">
+                        <div className="h-48 w-full overflow-hidden bg-muted flex items-center justify-center relative">
+                          {testimonial.avatar?.asset ? (
+                            <img
+                              src={urlFor(testimonial.avatar).width(800).height(600).url()}
+                              alt={testimonial.name}
+                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            />
+                          ) : testimonial.avatar && typeof testimonial.avatar === 'string' ? (
+                            <img
+                              src={testimonial.avatar || "/placeholder.svg"}
+                              alt={testimonial.name}
+                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 flex flex-col items-center justify-center">
+                               <span className="text-6xl text-primary/30 font-display font-light">
+                                 {testimonial.name.charAt(0).toUpperCase()}
+                               </span>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        </div>
+                      </CardHeader>
 
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4 mb-6">
-                    <Quote className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
-                    <div className="flex-1">
-                      <p className="text-base text-foreground mb-4 italic text-pretty">"{testimonial.comment}"</p>
-                      <div className="flex items-center gap-1 mb-4">
-                        {[...Array(testimonial.rating)].map((_, i) => (
-                          <Star key={i} className="w-4 h-4 fill-accent text-accent" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                      <CardContent className="p-6 flex-1 flex flex-col">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="p-2 bg-accent/10 rounded-full shrink-0">
+                            <Quote className="w-5 h-5 text-accent" />
+                          </div>
+                          <div className="flex-1 pt-1">
+                            <div className="flex items-center gap-1 mb-2">
+                              {[...Array(5)].map((_, i) => (
+                                <Star 
+                                  key={i} 
+                                  className={`w-4 h-4 ${i < (testimonial.rating || 5) ? 'fill-accent text-accent' : 'fill-muted text-muted'}`} 
+                                />
+                              ))}
+                            </div>
+                            <p className="text-[15px] text-muted-foreground italic leading-relaxed">
+                              "{testimonial.comment}"
+                            </p>
+                          </div>
+                        </div>
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">{testimonial.name}</p>
-                      <p className="text-xs text-muted-foreground">{testimonial.location}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-medium text-accent">{testimonial.service}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              </AnimatedSection>
-            ))}
-          </div>
-
-          <div className="flex justify-center gap-2 mt-8">
-            {Array.from({ length: Math.ceil(translatedItems.length / 3) }).map((_, index) => (
-              <button
-                key={index}
-                className={`w-3 h-3 rounded-full transition-all duration-300 transform hover:scale-125 ${
-                  Math.floor(currentIndex / 3) === index ? "bg-accent" : "bg-border hover:bg-accent/50"
-                }`}
-                onClick={() => setCurrentIndex(index * 3)}
-              />
-            ))}
-          </div>
+                        <div className="mt-auto pt-4 border-t border-border/50 flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-primary">{testimonial.name}</p>
+                            {testimonial.location && (
+                              <p className="text-xs text-muted-foreground">{testimonial.location}</p>
+                            )}
+                          </div>
+                          {testimonial.service && (
+                            <div className="text-right shrink-0">
+                              <span className="inline-block px-2.5 py-1 bg-primary/5 text-primary text-[11px] font-bold uppercase tracking-wider rounded-md">
+                                {testimonial.service}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </AnimatedSection>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <div className="hidden md:block">
+              <CarouselPrevious className="-left-6" />
+              <CarouselNext className="-right-6" />
+            </div>
+          </Carousel>
         </div>
       </div>
     </section>

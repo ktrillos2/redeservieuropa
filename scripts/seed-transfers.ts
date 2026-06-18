@@ -50,7 +50,7 @@ const doc = {
   _id: 'transfers',
   _type: 'transfers',
   title: 'Nuestros Traslados',
-  subtitle: 'Tarifas transparentes para todos nuestros servicios de transporte premium en París.',
+  subtitle: 'Tarifas transparentes para todos nuestros servicios de transporte privado en París.',
   routes,
   extraCharges,
   specials,

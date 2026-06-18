@@ -78,7 +78,7 @@ export default function EventosPage() {
     }
 
     localStorage.setItem("bookingData", JSON.stringify(bookingData))
-    router.push("/pago")
+    router.push("/checkout")
   }
 
   return (

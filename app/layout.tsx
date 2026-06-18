@@ -1,24 +1,25 @@
 import type React from "next"
 import type { Metadata } from "next"
-import { Jost, Playfair_Display } from "next/font/google"
+import { Montserrat, Cormorant_Garamond } from "next/font/google"
 import { Suspense } from "react"
 import { ScrollToTopButtonServer } from "@/components/scroll-to-top-button.server"
 import { SanityLive } from '@/sanity/lib/live'
 import { AnimationGuardian } from "@/components/animation-guardian"
 import { I18nProvider } from "@/contexts/i18n-context"
 import "./globals.css"
+import { Toaster } from "@/components/ui/toaster"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
-const jost = Jost({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: "--font-jost",
+  variable: "--font-montserrat",
   weight: ["300", "400", "500", "600", "700"],
 })
 
-const playfair = Playfair_Display({
+const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
-  variable: "--font-playfair",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-cormorant",
+  weight: ["300", "400", "500", "600", "700"],
   style: ["normal", "italic"],
 })
 
@@ -44,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-  <html lang="es" className={`${jost.variable} ${playfair.variable} antialiased`}>
+  <html lang="es" className={`${montserrat.variable} ${cormorant.variable} antialiased`}>
       <head>
         {/* Google Analytics */}
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-6RK2YQR7CF"></script>
@@ -66,6 +67,7 @@ export default function RootLayout({
   <SanityLive />
         <AnimationGuardian />
         {/* pre-anim removido para evitar ocultar contenido antes de las animaciones */}
+        <Toaster />
       </I18nProvider>
       </body>
     </html>

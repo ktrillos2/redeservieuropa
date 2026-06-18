@@ -5,6 +5,7 @@ import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@/contexts/i18n-context'
+import { CheckCircle, Clock, Map, Car, MapPin, Users, Mail, Loader2, Calendar } from 'lucide-react'
 
 // ===== Traducciones locales =====
 const GRACIAS_TRANSLATIONS = {
@@ -26,7 +27,7 @@ const GRACIAS_TRANSLATIONS = {
       paid: 'Hemos recibido tu pago correctamente. En breve recibirás un correo con los detalles de tu reserva.',
       pending: 'Si cerraste el checkout o el pago aún está en proceso, te contactaremos para confirmar el estado.',
     },
-    loading: 'Verificando el estado de tu pago…',
+    loading: 'Verificando el estado de tu reserva…',
     sections: {
       payment: 'Pago',
       contact: 'Contacto',
@@ -40,38 +41,38 @@ const GRACIAS_TRANSLATIONS = {
       currency: 'Moneda',
       requestedMethod: 'Método solicitado',
       reference: 'Referencia',
-      name: 'Nombre',
+      name: 'Pasajero',
       phone: 'Teléfono',
       email: 'Email',
       referralSource: '¿Dónde nos conociste?',
-      type: 'Tipo',
+      type: 'Clase',
       date: 'Fecha',
       time: 'Hora',
       passengers: 'Pasajeros',
       children: 'Niños',
       childrenAges: 'Edades de los niños',
-      pickup: 'Recogida',
+      pickup: 'Origen',
       dropoff: 'Destino',
       flight: 'Vuelo',
       luggage23: 'Maletas 23kg',
       luggage10: 'Maletas 10kg',
-      notes: 'Notas',
-      serviceTotal: 'Total del servicio',
-      paidNow: 'Pagado ahora',
-      pendingBalance: 'Saldo pendiente',
+      notes: 'Notas Especiales',
+      serviceTotal: 'Tarifa Base',
+      paidNow: 'Pagado Hoy',
+      pendingBalance: 'A Pagar al Conductor',
     },
     messages: {
-      noPaymentId: 'No se encontró lastPaymentId en el navegador.',
+      noPaymentId: 'No se encontró la reserva en el navegador.',
       noPaymentIdDetail: 'Si volviste directamente a esta página sin pasar por el checkout, no podremos recuperar el pedido.',
       noOrders: 'No se encontraron órdenes todavía para esta referencia. Si acabas de pagar, puede tardar unos segundos en sincronizarse.',
       checkSpam: '¿No ves el correo de confirmación?',
       checkSpamDetail: 'Revisa tu carpeta de SPAM o correo no deseado.',
-      needChanges: '¿Necesitas hacer alguna modificación de la reserva?',
+      needChanges: '¿Necesitas hacer alguna modificación?',
       contactWhatsApp: 'Escríbenos al WhatsApp:',
     },
     buttons: {
       backHome: 'Volver al inicio',
-      contact: 'Contactar',
+      contact: 'Contactar a Soporte',
     },
   },
   en: {
@@ -92,7 +93,7 @@ const GRACIAS_TRANSLATIONS = {
       paid: 'We have received your payment successfully. You will receive an email shortly with your booking details.',
       pending: 'If you closed the checkout or the payment is still in process, we will contact you to confirm the status.',
     },
-    loading: 'Verifying your payment status…',
+    loading: 'Verifying your booking status…',
     sections: {
       payment: 'Payment',
       contact: 'Contact',
@@ -106,38 +107,38 @@ const GRACIAS_TRANSLATIONS = {
       currency: 'Currency',
       requestedMethod: 'Requested method',
       reference: 'Reference',
-      name: 'Name',
+      name: 'Passenger',
       phone: 'Phone',
       email: 'Email',
       referralSource: 'How did you hear about us?',
-      type: 'Type',
+      type: 'Class',
       date: 'Date',
       time: 'Time',
       passengers: 'Passengers',
       children: 'Children',
       childrenAges: 'Children ages',
-      pickup: 'Pickup',
-      dropoff: 'Drop-off',
+      pickup: 'Origin',
+      dropoff: 'Destination',
       flight: 'Flight',
       luggage23: '23kg Luggage',
       luggage10: '10kg Luggage',
-      notes: 'Notes',
-      serviceTotal: 'Service total',
-      paidNow: 'Paid now',
-      pendingBalance: 'Pending balance',
+      notes: 'Special Notes',
+      serviceTotal: 'Base Fare',
+      paidNow: 'Paid Today',
+      pendingBalance: 'To Pay Driver',
     },
     messages: {
-      noPaymentId: 'lastPaymentId not found in browser.',
+      noPaymentId: 'Booking reference not found in browser.',
       noPaymentIdDetail: 'If you came directly to this page without going through checkout, we cannot retrieve the order.',
       noOrders: 'No orders found yet for this reference. If you just paid, it may take a few seconds to sync.',
       checkSpam: 'Don\'t see the confirmation email?',
       checkSpamDetail: 'Check your SPAM or junk folder.',
-      needChanges: 'Need to make any changes to your booking?',
+      needChanges: 'Need to make any changes?',
       contactWhatsApp: 'Contact us on WhatsApp:',
     },
     buttons: {
       backHome: 'Back to home',
-      contact: 'Contact',
+      contact: 'Contact Support',
     },
   },
   fr: {
@@ -158,7 +159,7 @@ const GRACIAS_TRANSLATIONS = {
       paid: 'Nous avons bien reçu votre paiement. Vous recevrez sous peu un email avec les détails de votre réservation.',
       pending: 'Si vous avez fermé le paiement ou si celui-ci est toujours en cours, nous vous contacterons pour confirmer le statut.',
     },
-    loading: 'Vérification de l\'état de votre paiement…',
+    loading: 'Vérification de l\'état de votre réservation…',
     sections: {
       payment: 'Paiement',
       contact: 'Contact',
@@ -172,28 +173,28 @@ const GRACIAS_TRANSLATIONS = {
       currency: 'Devise',
       requestedMethod: 'Méthode demandée',
       reference: 'Référence',
-      name: 'Nom',
+      name: 'Passager',
       phone: 'Téléphone',
       email: 'Email',
       referralSource: 'Comment nous avez-vous connu ?',
-      type: 'Type',
+      type: 'Classe',
       date: 'Date',
       time: 'Heure',
       passengers: 'Passagers',
       children: 'Enfants',
       childrenAges: 'Âges des enfants',
-      pickup: 'Prise en charge',
+      pickup: 'Origine',
       dropoff: 'Destination',
       flight: 'Vol',
       luggage23: 'Bagages 23kg',
       luggage10: 'Bagages 10kg',
-      notes: 'Notes',
-      serviceTotal: 'Total du service',
-      paidNow: 'Payé maintenant',
-      pendingBalance: 'Solde restant',
+      notes: 'Notes Spéciales',
+      serviceTotal: 'Tarif de Base',
+      paidNow: 'Payé Aujourd\'hui',
+      pendingBalance: 'À Payer au Chauffeur',
     },
     messages: {
-      noPaymentId: 'lastPaymentId introuvable dans le navigateur.',
+      noPaymentId: 'Référence de réservation introuvable dans le navigateur.',
       noPaymentIdDetail: 'Si vous êtes arrivé directement sur cette page sans passer par le paiement, nous ne pouvons pas récupérer la commande.',
       noOrders: 'Aucune commande trouvée pour cette référence. Si vous venez de payer, cela peut prendre quelques secondes pour se synchroniser.',
       checkSpam: 'Vous ne voyez pas l\'email de confirmation ?',
@@ -203,7 +204,7 @@ const GRACIAS_TRANSLATIONS = {
     },
     buttons: {
       backHome: 'Retour à l\'accueil',
-      contact: 'Contact',
+      contact: 'Contacter le Support',
     },
   },
 } as const
@@ -276,21 +277,16 @@ export default function GraciasPage() {
   
   // Helper para obtener título traducido de un item
   const getTranslatedTitle = (it: any, isTour: boolean): string => {
-    // Si hay tourData con traducciones (para tours)
     if (isTour && it?.tourData) {
-      // Obtener el título traducido según el locale
-      let translatedTitle = it.tourData.title; // Default español
-      
+      let translatedTitle = it.tourData.title; 
       if (locale === 'en' && it.tourData.translations?.en?.title) {
         translatedTitle = it.tourData.translations.en.title;
       } else if (locale === 'fr' && it.tourData.translations?.fr?.title) {
         translatedTitle = it.tourData.translations.fr.title;
       }
-      
       return translatedTitle;
     }
 
-    // Si hay traducciones directas en el item (para transfers)
     if (!isTour && it?.translations) {
       const fromText = locale === 'es' || !it.translations 
         ? it.transferFrom || it.from 
@@ -305,15 +301,10 @@ export default function GraciasPage() {
       }
     }
 
-    // Si es tour pero ya tiene tourTitle formateado (posiblemente con info adicional)
-    // intentar usar solo el título del tour si está disponible
     if (isTour && it?.tourTitle) {
-      // El tourTitle puede venir como "Disneyland - París (Tour Eiffel y Arco del Triunfo) - Disneyland"
-      // pero queremos solo el título limpio del tour
       return it.tourTitle;
     }
 
-    // Fallback a los títulos ya formateados o por defecto
     return it?.transferTitle || 
            it?.tourData?.title || 
            it?.label ||
@@ -324,7 +315,6 @@ export default function GraciasPage() {
 
   // Helper para obtener título traducido de un servicio ya guardado
   const getServiceTitle = (service: any): string => {
-    // Si el servicio tiene traducciones almacenadas
     if (service?.translations) {
       if (locale === 'en' && service.translations.en?.title) {
         return service.translations.en.title
@@ -333,33 +323,11 @@ export default function GraciasPage() {
         return service.translations.fr.title
       }
     }
-    
-    // Fallback al título por defecto
     return service?.title || service?.type || 'Servicio'
   }
 
   const sumTotalServices = (list: Order[] | null) =>
     (list || []).reduce((a, o) => a + (o.services || []).reduce((s, srv) => s + Number(srv.totalPrice || 0), 0), 0)
-
-  const labelRequested = (m?: string | null) => {
-    const method = (m || '').toLowerCase()
-    switch (method) {
-      case 'card': return tr.paymentMethod.card
-      case 'paypal': return tr.paymentMethod.paypal
-      case 'cash': return tr.paymentMethod.cash
-      default: return m || '—'
-    }
-  }
-  const labelMollie = (m?: string | null) => {
-    const method = (m || '').toLowerCase()
-    switch (method) {
-      case 'creditcard': return tr.paymentMethod.creditcard
-      case 'paypal': return tr.paymentMethod.paypalMollie
-      case 'bancontact': return tr.paymentMethod.bancontact
-      case 'ideal': return tr.paymentMethod.ideal
-      default: return m || '—'
-    }
-  }
 
   const pctFromType = (type?: string) => {
     const t = String(type || '').toLowerCase()
@@ -389,12 +357,7 @@ export default function GraciasPage() {
   const ordersFromBundle = (b: any): Order[] => {
     if (!b || !Array.isArray(b.items)) return []
     
-    console.log('📦 Bundle recibido:', b);
-    console.log('📋 Items:', b.items);
-    
-    // Convertir todos los items a servicios
     const allServices = b.items.map((it: any) => {
-      // Determinar si es tour o traslado
       const isTour = Boolean(
         it.isEvent ||
         it.quickType === 'tour' ||
@@ -404,16 +367,6 @@ export default function GraciasPage() {
         it.tourData ||
         it.selectedTourSlug
       );
-      
-      console.log('🔍 Item procesado:', {
-        isTour,
-        transferTitle: it?.transferTitle,
-        label: it?.label,
-        tourTitle: it?.tourData?.title,
-      });
-
-      
-      console.log(it)
       
       return {
         type: isTour ? 'tour' : 'traslado',
@@ -433,18 +386,15 @@ export default function GraciasPage() {
         isNightTime: !!it?.isNightTime,
         totalPrice: Number(it?.totalPrice || 0),
         payFullNow: !!it?.payFullNow || !!b?.payFullNow,
-        depositPercent: (it?.payFullNow || b?.payFullNow)
-          ? 100
-          : (isTour ? 20 : 10),
+        depositPercent: (it?.payFullNow || b?.payFullNow) ? 100 : (isTour ? 20 : 10),
         notes: it?.specialRequests,
-        // Incluir traducciones si están disponibles
         translations: it?.tourData?.translations || it?.translations || undefined,
       };
     });
 
-    // Retornar UNA orden con todos los servicios
     return [{
       _id: 'local-bundle',
+      orderNumber: b?.orderNumber || 'PENDING',
       status: b?.payFullNow ? 'paid' : 'open',
       payment: {
         provider: 'mollie',
@@ -463,18 +413,15 @@ export default function GraciasPage() {
         phone: b?.contact?.phone,
         referralSource: b?.contact?.referralSource,
       },
-      services: allServices, // 👈 Array de servicios
+      services: allServices,
     }]
   }
 
-  // ===== Efecto principal: lee pid, consulta estado, sincroniza, trae órdenes,
-  //       y si no hay órdenes usa fallback local del bundle =====
+  // ===== Efecto principal =====
   useEffect(() => {
-    // 1) Intentar localStorage
     let pid: string | null = null
     try { pid = localStorage.getItem('lastPaymentId') } catch {}
 
-    // 2) Fallback: querystring ?pid=
     if (!pid && typeof window !== 'undefined') {
       const qs = new URLSearchParams(window.location.search)
       const qpid = qs.get('pid')
@@ -485,8 +432,6 @@ export default function GraciasPage() {
     }
 
     if (!pid) {
-      console.warn('[Gracias] lastPaymentId no encontrado.')
-      // Aun así, intentamos pintar con lastCheckoutPayload si existe
       try {
         const raw = localStorage.getItem('lastCheckoutPayload')
         if (raw) setBundleFallback(JSON.parse(raw))
@@ -497,25 +442,21 @@ export default function GraciasPage() {
 
     setPaymentId(pid)
 
-    // Evitar doble ejecución en dev
     if (hasSyncedRef.current) return
     hasSyncedRef.current = true
 
-    // 3) Consultar estado y luego sincronizar/leer órdenes
     fetch(`/api/mollie/status?id=${encodeURIComponent(pid)}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(json => setStatus(json?.status || null))
       .catch(() => setStatus(null))
       .finally(async () => {
         try {
-          // 4) Forzar sync
           await fetch('/api/orders/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ paymentId: pid }),
           })
 
-          // 5) Leer órdenes por payment
           const resp = await fetch(`/api/orders/by-payment?id=${encodeURIComponent(pid)}`)
           if (resp.ok) {
             const j = await resp.json()
@@ -523,49 +464,39 @@ export default function GraciasPage() {
               setOrders(j.orders)
               if (j.orders[0]?.payment?.status) setStatus(j.orders[0].payment.status)
               
-              // 6) Enviar email traducido con el locale actual
               try {
                 const contact = j.orders[0]?.contact
                 const services = j.orders.flatMap((o: any) => o.services || [])
                 
                 if (contact?.email && services.length > 0) {
-                  // Leer el locale directamente del localStorage para asegurar que es el correcto
                   const currentLocale = (localStorage.getItem('locale') as 'es' | 'en' | 'fr') || 'es'
-                  console.log('🌍 [Gracias] Locale del contexto:', locale)
-                  console.log('🌍 [Gracias] Locale del localStorage:', currentLocale)
-                  
                   await fetch('/api/orders/send-translated-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       paymentId: pid,
-                      locale: currentLocale, // 👈 Usar el locale del localStorage directamente
+                      locale: currentLocale,
                       contact,
                       services,
                     }),
                   })
-                  console.log('✅ Email traducido solicitado en idioma:', currentLocale)
                 }
               } catch (emailErr) {
                 console.error('Error enviando email traducido:', emailErr)
               }
             } else {
-              // Si todavía no hay órdenes, intenta fallback local
               try {
                 const raw = localStorage.getItem('lastCheckoutPayload')
                 if (raw) setBundleFallback(JSON.parse(raw))
               } catch {}
             }
           } else {
-            // Si el endpoint falla, intenta fallback local
             try {
               const raw = localStorage.getItem('lastCheckoutPayload')
               if (raw) setBundleFallback(JSON.parse(raw))
             } catch {}
           }
         } catch (e) {
-          console.error('[Gracias] Error en sync/by-payment:', e)
-          // Si hubo error, intenta fallback local
           try {
             const raw = localStorage.getItem('lastCheckoutPayload')
             if (raw) setBundleFallback(JSON.parse(raw))
@@ -575,190 +506,260 @@ export default function GraciasPage() {
       })
   }, [])
 
-  // Usa órdenes reales si existen; si no, convierte el bundle local a "orders"
   const effectiveOrders: Order[] | null =
     (orders && orders.length > 0)
       ? orders
       : (bundleFallback ? ordersFromBundle(bundleFallback) : null)
+      
   const title = status === 'paid' ? tr.titles.paid : tr.titles.thanks
   const desc = status === 'paid'
     ? tr.descriptions.paid
     : tr.descriptions.pending
 
-  const grandTotal = sumTotalServices(effectiveOrders)
-  const paidNowTotal = Number(sumPaidNow(effectiveOrders).toFixed(1))
-
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-slate-50 flex flex-col">
       <Header />
-      <div className="pt-24 pb-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto space-y-6 mt-9">
-            <h1 className="text-4xl font-bold text-primary">{title}</h1>
-
-            {loading ? (
-              <p className="text-muted-foreground">{tr.loading}</p>
+      <div className="flex-grow pt-28 pb-16 px-4">
+        <div className="container mx-auto max-w-4xl">
+          
+          {/* Header Hero */}
+          <div className="text-center space-y-4 mb-10">
+            {status === 'paid' ? (
+              <div className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4 shadow-md">
+                <CheckCircle className="w-10 h-10" />
+              </div>
             ) : (
-              <div className="space-y-8">
-                <p className="text-lg text-muted-foreground">{desc}</p>
-
-                {/* Aviso si no hubo pid */}
-                {!paymentId && (
-                  <div className="p-3 bg-amber-50 border rounded text-amber-800 text-sm">
-                    <b>{tr.messages.noPaymentId}</b> {tr.messages.noPaymentIdDetail}
-                  </div>
-                )}
-
-                {/* Pago */}
-                {effectiveOrders && effectiveOrders.length > 0 && effectiveOrders[0]?.payment && (
-                  <div className="rounded-lg border bg-white p-4 shadow-sm">
-                    <h2 className="text-xl font-semibold text-primary mb-2">{tr.sections.payment}</h2>
-                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">{tr.fields.provider}:</span> {effectiveOrders[0].payment?.provider || '—'}</div>
-                      <div><span className="text-muted-foreground">{tr.fields.status}:</span> {effectiveOrders[0].payment?.status || status || '—'}</div>
-                      <div>
-                        <span className="text-muted-foreground">{tr.fields.amountPaid}:</span>{' '}
-                        {grandTotal > 0 ? `${fmt1(paidNowTotal)} €` : '—'}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">{tr.fields.totalAmount}:</span>{' '}
-                        {grandTotal > 0 ? `${fmt1(grandTotal)} €` : '—'}
-                      </div>
-                      <div><span className="text-muted-foreground">{tr.fields.currency}:</span> {effectiveOrders[0].payment?.currency || 'EUR'}</div>
-                      <div><span className="text-muted-foreground">{tr.fields.requestedMethod}:</span> {labelRequested(effectiveOrders[0].payment?.requestedMethod)}</div>
-                      {effectiveOrders[0].payment?.paymentId && (
-                        <div className="sm:col-span-2"><span className="text-muted-foreground">{tr.fields.reference}:</span> {effectiveOrders[0].payment?.paymentId}</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Contacto */}
-                {effectiveOrders && effectiveOrders[0]?.contact && (
-                  <div className="rounded-lg border bg-white p-4 shadow-sm">
-                    <h2 className="text-xl font-semibold text-primary mb-2">{tr.sections.contact}</h2>
-                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">{tr.fields.name}:</span> {effectiveOrders[0].contact?.name || '—'}</div>
-                      <div><span className="text-muted-foreground">{tr.fields.phone}:</span> {effectiveOrders[0].contact?.phone || '—'}</div>
-                      <div><span className="text-muted-foreground">{tr.fields.email}:</span> {effectiveOrders[0].contact?.email || '—'}</div>
-                      <div>
-                        <span className="text-muted-foreground">{tr.fields.referralSource}</span>{' '}
-                        {effectiveOrders[0].contact?.referralSource || '—'}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Servicios */}
-                {effectiveOrders && effectiveOrders.length > 0 ? (
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-semibold text-primary">{tr.sections.services}</h2>
-                    {effectiveOrders.map((ord) => {
-                      const services = (ord.services || []).sort((a, b) => {
-                        const dateTimeA = a.date && a.time 
-                          ? new Date(`${a.date}T${a.time}`).getTime()
-                          : a.date 
-                            ? new Date(a.date).getTime()
-                            : 0
-                        const dateTimeB = b.date && b.time 
-                          ? new Date(`${b.date}T${b.time}`).getTime()
-                          : b.date 
-                            ? new Date(b.date).getTime()
-                            : 0
-                        return dateTimeA - dateTimeB
-                      })
-                      if (services.length === 0) return null
-
-                      return services.map((service, idx) => {
-                        const total = Number(service.totalPrice || 0)
-                        const pct = depositPercentForService(service, ord)
-                        const paid = Number((total * pct / 100).toFixed(1))
-
-                        return (
-                          <div key={`${ord._id}-${idx}`} className="rounded-lg border bg-white p-4 shadow-sm">
-                            <h3 className="text-xl font-semibold text-primary mb-2">
-                              {getServiceTitle(service)}
-                            </h3>
-                            <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                              <div><span className="text-muted-foreground">{tr.fields.type}:</span> {service.type || '—'}</div>
-                              <div><span className="text-muted-foreground">{tr.fields.date}:</span> {service.date || '—'}</div>
-                              <div><span className="text-muted-foreground">{tr.fields.time}:</span> {service.time || '—'}</div>
-                              <div><span className="text-muted-foreground">{tr.fields.passengers}:</span> {service.passengers ?? '—'}</div>
-                              <div><span className="text-muted-foreground">{tr.fields.children}:</span> {service.ninos ?? 0}</div>
-                              {service.ninosMenores9 && (
-                                <div className="sm:col-span-2">
-                                  <span className="text-muted-foreground">{tr.fields.childrenAges}:</span> {service.ninosMenores9}
-                                </div>
-                              )}
-
-                              {service.pickupAddress && (
-                                <div><span className="text-muted-foreground">{tr.fields.pickup}:</span> {service.pickupAddress}</div>
-                              )}
-                              {service.dropoffAddress && (
-                                <div><span className="text-muted-foreground">{tr.fields.dropoff}:</span> {service.dropoffAddress}</div>
-                              )}
-                              {service.flightNumber && (
-                                <div><span className="text-muted-foreground">{tr.fields.flight}:</span> {service.flightNumber}</div>
-                              )}
-                              <div><span className="text-muted-foreground">{tr.fields.luggage23}:</span> {service.luggage23kg ?? 0}</div>
-                              <div><span className="text-muted-foreground">{tr.fields.luggage10}:</span> {service.luggage10kg ?? 0}</div>
-                              {service.notes && (
-                                <div className="sm:col-span-2"><span className="text-muted-foreground">{tr.fields.notes}:</span> {service.notes}</div>
-                              )}
-                            </div>
-                            
-                            {/* Total y depósito */}
-                            <div className="mt-3 pt-3 border-t">
-                              <div className="flex justify-between items-center font-semibold">
-                                <span>{tr.fields.serviceTotal}:</span>
-                                <span className="text-lg text-primary">{fmt1(total)} €</span>
-                              </div>
-                              <div className="flex justify-between items-center text-sm text-muted-foreground mt-1">
-                                <span>{tr.fields.paidNow} ({pct}%):</span>
-                                <span className="font-semibold text-foreground">{fmt1(paid)} €</span>
-                              </div>
-                              {pct < 100 && (
-                                <div className="flex justify-between items-center text-sm text-amber-600 mt-1">
-                                  <span>{tr.fields.pendingBalance}:</span>
-                                  <span className="font-semibold">{fmt1(total - paid)} €</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-3 bg-amber-50 border rounded text-amber-800 text-sm">
-                    {tr.messages.noOrders}
-                  </div>
-                )}
+              <div className="mx-auto w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-4 shadow-md">
+                <Clock className="w-10 h-10" />
               </div>
             )}
-
-            <div className="flex flex-wrap gap-3 justify-center">
-              <Link href="/" className="inline-flex px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90">
-                {tr.buttons.backHome}
-              </Link>
-              <Link href="/#contacto" className="inline-flex px-4 py-2 rounded-md bg-accent text-accent-foreground hover:bg-accent/90">
-                {tr.buttons.contact}
-              </Link>
-            </div>
-
-            {status === 'paid' && (
-              <div className="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-400 text-yellow-800 rounded">
-                <b>{tr.messages.checkSpam}</b> {tr.messages.checkSpamDetail}
-              </div>
-            )}
-
-            {status === 'paid' && (
-              <div className="mt-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-800 rounded">
-                <p className="font-semibold mb-1">{tr.messages.needChanges}</p>
-                <p>{tr.messages.contactWhatsApp} <a href="https://wa.me/33695587787" className="underline font-semibold" target="_blank" rel="noopener noreferrer">+33 6 95 58 77 87</a></p>
-              </div>
-            )}
+            <h1 className="text-3xl md:text-5xl font-serif text-[#4A0E0E] uppercase font-bold tracking-wider">{title}</h1>
+            <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto">{desc}</p>
           </div>
+
+          {/* Warnings */}
+          {status === 'paid' && (
+            <div className="bg-[#4A0E0E]/5 border border-[#4A0E0E]/20 text-[#4A0E0E] p-4 rounded-xl mb-10 flex gap-4 text-sm md:text-base items-center max-w-2xl mx-auto shadow-sm">
+              <Mail className="w-6 h-6 shrink-0 text-[#4A0E0E]" />
+              <div>
+                <strong>{tr.messages.checkSpam}</strong> <br className="hidden md:block" />
+                {tr.messages.checkSpamDetail}
+              </div>
+            </div>
+          )}
+
+          {!paymentId && (
+            <div className="p-4 bg-amber-50 border rounded-xl text-amber-800 text-sm mb-10 max-w-2xl mx-auto">
+              <b>{tr.messages.noPaymentId}</b> {tr.messages.noPaymentIdDetail}
+            </div>
+          )}
+
+          {/* Boarding Passes */}
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-[#4A0E0E]" />
+              <span className="ml-3 text-lg text-muted-foreground font-medium">{tr.loading}</span>
+            </div>
+          ) : effectiveOrders && effectiveOrders.length > 0 ? (
+            <div className="space-y-12 pb-10">
+              {effectiveOrders.map((ord, oIdx) => {
+                const services = (ord.services || []).sort((a, b) => {
+                  const dateTimeA = a.date && a.time ? new Date(`${a.date}T${a.time}`).getTime() : a.date ? new Date(a.date).getTime() : 0
+                  const dateTimeB = b.date && b.time ? new Date(`${b.date}T${b.time}`).getTime() : b.date ? new Date(b.date).getTime() : 0
+                  return dateTimeA - dateTimeB
+                })
+
+                if (services.length === 0) return null
+
+                return services.map((service, sIdx) => {
+                  const total = Number(service.totalPrice || 0)
+                  const pct = depositPercentForService(service, ord)
+                  const paid = Number((total * pct / 100).toFixed(1))
+                  const isTour = service.type === 'tour'
+
+                  return (
+                    <div key={`${ord._id}-${sIdx}`} className="relative mx-auto w-full max-w-3xl filter drop-shadow-xl flex flex-col md:flex-row bg-white rounded-2xl overflow-hidden">
+                      
+                      {/* LEFT SECTION */}
+                      <div className="relative flex-1 p-6 md:p-8 bg-white md:border-r-[2px] md:border-dashed md:border-gray-300">
+                        
+                        {/* Desktop Notches */}
+                        <div className="hidden md:block absolute -top-4 -right-4 w-8 h-8 bg-slate-50 rounded-full shadow-inner border border-transparent"></div>
+                        <div className="hidden md:block absolute -bottom-4 -right-4 w-8 h-8 bg-slate-50 rounded-full shadow-inner border border-transparent"></div>
+
+                        {/* Header of Ticket */}
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                          <div className="flex items-center gap-4">
+                             <div className="bg-[#4A0E0E] text-white p-3 rounded-xl shadow-sm">
+                                {isTour ? <Map className="w-6 h-6" /> : <Car className="w-6 h-6" />}
+                             </div>
+                             <div>
+                               <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">
+                                  {isTour ? 'Tour' : 'Traslado'}
+                               </p>
+                               <p className="font-serif font-bold text-[#4A0E0E] text-xl leading-tight">
+                                  {getServiceTitle(service)}
+                               </p>
+                             </div>
+                          </div>
+                          <div className="sm:text-right bg-slate-50 px-3 py-1.5 rounded-lg border">
+                             <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Booking Ref</p>
+                             <p className="font-mono font-bold text-[#4A0E0E] text-sm">
+                               {ord.orderNumber || ord._id.slice(-6).toUpperCase()}
+                             </p>
+                          </div>
+                        </div>
+
+                        {/* Route Info */}
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[#4A0E0E]/5 p-5 rounded-2xl mb-8 gap-4 border border-[#4A0E0E]/10">
+                          <div className="flex-1 w-full">
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.pickup}</p>
+                            <p className="font-bold text-[#4A0E0E] text-base md:text-lg leading-tight flex items-start gap-2">
+                              <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-[#4A0E0E]/50" />
+                              {service.pickupAddress || '—'}
+                            </p>
+                          </div>
+                          
+                          <div className="hidden md:flex flex-col items-center px-4">
+                            <div className="w-8 h-0.5 bg-[#4A0E0E]/20 mb-1"></div>
+                            {isTour ? <Map className="w-5 h-5 text-[#4A0E0E] opacity-40" /> : <Car className="w-5 h-5 text-[#4A0E0E] opacity-40" />}
+                            <div className="w-8 h-0.5 bg-[#4A0E0E]/20 mt-1"></div>
+                          </div>
+
+                          <div className="flex-1 w-full text-left md:text-right">
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.dropoff}</p>
+                            <p className="font-bold text-[#4A0E0E] text-base md:text-lg leading-tight flex items-start gap-2 md:justify-end">
+                              <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-[#4A0E0E]/50 md:hidden" />
+                              {service.dropoffAddress || '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.date}</p>
+                            <p className="font-semibold text-gray-800 text-base">{service.date || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.time}</p>
+                            <p className="font-semibold text-gray-800 text-base">{service.time || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.passengers}</p>
+                            <p className="font-semibold text-gray-800 flex items-center gap-1.5 text-base">
+                               <Users className="w-4 h-4 text-muted-foreground" /> {service.passengers ?? '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.children}</p>
+                            <p className="font-semibold text-gray-800 text-base">{service.ninos ?? 0}</p>
+                          </div>
+                        </div>
+
+                        {/* Optional Info */}
+                        {(service.flightNumber || service.luggage23kg > 0 || service.luggage10kg > 0 || service.notes) && (
+                          <div className="grid grid-cols-2 gap-6 border-t border-gray-100 pt-6 mt-2">
+                            {service.flightNumber && (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.flight}</p>
+                                <p className="font-semibold text-gray-800">{service.flightNumber}</p>
+                              </div>
+                            )}
+                            {(service.luggage23kg > 0 || service.luggage10kg > 0) && (
+                              <div className="flex gap-6">
+                                {service.luggage23kg > 0 && (
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.luggage23}</p>
+                                    <p className="font-semibold text-gray-800">{service.luggage23kg}</p>
+                                  </div>
+                                )}
+                                {service.luggage10kg > 0 && (
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.luggage10}</p>
+                                    <p className="font-semibold text-gray-800">{service.luggage10kg}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {service.notes && (
+                              <div className="col-span-2">
+                                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.notes}</p>
+                                <p className="font-medium text-gray-600 text-sm">{service.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* RIGHT SECTION */}
+                      <div className="relative w-full md:w-72 bg-[#4A0E0E] text-white p-6 md:p-8 flex flex-col justify-between overflow-hidden">
+                        
+                        {/* Background pattern */}
+                        <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+
+                        {/* Mobile Notches */}
+                        <div className="block md:hidden absolute -top-4 -left-4 w-8 h-8 bg-slate-50 rounded-full shadow-inner border border-transparent"></div>
+                        <div className="block md:hidden absolute -bottom-4 -left-4 w-8 h-8 bg-slate-50 rounded-full shadow-inner border border-transparent"></div>
+
+                        <div className="relative z-10">
+                           <div className="mb-8">
+                             <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold mb-1">{tr.fields.name}</p>
+                             <p className="font-bold text-xl uppercase tracking-wide truncate" title={ord.contact?.name || '—'}>
+                               {ord.contact?.name || '—'}
+                             </p>
+                           </div>
+
+                           <div className="space-y-4">
+                             <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                               <span className="text-xs text-white/70 uppercase tracking-wider">{tr.fields.serviceTotal}</span>
+                               <span className="font-semibold text-lg">{fmt1(total)} €</span>
+                             </div>
+                             <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                               <span className="text-xs text-white/70 uppercase tracking-wider">{tr.fields.paidNow}</span>
+                               <span className="font-bold text-yellow-400 text-xl">{fmt1(paid)} €</span>
+                             </div>
+                             {pct < 100 && (
+                               <div className="flex justify-between items-center pt-1">
+                                 <span className="text-xs text-white/70 uppercase tracking-wider">{tr.fields.pendingBalance}</span>
+                                 <span className="font-bold text-white text-lg">{fmt1(total - paid)} €</span>
+                               </div>
+                             )}
+                           </div>
+                        </div>
+
+                        <div className="mt-10 text-center relative z-10">
+                           {/* Simulated Barcode */}
+                           <div className="h-12 w-full opacity-90 mix-blend-screen bg-white rounded-sm" style={{
+                             backgroundImage: 'repeating-linear-gradient(90deg, #4A0E0E, #4A0E0E 2px, transparent 2px, transparent 4px, #4A0E0E 4px, #4A0E0E 5px, transparent 5px, transparent 8px, #4A0E0E 8px, #4A0E0E 12px, transparent 12px, transparent 14px)'
+                           }}></div>
+                           <p className="text-[10px] uppercase tracking-widest mt-3 text-white/50 font-mono">
+                              {paymentId || 'NO-REF-ID'}
+                           </p>
+                        </div>
+
+                      </div>
+                    </div>
+                  )
+                })
+              })}
+            </div>
+          ) : (
+            <div className="p-6 bg-amber-50 border rounded-2xl text-amber-800 text-center shadow-sm max-w-2xl mx-auto">
+              <p className="text-lg font-medium">{tr.messages.noOrders}</p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
+            <Link href="/" className="inline-flex justify-center items-center px-8 py-3.5 rounded-xl bg-[#4A0E0E] text-white hover:bg-[#3A0B0B] font-bold tracking-wide transition-all shadow-md hover:shadow-lg w-full sm:w-auto text-sm uppercase">
+              {tr.buttons.backHome}
+            </Link>
+            <a href="https://wa.me/33695587787" target="_blank" rel="noopener noreferrer" className="inline-flex justify-center items-center px-8 py-3.5 rounded-xl bg-white border-2 border-[#4A0E0E] text-[#4A0E0E] hover:bg-slate-50 font-bold tracking-wide transition-all shadow-sm hover:shadow-md w-full sm:w-auto text-sm uppercase">
+              {tr.buttons.contact}
+            </a>
+          </div>
+
         </div>
       </div>
       <Footer />

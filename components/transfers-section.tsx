@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plane, MapPin, Clock, Euro } from "lucide-react"
+import { Plane, MapPin, Clock, Euro, CheckCircle2, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AnimatedSection } from "@/components/animated-section"
 import Link from "next/link"
@@ -183,7 +183,7 @@ export function TransfersSection() {
   }
 
   localStorage.setItem("bookingData", JSON.stringify(bookingData))
-  router.push("/pago")
+  router.push("/checkout")
 }
 
   // Autoplay básico del carrusel
@@ -256,32 +256,40 @@ export function TransfersSection() {
                           )}
 
                           {/* HEADER: icono arriba izq; título+desc debajo; precio arriba der */}
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between gap-3">
-                              {/* Izquierda: icono + textos */}
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 bg-accent/10 rounded-lg text-accent soft-fade-in">
-                                  {pickIcon(route)}
-                                </div>
-                                <div>
-                                  <CardTitle className="text-lg soft-fade-in">
-                                    {route.from} → {route.to}
+                          <CardHeader className="pb-4">
+                            <div className="flex flex-col gap-5">
+                              {/* Top row: Icon + Title vs Price */}
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex flex-1 items-start gap-3">
+                                  <div className="p-2.5 bg-accent/10 rounded-xl text-accent shrink-0">
+                                    {pickIcon(route)}
+                                  </div>
+                                  <CardTitle className="text-[1.1rem] leading-tight pt-1 text-balance">
+                                    {route.from} 
+                                    {route.to && <span className="text-muted-foreground font-light mx-1.5">→</span>}
+                                    {route.to}
                                   </CardTitle>
-                                  {route.description && (
-                                    <p className="text-sm text-muted-foreground soft-fade-in">
-                                      {route.description}
-                                    </p>
-                                  )}
+                                </div>
+
+                                <div className="text-right leading-none shrink-0 bg-primary/5 px-3 py-2 rounded-lg">
+                                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{staticTexts.from}</div>
+                                  <div className="text-2xl font-black text-primary">
+                                    {typeof route.priceP4 === "number" ? `${route.priceP4}€` : "—"}
+                                  </div>
                                 </div>
                               </div>
 
-                              {/* Derecha: precio "Desde X €" */}
-                              <div className="text-right leading-tight">
-  <div className="text-xs text-muted-foreground">{staticTexts.from}</div>
-  <div className="text-2xl font-extrabold text-primary text-nowrap">
-    {typeof route.priceP4 === "number" ? `${route.priceP4} €` : "—"}
-  </div>
-</div>
+                              {/* Features List */}
+                              {route.description && (
+                                <ul className="space-y-2">
+                                  {route.description.split('.').map(t => t.trim()).filter(Boolean).map((feature, i) => (
+                                    <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground/90">
+                                      <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                                      <span className="leading-snug text-pretty">{feature}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                           </CardHeader>
 
@@ -319,34 +327,48 @@ export function TransfersSection() {
 
         {/* Cargos Adicionales (solo si vienen de Sanity) */}
         {Array.isArray(charges) && charges.length > 0 && (
-          <Card className="bg-card border-border hover-lift">
-            <CardHeader>
-              <AnimatedSection animation="fade-up">
-                <CardTitle className="text-center text-primary font-display">{staticTexts.additionalCharges}</CardTitle>
-              </AnimatedSection>
-            </CardHeader>
-            <CardContent>
-              <AnimatedSection animation="fade-up" className="grid md:grid-cols-3 gap-4 stagger-animation">
-                {charges.map((charge, index) => (
-                  <div key={index} className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg hover-lift">
-                    <div className="text-accent animate-pulse"><Euro className="w-5 h-5" /></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{charge.text}</p>
-                    </div>
-                    <div className="text-accent font-bold">{charge.price}</div>
-                  </div>
-                ))}
-              </AnimatedSection>
-
-              {footnote && (
-                <div className="mt-6 p-4 bg-primary rounded-lg">
-                  <p className="text-sm text-center text-white">
-                    <strong>{staticTexts.note}:</strong> {footnote}
-                  </p>
+          <AnimatedSection animation="fade-up" className="mt-16 max-w-5xl mx-auto">
+            <div className="relative p-[1px] rounded-2xl bg-gradient-to-r from-primary/10 via-accent/20 to-primary/10 overflow-hidden group">
+              <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors duration-500" />
+              <div className="relative bg-card/95 backdrop-blur-xl p-8 md:p-10 rounded-[15px]">
+                
+                <div className="flex flex-col items-center mb-8">
+                  <h3 className="text-2xl font-bold text-primary font-display flex items-center gap-3">
+                    <span className="w-8 h-[1px] bg-accent"></span>
+                    {staticTexts.additionalCharges}
+                    <span className="w-8 h-[1px] bg-accent"></span>
+                  </h3>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                <div className="grid md:grid-cols-3 gap-6">
+                  {charges.map((charge, index) => (
+                    <div key={index} className="flex items-center gap-4 group/item p-3 rounded-xl hover:bg-muted/30 transition-colors">
+                      <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center shrink-0 group-hover/item:bg-accent/10 transition-colors shadow-sm">
+                        <Euro className="w-5 h-5 text-accent" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[15px] font-medium text-muted-foreground leading-tight">{charge.text}</p>
+                      </div>
+                      <div className="text-accent font-bold px-3 py-1.5 bg-accent/5 rounded-md border border-accent/10 shadow-sm shrink-0">
+                        {charge.price}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {footnote && (
+                  <div className="mt-10 flex items-start gap-3 p-4 rounded-xl bg-muted/40 border border-border/50">
+                    <div className="p-1 rounded-full bg-primary/10 text-primary shrink-0 mt-0.5">
+                      <Info className="w-4 h-4" />
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      <strong className="text-primary font-semibold">{staticTexts.note}:</strong> {footnote}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </AnimatedSection>
         )}
       </div>
     </section>

@@ -33,7 +33,7 @@ async function seedFooterSection() {
     _type: 'footerSection',
     
     // Español (contenido por defecto)
-    description: 'Servicio premium de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.',
+    description: 'Servicio de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.',
     showStars: true,
     statsText: '+1000 clientes satisfechos',
     copyright: '© 2025 REDESERVI PARIS. Todos los derechos reservados.',
@@ -94,12 +94,12 @@ async function seedFooterSection() {
     // Traducciones del footer
     translations: {
       en: {
-        description: 'Premium private transportation service in Paris. We connect airports, downtown Paris and Disneyland with comfort and elegance.',
+        description: 'Private transportation service in Paris. We connect airports, downtown Paris and Disneyland with comfort and elegance.',
         statsText: '+1000 satisfied customers',
         copyright: '© 2025 REDESERVI PARIS. All rights reserved.',
       },
       fr: {
-        description: 'Service de transport privé premium à Paris. Nous connectons les aéroports, le centre de Paris et Disneyland avec confort et élégance.',
+        description: 'Service de transport privé à Paris. Nous connectons les aéroports, le centre de Paris et Disneyland avec confort et élégance.',
         statsText: '+1000 clients satisfaits',
         copyright: '© 2025 REDESERVI PARIS. Tous droits réservés.',
       },

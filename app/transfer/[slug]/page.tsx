@@ -217,7 +217,7 @@ export default function TransferDetailPage({ params }: { params: Params }) {
   // URL de reserva
   const reserveHref = isHourly 
     ? '/tour/tour-nocturno'
-    : `/pago?transfer=${encodeURIComponent(transfer.slug?.current || '')}`
+    : `/checkout?transfer=${encodeURIComponent(transfer.slug?.current || '')}`
 
   // Función para limpiar carrito y navegar a reserva
   const handleReserveClick = (e: React.MouseEvent) => {

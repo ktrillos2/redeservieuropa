@@ -47,7 +47,7 @@ async function run() {
   "cdg-paris": {
     title: "Traslado CDG ↔ París",
     description:
-      "Servicio premium de traslado desde/hacia el aeropuerto Charles de Gaulle al centro de París. Nuestros conductores profesionales te esperarán en la terminal con un cartel con tu nombre.",
+      "Servicio de traslado desde/hacia el aeropuerto Charles de Gaulle al centro de París. Nuestros conductores profesionales te esperarán en la terminal con un cartel con tu nombre.",
     basePrice: 65,
     duration: "45-60 min",
     distance: "35 km",

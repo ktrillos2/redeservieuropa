@@ -40,7 +40,7 @@ async function run() {
     siteTitle: 'REDESERVI',
     siteSubtitle: 'PARIS',
     description:
-      'Servicio premium de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.',
+      'Servicio de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.',
     logo: logoAssetRef,
     contact: {
       phone: '+33 1 23 45 67 89',

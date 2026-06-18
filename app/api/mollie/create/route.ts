@@ -48,14 +48,22 @@ export async function POST(req: Request) {
 
     const mollie = getMollieClient()
 
+    let computedWebhookUrl = webhookUrlFromEnv && webhookUrlFromEnv.length > 0
+      ? webhookUrlFromEnv
+      : (webhookToken ? `${siteUrl}/api/mollie/webhook?token=${encodeURIComponent(webhookToken)}` : undefined);
+
+    // Mollie will reject the payment if the webhook URL is unreachable (e.g. localhost)
+    if (computedWebhookUrl && (computedWebhookUrl.includes('localhost') || computedWebhookUrl.includes('127.0.0.1'))) {
+      console.log('[Mollie] Skipping webhook URL because it is local:', computedWebhookUrl);
+      computedWebhookUrl = undefined;
+    }
+
     // 1) Crear pago con redirect provisional
     const payment = await mollie.payments.create({
       amount: { currency: 'EUR', value: formatAmount(amountNumber) },
       description,
       redirectUrl: `${siteUrl}/gracias`,
-      webhookUrl: webhookUrlFromEnv && webhookUrlFromEnv.length > 0
-        ? webhookUrlFromEnv
-        : (webhookToken ? `${siteUrl}/api/mollie/webhook?token=${encodeURIComponent(webhookToken)}` : undefined),
+      webhookUrl: computedWebhookUrl,
       metadata: {
         ...metadata,
         createdAt: new Date().toISOString(),

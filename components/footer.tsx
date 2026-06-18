@@ -130,7 +130,7 @@ export function Footer() {
   // Fallbacks
   const siteTitle = gi?.siteTitle || 'REDESERVI'
   const siteSubtitle = gi?.siteSubtitle || 'PARIS'
-  const description = translatedFooter?.description || 'Servicio premium de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.'
+  const description = translatedFooter?.description || 'Servicio de transporte privado en París. Conectamos aeropuertos, centro de París y Disneyland con comodidad y elegancia.'
   const showStars = translatedFooter?.showStars ?? true
   const statsText = translatedFooter?.statsText || '+1000 clientes satisfechos'
 

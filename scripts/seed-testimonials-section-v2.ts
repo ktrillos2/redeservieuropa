@@ -34,7 +34,7 @@ async function seedTestimonialsSection() {
     
     // Español (contenido por defecto)
     title: 'Lo que Dicen Nuestros Clientes',
-    subtitle: 'Más de 1000 clientes satisfechos confían en nuestro servicio premium de transporte.',
+    subtitle: 'Más de 1000 clientes satisfechos confían en nuestro servicio de transporte privado.',
     
     testimonials: [
       {
@@ -148,11 +148,11 @@ async function seedTestimonialsSection() {
     translations: {
       en: {
         title: 'What Our Customers Say',
-        subtitle: 'Over 1000 satisfied customers trust our premium transportation service.',
+        subtitle: 'Over 1000 satisfied customers trust our private transportation service.',
       },
       fr: {
         title: 'Ce Que Disent Nos Clients',
-        subtitle: 'Plus de 1000 clients satisfaits font confiance à notre service de transport premium.',
+        subtitle: 'Plus de 1000 clients satisfaits font confiance à notre service de transport privé.',
       },
     },
   }

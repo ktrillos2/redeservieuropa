@@ -9,7 +9,14 @@ export default defineType({
     defineField({ name: 'title', title: 'Título', type: 'string', initialValue: 'Nuestros Traslados' }),
     defineField({ name: 'subtitle', title: 'Subtítulo', type: 'text', rows: 3, initialValue: 'Tarifas transparentes para todos nuestros servicios de transporte privado en París.' }),
     defineField({ name: 'highlight', title: 'Texto Destacado', type: 'string', description: 'Pequeño texto introductorio o claim.' }),
-    defineField({ name: 'footnote', title: 'Nota al pie', type: 'string', initialValue: '* Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.' }),
+    defineField({ name: 'footnote', title: 'Nota al pie', type: 'string', initialValue: '⚠️ Precios sujetos a cambios. * Recargo nocturno después de las 21:00: +5€. Equipaje voluminoso (más de 3 maletas de 23 kg): +10€.' }),
+    defineField({
+      name: 'priceDisclaimer',
+      title: '⚠️ Aviso de Precio Sujeto a Cambios',
+      type: 'string',
+      initialValue: '⚠️ Los precios mostrados son orientativos y pueden estar sujetos a cambios sin previo aviso. Por favor, confirme la tarifa exacta al momento de realizar su reserva.',
+      description: 'Mensaje de advertencia sobre cambios en los precios. Se muestra en la sección de tarifas.',
+    }),
     defineField({ name: 'cta', title: 'CTA', type: 'object', fields: [
       defineField({ name: 'label', title: 'Etiqueta', type: 'string' }),
       defineField({ name: 'href', title: 'URL', type: 'url' }),
@@ -50,6 +57,7 @@ export default defineType({
             defineField({ name: 'subtitle', title: 'Subtitle', type: 'text', rows: 3 }),
             defineField({ name: 'highlight', title: 'Highlight Text', type: 'string' }),
             defineField({ name: 'footnote', title: 'Footnote', type: 'string' }),
+            defineField({ name: 'priceDisclaimer', title: '⚠️ Price Disclaimer', type: 'string', description: 'Warning about price changes shown in the rates section.' }),
             defineField({
               name: 'extraCharges',
               title: 'Additional Charges',
@@ -76,6 +84,7 @@ export default defineType({
             defineField({ name: 'subtitle', title: 'Sous-titre', type: 'text', rows: 3 }),
             defineField({ name: 'highlight', title: 'Texte en évidence', type: 'string' }),
             defineField({ name: 'footnote', title: 'Note de bas de page', type: 'string' }),
+            defineField({ name: 'priceDisclaimer', title: '⚠️ Avertissement Prix', type: 'string', description: 'Avertissement sur les changements de prix affiché dans la section tarifs.' }),
             defineField({
               name: 'extraCharges',
               title: 'Frais supplémentaires',

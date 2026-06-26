@@ -310,6 +310,11 @@ export function buildOrderEventPayload(order: any) {
   lines.push(`Total estimado: ${total.toFixed(2)} €`)
   lines.push(`${depositPercent === 100 ? 'Pago realizado' : 'Pago ahora'}: ${paidNow.toFixed(1)} € ${depositPercent === 100 ? '(100%)' : `(${depositPercent}%)`}`)
 
+  if (order?.addons?.boatTickets) {
+    lines.push('')
+    lines.push(`🎟️ Adicionales adquiridos: ${order.addons.boatTickets} x Boletas barco (15€ c/u)`)
+  }
+
   const summary = `[${String(tag)}] ${titleBase}`
   const description = lines.join('\n')
 

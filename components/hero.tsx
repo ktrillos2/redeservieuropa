@@ -1073,8 +1073,9 @@ if (bookingData.tipoReserva === "traslado") {
       }
 
       if (mode === "table" && doc?.pricingTable) {
-        const { p4=0,p5=0,p6=0,p7=0,p8=0,extraFrom9=0 } = doc.pricingTable
-        if (n <= 4) return p4
+        const { p3, p4=0,p5=0,p6=0,p7=0,p8=0,extraFrom9=0 } = doc.pricingTable
+        if (n <= 3 && p3 != null) return p3
+        if (n <= 4) return p4 || (p3 ?? 0)
         if (n === 5) return p5
         if (n === 6) return p6
         if (n === 7) return p7
@@ -1358,7 +1359,7 @@ if (bookingData.tipoReserva === "traslado") {
     <SelectTrigger
       data-field="origen"
       className={
-        "cursor-pointer max-w-[90%] md:max-w-[100%]" +
+        "cursor-pointer " +
         (fieldErrors.origen ? "border-destructive focus-visible:ring-destructive" : "")
       }
     >
@@ -1393,7 +1394,7 @@ if (bookingData.tipoReserva === "traslado") {
                                   data-field="destino"
                                   disabled={!bookingData.origen}
                                   className={
-                                    "cursor-pointer disabled:cursor-not-allowed  max-w-[90%] md:max-w-[100%]" +
+                                    "cursor-pointer disabled:cursor-not-allowed " +
                                     (fieldErrors.destino
                                       ? "border-destructive focus-visible:ring-destructive"
                                       : "")
@@ -1729,7 +1730,7 @@ if (bookingData.tipoReserva === "traslado") {
                                       {/* Trigger (botón visible) */}
                                       <SelectTrigger
                                         data-field="tour"
-                                        className="cursor-pointer max-w-[260px] truncate"
+                                        className="cursor-pointer"
                                       >
                                         <SelectValue placeholder={bookingTexts.selectTour}>
                                           {(() => {

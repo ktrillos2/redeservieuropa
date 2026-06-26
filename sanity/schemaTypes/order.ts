@@ -173,6 +173,17 @@ export default defineType({
     }),
 
     defineField({
+      name: 'addons',
+      title: 'Adicionales',
+      type: 'object',
+      options: { collapsible: true, collapsed: false },
+      fields: [
+        defineField({ name: 'boatTickets', title: 'Boletas de Barquitos (Cantidad)', type: 'number', initialValue: 0 }),
+        defineField({ name: 'boatTicketsPrice', title: 'Precio Total Boletas', type: 'number', initialValue: 0 }),
+      ]
+    }),
+
+    defineField({
       name: 'metadata',
       title: 'Metadatos',
       type: 'object',

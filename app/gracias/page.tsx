@@ -255,6 +255,10 @@ type Order = {
       fr?: { title?: string }
     }
   }>
+  addons?: {
+    boatTickets?: number
+    boatTicketsPrice?: number
+  }
 }
 
 export default function GraciasPage() {
@@ -414,6 +418,7 @@ export default function GraciasPage() {
         referralSource: b?.contact?.referralSource,
       },
       services: allServices,
+      addons: b?.addons
     }]
   }
 
@@ -568,10 +573,9 @@ export default function GraciasPage() {
                   const dateTimeB = b.date && b.time ? new Date(`${b.date}T${b.time}`).getTime() : b.date ? new Date(b.date).getTime() : 0
                   return dateTimeA - dateTimeB
                 })
+                if (services.length === 0 && !ord.addons?.boatTickets) return null
 
-                if (services.length === 0) return null
-
-                return services.map((service, sIdx) => {
+                const renderedServices = services.map((service, sIdx) => {
                   const total = Number(service.totalPrice || 0)
                   const pct = depositPercentForService(service, ord)
                   const paid = Number((total * pct / 100).toFixed(1))
@@ -742,6 +746,42 @@ export default function GraciasPage() {
                     </div>
                   )
                 })
+
+                const addonsBlock = ord.addons?.boatTickets ? (
+                  <div key={`addons-${ord._id}`} className="relative mx-auto w-full max-w-3xl filter drop-shadow-xl flex flex-col md:flex-row bg-amber-50 rounded-2xl overflow-hidden mt-6 border border-amber-200">
+                    <div className="flex-1 p-6 md:p-8">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="bg-amber-600 text-white p-3 rounded-xl shadow-sm text-2xl flex items-center justify-center">
+                          🎟️
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">
+                            Adicionales Adquiridos
+                          </p>
+                          <p className="font-serif font-bold text-amber-900 text-xl leading-tight">
+                            Boletas de barquito por el Sena
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-amber-800">
+                        Cantidad: <b>{ord.addons.boatTickets}</b> boletas<br/>
+                        Expiran en 1 año. Tú eliges cuándo usarlas de 9:00 am a 22:30.<br/>
+                        Pronto nos pondremos en contacto para enviártelas.
+                      </p>
+                    </div>
+                    <div className="relative w-full md:w-72 bg-amber-600 text-white p-6 md:p-8 flex flex-col justify-center items-center">
+                       <p className="text-xs text-white/80 uppercase tracking-wider mb-2">Total Adicionales</p>
+                       <span className="font-bold text-white text-3xl">{fmt1(ord.addons.boatTicketsPrice || 0)} €</span>
+                    </div>
+                  </div>
+                ) : null;
+
+                return (
+                  <div key={`wrap-${ord._id}`} className="space-y-6">
+                    {renderedServices}
+                    {addonsBlock}
+                  </div>
+                )
               })}
             </div>
           ) : (

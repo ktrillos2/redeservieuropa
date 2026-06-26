@@ -242,8 +242,7 @@ export async function POST(req: Request) {
         })
       }
 
-      // Crear UNA ÚNICA orden con todos los servicios
-      const orderDoc = {
+      const orderDoc: any = {
         _type: 'order',
         orderNumber: makeOrderNumber(),
         status: 'pending',
@@ -268,6 +267,10 @@ export async function POST(req: Request) {
         services: allServices, // 👈 Array de servicios
         locale, // 👈 Guardar el idioma en la orden
         metadata: { source: 'web', createdAt: new Date().toISOString() },
+      }
+
+      if (body?.addons) {
+        orderDoc.addons = body.addons;
       }
 
       await serverClient.create(orderDoc)

@@ -8,6 +8,7 @@ import { serverClient } from '@/sanity/lib/server-client'
 import { sendMail } from '@/lib/mailer'
 import { renderClientThanksEmailMulti, renderAdminNewServicesEmailMulti } from '@/lib/email-templates'
 import { buildOrderEventPayload, createCalendarEvent, getCalendarEventById } from '@/lib/google-calendar'
+import { sendSms } from '@/lib/sendSms'
 
 // ─── Mail Lock (idempotencia) ─────────────────────────────────────────────
 async function acquireMailLock(paymentId: string): Promise<boolean> {
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
     },
     calendar{eventId,htmlLink},
     payment{currency,method,requestedMethod,payFullNow,depositPercent},
+    addons{boatTickets,boatTicketsPrice},
     locale
   }`,
   { pid: paymentId }
@@ -120,6 +122,7 @@ export async function POST(req: Request) {
           service,
           payment: { ...ord.payment, paidAmount: servicePaidAmount, depositPercent: pct },
           contact: ord.contact,
+          addons: ord.addons
         })
         
         try {
@@ -202,6 +205,7 @@ export async function POST(req: Request) {
   requestedMethod: orders[0]?.payment?.requestedMethod,
   contact,
   services,
+  addons: orders[0]?.addons,
   locale, // 👈 Pasar el idioma al email del admin
 })
     const clientHtml = contact
@@ -211,6 +215,7 @@ export async function POST(req: Request) {
           currency: 'EUR',
           contact,
           services,
+          addons: orders[0]?.addons,
           locale, // 👈 Pasar el idioma al email del cliente
         })
       : null
@@ -231,6 +236,33 @@ export async function POST(req: Request) {
         from: 'Reservas Redeservi Europa <reservas@redeservieuropa.com>',
       })
     }
+
+    if (contact?.phone) {
+      let smsMessage = `¡Hola! Tu reserva ha sido confirmada exitosamente. Cualquier duda, por favor contáctanos al número de nuestra web. ¡Te esperamos!`;
+      if (locale === 'en') smsMessage = `Hello! Your reservation has been successfully confirmed. If you have any questions, please contact us at the number on our website. We look forward to seeing you!`;
+      if (locale === 'fr') smsMessage = `Bonjour ! Votre réservation a été confirmée avec succès. Si vous avez des questions, veuillez nous contacter au numéro indiqué sur notre site web. Au plaisir de vous voir !`;
+      if (locale === 'de') smsMessage = `Hallo! Ihre Reservierung wurde erfolgreich bestätigt. Bei Fragen kontaktieren Sie uns bitte unter der Nummer auf unserer Website. Wir freuen uns auf Sie!`;
+
+      await sendSms(contact.phone, smsMessage).catch(err => {
+        console.error('[webhook] error sending sms to client', err);
+      });
+    }
+
+    // Notificación por SMS al administrador
+    const adminPhone = '+33778706325';
+    const firstServiceDate = services[0]?.date || 'Pendiente';
+    const adminUrl = 'https://redeservieuropa.com/admin';
+    
+    let addonsText = '';
+    const boatTickets = orders[0]?.addons?.boatTickets;
+    if (boatTickets && boatTickets > 0) {
+      addonsText = ` + Adicional (${boatTickets} boletas barco)`;
+    }
+
+    const adminSmsMessage = `¡Nueva Reserva Confirmada! Cliente: ${contact?.name || 'Desconocido'}. Fecha: ${firstServiceDate}${addonsText}. Revisa en: ${adminUrl}`;
+    await sendSms(adminPhone, adminSmsMessage).catch(err => {
+      console.error('[webhook] error sending sms to admin', err);
+    });
 
     await markMailSent(paymentId)
 

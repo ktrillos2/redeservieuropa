@@ -35,7 +35,8 @@ export async function GET(req: Request) {
         depositPercent
       },
       notifications,
-      metadata
+      metadata,
+      addons{boatTickets,boatTicketsPrice}
     }`
     const orders = await serverClient.fetch(query, { pid: id })
     if (!orders || !Array.isArray(orders) || orders.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })

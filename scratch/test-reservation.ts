@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import { buildOrderEventPayload, createCalendarEvent } from '../lib/google-calendar'
 import { sendMail } from '../lib/mailer'
 import { renderClientThanksEmailMulti } from '../lib/email-templates'
+import { sendSms } from '../lib/sendSms'
 
 dotenv.config({ path: '.env.local' })
 
@@ -17,13 +18,13 @@ async function test() {
     contact: {
       name: "Prueba de Sistema",
       email: "redeservieuropa@gmail.com", // Enviamos a la misma cuenta para validar
-      phone: "+34 600 000 000"
+      phone: "+573133087069"
     },
     service: {
       type: "traslado",
-      title: "Reserva de Prueba (Tomorrow)",
+      title: "Reserva de Prueba (Mañana a las 3pm)",
       date: dateStr,
-      time: "10:00",
+      time: "15:00",
       totalPrice: 50,
       passengers: 2,
       pickupAddress: "Aeropuerto de París-Orly",
@@ -66,6 +67,29 @@ async function test() {
     })
     console.log(`✅ Correo enviado a ${testOrder.contact.email}`)
     
+    // 3. Enviar SMS al cliente
+    console.log("Intentando enviar SMS al cliente...")
+    const smsMessage = `¡Hola! Tu reserva ha sido confirmada exitosamente. Cualquier duda, por favor contáctanos al número de nuestra web. ¡Te esperamos!`;
+    const smsResult = await sendSms(testOrder.contact.phone, smsMessage);
+    if (smsResult.success) {
+      console.log(`✅ SMS enviado al cliente con éxito. SID: ${smsResult.sid}`)
+    } else {
+      console.error(`❌ Error al enviar SMS al cliente: ${smsResult.error}`)
+    }
+
+    // 4. Enviar SMS al Administrador
+    console.log("Intentando enviar SMS al administrador...")
+    const adminPhone = '+33778706325';
+    const firstServiceDate = testOrder.service.date;
+    const adminUrl = 'https://redeservieuropa.com/admin';
+    const adminSmsMessage = `¡Nueva Reserva Confirmada! Cliente: ${testOrder.contact.name}. Fecha: ${firstServiceDate}. Revisa en: ${adminUrl}`;
+    const adminSmsResult = await sendSms(adminPhone, adminSmsMessage);
+    if (adminSmsResult.success) {
+      console.log(`✅ SMS enviado al admin con éxito. SID: ${adminSmsResult.sid}`)
+    } else {
+      console.error(`❌ Error al enviar SMS al admin: ${adminSmsResult.error}`)
+    }
+
     console.log("\n🚀 PRUEBA FINALIZADA CON ÉXITO")
   } catch (err: any) {
     console.error("\n❌ LA PRUEBA FALLÓ")

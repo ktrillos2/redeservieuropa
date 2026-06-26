@@ -1223,6 +1223,7 @@ export default function PaymentPage() {
 
   const [destino, setDestino] = useState<BookingData | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
+  const [boatTicketsCount, setBoatTicketsCount] = useState(0);
   // Guardar origen/destino al cargar la página (por ejemplo después de redirigir desde la cotización)
   const [savedOriginOnLoad, setSavedOriginOnLoad] = useState<string | null>(
     null
@@ -3298,15 +3299,18 @@ export default function PaymentPage() {
           ...bookingData,
           tipo: isTour ? "tour" : "traslado",
         }));
+        
+  const addonsTotal = boatTicketsCount * 15;
+
   // Si el usuario marca pagar todo ahora, el importe a cobrar es el total combinado; si no, es la suma de depósitos
   const getCombinedAmountToCharge = () =>
-    payFullNow ? combinedTotal : combinedDepositSum;
+    payFullNow ? (combinedTotal + addonsTotal) : (combinedDepositSum + addonsTotal);
   // === Importe ahora / Saldo cuando hay carrito activo ===
-  const amountNowSingle = payFullNow ? total : deposit;
+  const amountNowSingle = payFullNow ? (total + addonsTotal) : (deposit + addonsTotal);
   const amountNow = cartActive ? getCombinedAmountToCharge() : amountNowSingle;
   const remainingCombined = Math.max(
     0,
-    Number((combinedTotal - amountNow).toFixed(2))
+    Number(((combinedTotal + addonsTotal) - amountNow).toFixed(2))
   );
 
   return (
@@ -4755,6 +4759,37 @@ export default function PaymentPage() {
                 </AnimatedSection>
               )}
 
+              {/* Adicionales Section */}
+              <AnimatedSection animation="slide-right" delay={250}>
+                <Card className="transform hover:scale-105 transition-all duration-300 mb-6 lg:mb-8 bg-amber-50/50 border-amber-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-amber-600">
+                      🎟️ Adicionales Opcionales
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <h4 className="font-bold text-sm text-foreground">Boletas de barquito por el Sena</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Tienen una expiración de 1 año y se pueden usar a cualquier hora entre las 9:00 am y las 22:30. ¡Eliges cuándo usarlas!
+                        </p>
+                        <span className="text-sm font-bold text-accent mt-2 inline-block">15€ por persona</span>
+                      </div>
+                      <div className="flex items-center gap-3 bg-white p-2 rounded-md shadow-sm border shrink-0">
+                        <Button variant="outline" size="icon" className="h-8 w-8 text-lg" onClick={() => setBoatTicketsCount(Math.max(0, boatTicketsCount - 1))}>
+                          -
+                        </Button>
+                        <span className="w-6 text-center font-bold text-lg">{boatTicketsCount}</span>
+                        <Button variant="outline" size="icon" className="h-8 w-8 text-lg" onClick={() => setBoatTicketsCount(boatTicketsCount + 1)}>
+                          +
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </AnimatedSection>
+
               {/* Payment Section */}
               <AnimatedSection animation="slide-right" delay={300}>
                 <Card className="transform hover:scale-105 transition-all duration-300">
@@ -5411,6 +5446,11 @@ export default function PaymentPage() {
                                     bookingData?.referralSource || "",
                                   payFullNow: body.payFullNow,
                                   locale, // 👈 Agregar el idioma seleccionado
+                                  
+                                  addons: {
+                                    boatTickets: boatTicketsCount,
+                                    boatTicketsPrice: boatTicketsCount * 15
+                                  },
 
                                   // Reserva principal
                                   booking: bookingForSubmit,

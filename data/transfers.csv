@@ -1,15 +1,41 @@
 from,to,p4,p5,p6,p7,p8
-"Aeropuerto Charles de Gaulle (CDG)","París",65,85,103,109,113
-"París","Aeropuerto Charles de Gaulle (CDG)",65,85,103,109,113
-"Aeropuerto ORLY","París",60,80,95,104,108
-"París","Aeropuerto ORLY",60,80,95,104,108
-"Aeropuerto Beauvais","París",125,145,160,180,190
-"París","Aeropuerto Beauvais",125,145,160,180,190
-"Aeropuerto Charles de Gaulle (CDG)","Parc Disneyland París",70,82,98,112,128
-"Parc Disneyland París","Aeropuerto Charles de Gaulle (CDG)",70,82,98,112,128
-"Aeropuerto ORLY","Parc Disneyland París",73,90,106,118,134
-"Parc Disneyland París","Aeropuerto ORLY",73,90,106,118,134
-"Aeropuerto Beauvais","Parc Disneyland París",145,155,175,185,195
-"Parc Disneyland París","Aeropuerto Beauvais",145,155,175,185,195
-"París","Parc Disneyland París",70,90,106,118,134
-"Parc Disneyland París","París",70,90,106,118,134
+Charles de Gaulle (CDG),París,75,100,108,126,126
+París,Charles de Gaulle (CDG),75,100,108,126,126
+Charles de Gaulle (CDG),Orly,80,100,124,134,134
+Orly,(CDG),80,100,124,134,134
+Charles de Gaulle (CDG),Versailles,100,128,143,143,158
+Versailles,Charles de Gaulle (CDG),100,128,143,143,158
+Charles de Gaulle (CDG),Disneyland,75,98,108,126,126
+Disneyland París,Charles de Gaulle (CDG),75,98,108,126,126
+Charles de Gaulle (CDG),ASTERIX,72,87,90,113,113
+ASTERIX,Charles de Gaulle (CDG),72,87,90,113,113
+ORLY,París,65,88,98,116,116
+París,ORLY,65,88,98,116,116
+ORLY,Asterix,90,102,116,130,130
+Asterix,ORLY,90,102,116,130,130
+ORLY,Disneyland París,78,95,106,118,136
+Disneyland París,ORLY,78,95,106,118,136
+Beauvais,París,135,150,165,180,190
+París,Beauvais,135,150,165,180,190
+Beauvais,Disneyland,150,160,175,185,205
+Disneyland,Beauvais,150,160,175,185,205
+Disneyland,ASTERIX,80,100,124,134,134
+ASTERIX,Disneyland,80,100,124,134,134
+Disneyland París,Versailles,100,118,118,136,136
+Versailles,Disneyland,100,118,118,136,136
+París,Disneyland,75,95,108,126,126
+Disneyland,París,75,95,108,126,126
+París,Versailles,68,80,90,118,118
+Versailles,París,68,80,90,118,134
+Paris,Paris,50,60,70,70,80
+Paris,Estacion de tren,60,65,65,70,80
+Estacion de tren,Paris,60,65,65,70,80
+CDG,Hotel CDG,50,50,50,50,60
+Charles de Gaulle (CDG),La Defensa,75,98,108,126,126
+La Defensa,Charles de Gaulle (CDG),75,98,108,126,126
+Orly,Versalles,65,80,80,116,116
+Versalles,Orly,65,80,80,116,116
+Orly,La Defensa,75,98,108,126,126
+La Defensa,Orly,75,98,108,126,126
+Disneyland,Hoteles Disneyland,48,48,48,48,48
+Disneyland,Davy Crockett Ranch,55,55,55,55,65

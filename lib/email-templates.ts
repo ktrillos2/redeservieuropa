@@ -271,6 +271,7 @@
       passengers?: number; ninos?: number; ninosMenores9?: string; payFullNow?: boolean; depositPercent?: number | null
       calendarLink?: string
     }>
+    addons?: { boatTickets?: number; boatTicketsPrice?: number }
     locale?: Locale
   }) {
     const locale = params.locale || 'es'
@@ -312,9 +313,20 @@
       <p>${texts.thanksMessage}</p>
       <p>${texts.paymentReceived}</p>
       <h3>${texts.contractedServices}</h3>
-      <ul class="list">
-        ${itemsHtml}
       </ul>
+      
+      ${params.addons?.boatTickets ? `
+        <h3 style="color:#b68c5a; margin-top:20px;">Adicionales Adquiridos</h3>
+        <div style="background:#fffaf0; border:1px solid #e5ddd0; padding:15px; border-radius:8px; margin-bottom:20px;">
+          <b>🎟️ ${params.addons.boatTickets} x Boletas de barquito por el Sena</b><br/>
+          <p style="margin:8px 0; font-size:14px; color:#5f7b87;">
+            Tienen una expiración de 1 año y se pueden usar a cualquier hora entre las 9:00 am y las 22:30. Tú eliges cuándo usarlas.<br/>
+            Pronto nos comunicaremos para gestionar el envío de las mismas.
+          </p>
+          <b>Total:</b> ${params.addons.boatTicketsPrice?.toFixed(2)} ${params.currency || 'EUR'}
+        </div>
+      ` : ''}
+
       <p><b>${texts.totalServices}:</b> ${totalSum.toFixed(2)} ${params.currency || 'EUR'}</p>
     `
     
@@ -341,6 +353,7 @@
       luggage23kg?: number; luggage10kg?: number;
       passengers?: number; ninos?: number; ninosMenores9?: string; payFullNow?: boolean; depositPercent?: number | null
     }>
+    addons?: { boatTickets?: number; boatTicketsPrice?: number }
     locale?: Locale
   }) {
     const locale = params.locale || 'es'
@@ -414,6 +427,15 @@
       <ul class="list">
         ${itemsHtml}
       </ul>
+
+      ${params.addons?.boatTickets ? `
+        <h3 style="color:#b68c5a; margin-top:20px;">Adicionales Comprados</h3>
+        <div style="background:#fffaf0; border:1px solid #e5ddd0; padding:15px; border-radius:8px; margin-bottom:20px;">
+          <b>🎟️ ${params.addons.boatTickets} x Boletas de barquito por el Sena</b><br/>
+          <b>Total Adicionales:</b> ${params.addons.boatTicketsPrice?.toFixed(2)} ${params.currency || 'EUR'}
+        </div>
+      ` : ''}
+
       <p><b>${texts.totalServices}:</b> ${totalSum.toFixed(2)} ${params.currency || 'EUR'}</p>
       ${contactBlock}
     `

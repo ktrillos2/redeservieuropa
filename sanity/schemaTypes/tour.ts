@@ -4,7 +4,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 type TourPricing = {
   pricingMode: 'rules' | 'table'
   pricingRules?: { baseUpTo4EUR: number }
-  pricingTable?: { p4?: number; p5?: number; p6?: number; p7?: number; p8?: number; extraFrom9?: number }
+  pricingTable?: { p3?: number; p4?: number; p5?: number; p6?: number; p7?: number; p8?: number; extraFrom9?: number }
 }
 
 // Incrementos fijos para Modo Reglas
@@ -28,7 +28,8 @@ export function computePrice(pax: number, pricing: TourPricing): number {
 
   if (pricing.pricingMode === 'table' && pricing.pricingTable) {
     const t = pricing.pricingTable
-    if (n <= 4) return t.p4 ?? 0
+    if (n <= 3 && t.p3 != null) return t.p3
+    if (n <= 4) return t.p4 ?? t.p3 ?? 0
     if (n === 5) return t.p5 ?? 0
     if (n === 6) return t.p6 ?? 0
     if (n === 7) return t.p7 ?? 0
@@ -172,8 +173,9 @@ export default defineType({
       title: 'Tabla especial (precios totales)',
       type: 'object',
       hidden: ({ parent }) => parent?.pricingMode !== 'table',
-      description: 'Precio total para 4–8 pax. Para 9+ se suma un extra fijo por persona.',
+      description: 'Precio total para 4–8 pax (o hasta 3 opcional). Para 9+ se suma un extra fijo por persona.',
       fields: [
+        defineField({ name: 'p3', title: 'Hasta 3 personas (€)', type: 'number', description: 'Opcional. Si se deja en blanco, de 1 a 4 pax usarán p4.' }),
         defineField({ name: 'p4', title: '4 personas (€)', type: 'number' }),
         defineField({ name: 'p5', title: '5 personas (€)', type: 'number' }),
         defineField({ name: 'p6', title: '6 personas (€)', type: 'number' }),

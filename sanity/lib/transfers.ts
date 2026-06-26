@@ -177,7 +177,12 @@ export function computeTransferPrice(
   if (!doc) return null
 
   const n = Math.max(1, Math.floor(Number(pax || 1)))
-  const { p4 = 0, p5 = 0, p6 = 0, p7 = 0, p8 = 0 } = doc.pricingTable || {}
+  // Read prices directly from the document (Sanity schema has them at top level)
+  const p4 = Number((doc as any).priceP4 || 0)
+  const p5 = Number((doc as any).priceP5 || p4)
+  const p6 = Number((doc as any).priceP6 || p5)
+  const p7 = Number((doc as any).priceP7 || p6)
+  const p8 = Number((doc as any).priceP8 || p7)
 
   if (n <= 4) return p4
   if (n === 5) return p5

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import { ArrowLeft, Clock, MapPin, Star, Euro, Car, Shield, Wifi, Coffee } from "lucide-react"
+import { ArrowLeft, Clock, MapPin, Star, Euro, Car, Shield, Wifi, Coffee, CheckCircle2, Navigation, Image as ImageIcon, Info } from "lucide-react"
 import Link from "next/link"
 import { useMemo } from "react"
 import { PortableText } from "@portabletext/react"
@@ -14,7 +14,7 @@ import { urlFor } from "@/sanity/lib/image"
 import { useTranslation } from "@/contexts/i18n-context"
 
 type PricingRules = { baseUpTo4EUR: number }
-type PricingTable = { p4?: number; p5?: number; p6?: number; p7?: number; p8?: number; extraFrom9?: number }
+type PricingTable = { p3?: number; p4?: number; p5?: number; p6?: number; p7?: number; p8?: number; extraFrom9?: number }
 
 interface TourDetailProps {
   tourId: string
@@ -66,6 +66,7 @@ interface TourDetailProps {
     backToHome?: string
     enlargeImage?: string
     legacyTour?: string
+    priceFrom?: string
   }
 }
 
@@ -82,8 +83,9 @@ function computePriceForPax(n: number, mode?: "rules" | "table", rules?: Pricing
     return base + INC_5 + INC_6 + INC_7 + INC_8 // 8 en adelante mismo precio
   }
   if (mode === "table" && tbl) {
-    const { p4 = 0, p5 = 0, p6 = 0, p7 = 0, p8 = 0, extraFrom9 = 0 } = tbl
-    if (n <= 4) return p4
+    const { p3, p4 = 0, p5 = 0, p6 = 0, p7 = 0, p8 = 0, extraFrom9 = 0 } = tbl
+    if (n <= 3 && p3 != null) return p3
+    if (n <= 4) return p4 || (p3 ?? 0)
     if (n === 5) return p5
     if (n === 6) return p6
     if (n === 7) return p7
@@ -102,6 +104,7 @@ export function TourDetail({ tourId, tourFromCms, staticTexts: passedStaticTexts
   const defaultStaticTexts = useMemo(() => {
     const texts = {
       es: {
+        priceFrom: 'Precio desde:',
         backToServices: 'Volver a servicios',
         popular: 'Popular',
         features: 'Características',
@@ -119,6 +122,7 @@ export function TourDetail({ tourId, tourFromCms, staticTexts: passedStaticTexts
         legacyTour: 'Este tour no viene del CMS (rama legacy).',
       },
       en: {
+        priceFrom: 'Price from:',
         backToServices: 'Back to services',
         popular: 'Popular',
         features: 'Features',
@@ -136,6 +140,7 @@ export function TourDetail({ tourId, tourFromCms, staticTexts: passedStaticTexts
         legacyTour: 'This tour does not come from CMS (legacy branch).',
       },
       fr: {
+        priceFrom: 'Prix à partir de:',
         backToServices: 'Retour aux services',
         popular: 'Populaire',
         features: 'Caractéristiques',
@@ -212,180 +217,257 @@ export function TourDetail({ tourId, tourFromCms, staticTexts: passedStaticTexts
             {staticTexts.backToServices}
           </Link>
 
-          {/* SOLO contenido informativo - SIN columna de reserva */}
-          <div className="space-y-8 py-3">
-            {/* Galería */}
-            <div className="relative rounded-lg overflow-hidden">
-              <Carousel className="soft-fade-in">
-                <CarouselContent>
+          {/* GALERÍA 3D CARRUSEL O IMAGEN ÚNICA */}
+          <div className="relative w-full mb-16 pt-4 pb-12 overflow-hidden">
+            {galleryImages.length > 1 ? (
+              <Carousel 
+                opts={{ 
+                  align: "center",
+                  loop: true,
+                }} 
+                className="w-full"
+              >
+                <CarouselContent className="-ml-4 md:-ml-8 py-10 px-4">
                   {galleryImages.map((src, idx) => (
-                    <CarouselItem key={idx}>
+                    <CarouselItem key={idx} className="pl-4 md:pl-8 basis-[85%] md:basis-[60%] lg:basis-[50%]">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <button
-                            aria-label={staticTexts.enlargeImage}
-                            className="relative group block w-full h-52 md:h-150 overflow-hidden rounded-lg cursor-pointer"
-                          >
-                            <img src={src} alt={`${tourFromCms.title} - imagen ${idx + 1}`} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                          <button className="relative w-full h-[300px] md:h-[450px] cursor-pointer group outline-none">
+                            <div className="absolute inset-0 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] transform transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-3 border-[6px] border-white overflow-hidden bg-muted">
+                              <img src={src} alt={`Imagen ${idx + 1}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
+                            </div>
                           </button>
                         </DialogTrigger>
                         <DialogContent className="max-w-5xl p-0 bg-transparent border-none shadow-none" showCloseButton>
-                          <div className="relative w-full h-[70vh]">
-                            <img src={src} alt={`${tourFromCms.title} - ampliada ${idx + 1}`} className="w-full h-full object-contain" />
+                          <div className="relative w-full h-[80vh] flex items-center justify-center">
+                            <img src={src} alt="Imagen ampliada" className="max-w-full max-h-full object-contain" />
                           </div>
                         </DialogContent>
                       </Dialog>
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="left-3 md:left-4 size-10 md:size-12 bg-black/50 text-white hover:bg-black/70 border-white/20 shadow-lg z-20" />
-                <CarouselNext className="right-3 md:right-4 size-10 md:size-12 bg-black/50 text-white hover:bg-black/70 border-white/20 shadow-lg z-20" />
-              </Carousel>
-
-              {tourFromCms.isPopular && (
-                <div className="absolute top-4 left-4">
-                  <Badge className="bg-accent text-accent-foreground">
-                    <Star className="w-3 h-3 mr-1" />
-                    {staticTexts.popular}
-                  </Badge>
+                <div className="hidden md:block">
+                  <CarouselPrevious className="left-8 xl:left-16 w-14 h-14 bg-white/90 text-primary hover:bg-white hover:scale-110 transition-all border-none shadow-xl z-20" />
+                  <CarouselNext className="right-8 xl:right-16 w-14 h-14 bg-white/90 text-primary hover:bg-white hover:scale-110 transition-all border-none shadow-xl z-20" />
                 </div>
-              )}
-            </div>
-
-            {/* Detalle */}
-            <Card className="transform hover:scale-105 transition-all duration-300">
-              <CardHeader>
-                <CardTitle className="text-3xl text-primary">{tourFromCms.title}</CardTitle>
-                <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-                  {tourFromCms.route?.origin && tourFromCms.route?.destination && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      <span>{tourFromCms.route.origin} ↔ {tourFromCms.route.destination}</span>
+              </Carousel>
+            ) : (
+              <div className="flex justify-center items-center py-10 px-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="relative w-[95%] md:w-[70%] lg:w-[60%] h-[300px] md:h-[450px] cursor-pointer group outline-none">
+                      <div className="absolute inset-0 rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)] transform transition-transform duration-500 hover:scale-[1.02] hover:-translate-y-2 border-[6px] border-white overflow-hidden bg-muted">
+                        <img src={galleryImages[0] || "/placeholder.jpg"} alt="Principal" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                      </div>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-5xl p-0 bg-transparent border-none shadow-none" showCloseButton>
+                    <div className="relative w-full h-[80vh] flex items-center justify-center">
+                      <img src={galleryImages[0]} alt="Imagen ampliada" className="max-w-full max-h-full object-contain" />
                     </div>
-                  )}
-                  {tourFromCms.startingPriceLabel && (
-                    <div className="flex items-center gap-1">
-                      <Euro className="w-4 h-4" />
-                      <span>{tourFromCms.startingPriceLabel}</span>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+            
+            {/* Popular Badge */}
+            {tourFromCms.isPopular && (
+              <div className="absolute top-8 left-4 md:left-12 z-50">
+                <Badge className="bg-gradient-to-r from-accent to-accent/80 text-accent-foreground px-4 py-1.5 text-sm font-bold shadow-lg shadow-accent/20 border-none rounded-full flex items-center gap-1.5 transform -rotate-2">
+                  <Star className="w-4 h-4 fill-current" />
+                  {staticTexts.popular}
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          {/* CONTENIDO PRINCIPAL Y BARRA LATERAL */}
+          <div className="grid md:grid-cols-3 gap-10 md:gap-16">
+            
+            {/* Columna Izquierda: Información del Tour (65%) */}
+            <div className="md:col-span-2 space-y-12 pb-24">
+              
+              {/* Header Info */}
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold text-primary font-display tracking-tight text-balance mb-4">
+                  {tourFromCms.title}
+                </h1>
+                
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-muted-foreground mt-4">
+                  {tourFromCms.route?.origin && tourFromCms.route?.destination && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-accent" />
+                      <span className="font-medium">{tourFromCms.route.origin} ↔ {tourFromCms.route.destination}</span>
                     </div>
                   )}
                   {tourFromCms.route?.circuitName && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{tourFromCms.route.circuitName}</span>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-accent" />
+                      <span className="font-medium">{tourFromCms.route.circuitName}</span>
                     </div>
                   )}
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+
+              <Separator className="bg-border/50" />
+
+              {/* Descripción */}
+              <div>
                 {Array.isArray(tourFromCms.description) ? (
-                  <div className="prose prose-sm max-w-none dark:prose-invert mb-6">
+                  <div className="prose prose-lg max-w-none text-muted-foreground prose-p:leading-relaxed prose-a:text-accent hover:prose-a:text-accent/80">
                     <PortableText value={tourFromCms.description as any} />
                   </div>
                 ) : tourFromCms.summary ? (
-                  <p className="text-lg text-muted-foreground mb-6 text-pretty">{tourFromCms.summary}</p>
+                  <p className="text-xl text-muted-foreground leading-relaxed text-pretty">
+                    {tourFromCms.summary}
+                  </p>
                 ) : null}
+              </div>
 
+              {/* Características e Incluye */}
+              <div className="grid sm:grid-cols-2 gap-8">
                 {Array.isArray(tourFromCms.features) && tourFromCms.features.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.features}</h3>
-                    <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <h3 className="text-2xl font-semibold mb-6 text-primary flex items-center gap-2">
+                      <Star className="w-6 h-6 text-accent" />
+                      {staticTexts.features}
+                    </h3>
+                    <ul className="space-y-4">
                       {tourFromCms.features.map((feature, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-accent rounded-full" />
-                          <span className="text-sm">{feature}</span>
-                        </div>
+                        <li key={i} className="flex items-start gap-3 text-muted-foreground">
+                          <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+                          <span className="leading-snug">{feature}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
 
                 {Array.isArray(tourFromCms.includes) && tourFromCms.includes.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.includes}</h3>
-                    <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <h3 className="text-2xl font-semibold mb-6 text-primary flex items-center gap-2">
+                      <Shield className="w-6 h-6 text-accent" />
+                      {staticTexts.includes}
+                    </h3>
+                    <ul className="space-y-4">
                       {tourFromCms.includes.map((item, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-accent" />
-                          <span className="text-sm">{item}</span>
-                        </div>
+                        <li key={i} className="flex items-start gap-3 text-muted-foreground">
+                          <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+                          <span className="leading-snug">{item}</span>
+                        </li>
                       ))}
-                    </div>
-                  </div>
-                )}
-
-                {Array.isArray(tourFromCms.visitedPlaces) && tourFromCms.visitedPlaces.length > 0 && (
-                  <>
-                    <Separator className="my-6" />
-                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.visitedPlaces}</h3>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {tourFromCms.visitedPlaces.map((p, i) => <li key={i}>{p}</li>)}
                     </ul>
-                  </>
-                )}
-
-                {Array.isArray(tourFromCms.amenities) && tourFromCms.amenities.length > 0 && (
-                  <div className="mt-8">
-                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.vehicleAmenities}</h3>
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {tourFromCms.amenities.map((am, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <Car className="w-4 h-4 text-accent" />
-                          <span className="text-sm">{am}</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
+              </div>
 
-                {Array.isArray(tourFromCms.notes) && tourFromCms.notes.length > 0 && (
-                  <>
-                    <Separator className="my-6" />
-                    <h3 className="text-xl font-semibold mb-4 text-primary">{staticTexts.notes}</h3>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {tourFromCms.notes.map((n, i) => <li key={i}>{n}</li>)}
-                    </ul>
-                  </>
-                )}
-
-                {tourFromCms.overCapacityNote && (
-                  <>
-                    <Separator className="my-6" />
-                    <p className="text-sm text-muted-foreground">{tourFromCms.overCapacityNote}</p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            
-
-            {/* Tarjeta "comodidades" visual */}
-            <Card className="transform hover:scale-105 transition-all duration-300">
-              <CardHeader>
-                <CardTitle className="text-2xl text-primary">{staticTexts.vehicleAmenities}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
-                    <Wifi className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">{staticTexts.wifi}</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
-                    <Coffee className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">{staticTexts.water}</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
-                    <Car className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">{staticTexts.comfortable}</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2 p-4 bg-muted/50 rounded-lg transform hover:scale-110 transition-all duration-300">
-                    <Shield className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-center">{staticTexts.safe}</span>
+              {/* Qué visitamos */}
+              {Array.isArray(tourFromCms.visitedPlaces) && tourFromCms.visitedPlaces.length > 0 && (
+                <div>
+                  <Separator className="bg-border/50 mb-10" />
+                  <h3 className="text-2xl font-semibold mb-6 text-primary flex items-center gap-2">
+                    <Navigation className="w-6 h-6 text-accent" />
+                    {staticTexts.visitedPlaces}
+                  </h3>
+                  <div className="relative border-l-2 border-accent/20 ml-3 space-y-6">
+                    {tourFromCms.visitedPlaces.map((p, i) => (
+                      <div key={i} className="relative pl-6">
+                        <div className="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-background border-2 border-accent" />
+                        <p className="text-lg text-muted-foreground">{p}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+
+              {/* Notas y Overcapacity */}
+              {((Array.isArray(tourFromCms.notes) && tourFromCms.notes.length > 0) || tourFromCms.overCapacityNote) && (
+                <div className="bg-muted/30 p-6 md:p-8 rounded-2xl border border-border/50">
+                  <h3 className="text-xl font-semibold mb-4 text-primary flex items-center gap-2">
+                    <Info className="w-5 h-5 text-accent" />
+                    {staticTexts.notes}
+                  </h3>
+                  
+                  {Array.isArray(tourFromCms.notes) && tourFromCms.notes.length > 0 && (
+                    <ul className="list-disc pl-5 space-y-2 mb-4">
+                      {tourFromCms.notes.map((n, i) => (
+                        <li key={i} className="text-muted-foreground">{n}</li>
+                      ))}
+                    </ul>
+                  )}
+                  
+                  {tourFromCms.overCapacityNote && (
+                    <p className="text-sm text-muted-foreground italic border-t border-border/50 pt-4 mt-4">
+                      {tourFromCms.overCapacityNote}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Columna Derecha: Sticky Sidebar (35%) */}
+            <div className="md:col-span-1 relative">
+              <div className="sticky top-28 space-y-6">
+                
+                {/* Tarjeta de Resumen y Precio (Solo visual, reserva está en footer fix) */}
+                <Card className="shadow-xl shadow-black/5 border-border/50 overflow-hidden rounded-2xl">
+                  <div className="p-6 md:p-8 bg-gradient-to-b from-card to-muted/10">
+                    {tourFromCms.startingPriceLabel && (
+                      <div className="mb-6">
+                        <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+                          {staticTexts.priceFrom || "Desde"}
+                        </span>
+                        <div className="text-4xl font-black text-primary">
+                          {tourFromCms.startingPriceEUR ? `€${tourFromCms.startingPriceEUR}` : ""}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-4 mb-8 text-sm">
+                      <div className="flex justify-between items-center py-3 border-b border-border/50">
+                        <span className="text-muted-foreground font-medium">Modalidad</span>
+                        <span className="font-semibold text-primary">Tour Privado</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-border/50">
+                        <span className="text-muted-foreground font-medium">Cancelación</span>
+                        <span className="font-semibold text-green-600">Gratuita</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Comodidades del Vehículo */}
+                <Card className="shadow-lg shadow-black/5 border-border/50 rounded-2xl overflow-hidden">
+                  <div className="p-6 md:p-8">
+                    <h3 className="text-lg font-bold text-primary mb-6">
+                      {staticTexts.vehicleAmenities}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col items-center justify-center gap-3 p-4 bg-primary/5 rounded-xl transition-colors hover:bg-primary/10">
+                        <Wifi className="w-6 h-6 text-accent" />
+                        <span className="text-sm font-medium text-primary text-center">{staticTexts.wifi}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-3 p-4 bg-primary/5 rounded-xl transition-colors hover:bg-primary/10">
+                        <Coffee className="w-6 h-6 text-accent" />
+                        <span className="text-sm font-medium text-primary text-center">{staticTexts.water}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-3 p-4 bg-primary/5 rounded-xl transition-colors hover:bg-primary/10">
+                        <Car className="w-6 h-6 text-accent" />
+                        <span className="text-sm font-medium text-primary text-center">{staticTexts.comfortable}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-3 p-4 bg-primary/5 rounded-xl transition-colors hover:bg-primary/10">
+                        <Shield className="w-6 h-6 text-accent" />
+                        <span className="text-sm font-medium text-primary text-center">{staticTexts.safe}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

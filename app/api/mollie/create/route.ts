@@ -206,10 +206,11 @@ export async function POST(req: Request) {
             ? Number(src.luggage10kg)
             : undefined,
           isNightTime: Boolean(src.isNightTime),
+          isReturn: Boolean(src.isReturn), // 👈 Marcar traslados de regreso
           totalPrice: Number(src.totalPrice || 0),
-          notes: src.specialRequests || undefined,
+          notes: src.specialRequests || src.notes || undefined,
           payFullNow: isPayingFullNow,
-          depositPercent: calculatedDepositPercent, // 👈 Calculado automáticamente
+          depositPercent: calculatedDepositPercent,
           // 👇 Guardar traducciones si están disponibles
           translations: isTour && src?.tourData?.translations 
             ? src.tourData.translations 

@@ -35,6 +35,13 @@ export function StepPayment({ onBack, onConfirm, isProcessing, deposit, total }:
       confirmDeposit: "Pagar Depósito: ",
       totalService: "Total del servicio: ",
       back: "Volver",
+      payFullQuestion: "¿Deseas pagar todo ahora?",
+      totalToPayNow: "Total a pagar ahora",
+      deposit10: "depósito 10%",
+      balanceOnServiceDay: "Saldo el día del servicio",
+      surchargeNotes: "* Recargo nocturno (21:00 - 06:00): +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€. Se aplicarán automáticamente a tu reserva si corresponde.",
+      paymentExplanation: "Puedes pagar con tarjeta o PayPal de forma segura. Si prefieres, marca \"¿Deseas pagar todo ahora?\" para abonar el 100%. En caso contrario, se cobrará el depósito del 10% y el resto se paga el día del servicio.",
+      processing: "Procesando..."
     },
     en: {
       title: "Payment Method",
@@ -49,6 +56,13 @@ export function StepPayment({ onBack, onConfirm, isProcessing, deposit, total }:
       confirmDeposit: "Pay Deposit: ",
       totalService: "Total Service: ",
       back: "Back",
+      payFullQuestion: "Do you want to pay in full now?",
+      totalToPayNow: "Total to pay now",
+      deposit10: "10% deposit",
+      balanceOnServiceDay: "Balance on the day of service",
+      surchargeNotes: "* Night surcharge (21:00 - 06:00): +5€. Bulky luggage (more than 3 x 23Kg suitcases): +10€. They will be automatically applied to your booking if applicable.",
+      paymentExplanation: "You can pay safely with card or PayPal. If you prefer, check \"Do you want to pay in full now?\" to pay 100%. Otherwise, a 10% deposit will be charged and the rest is paid on the day of service.",
+      processing: "Processing..."
     },
     fr: {
       title: "Méthode de Paiement",
@@ -63,6 +77,13 @@ export function StepPayment({ onBack, onConfirm, isProcessing, deposit, total }:
       confirmDeposit: "Payer l'Acompte : ",
       totalService: "Total du Service : ",
       back: "Retour",
+      payFullQuestion: "Voulez-vous tout payer maintenant ?",
+      totalToPayNow: "Total à payer maintenant",
+      deposit10: "acompte de 10%",
+      balanceOnServiceDay: "Solde le jour du service",
+      surchargeNotes: "* Supplément nuit (21:00 - 06:00) : +5€. Bagages volumineux (plus de 3 valises de 23Kg) : +10€. Ils s'appliqueront automatiquement à votre réservation le cas échéant.",
+      paymentExplanation: "Vous pouvez payer en toute sécurité par carte ou PayPal. Si vous préférez, cochez \"Voulez-vous tout payer maintenant ?\" pour régler 100%. Sinon, un acompte de 10% sera facturé et le reste sera payé le jour du service.",
+      processing: "Traitement..."
     }
   }[locale] || {
     title: "Método de Pago",
@@ -77,6 +98,13 @@ export function StepPayment({ onBack, onConfirm, isProcessing, deposit, total }:
     confirmDeposit: "Pagar Depósito: ",
     totalService: "Total del servicio: ",
     back: "Volver",
+    payFullQuestion: "¿Deseas pagar todo ahora?",
+    totalToPayNow: "Total a pagar ahora",
+    deposit10: "depósito 10%",
+    balanceOnServiceDay: "Saldo el día del servicio",
+    surchargeNotes: "* Recargo nocturno (21:00 - 06:00): +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€. Se aplicarán automáticamente a tu reserva si corresponde.",
+    paymentExplanation: "Puedes pagar con tarjeta o PayPal de forma segura. Si prefieres, marca \"¿Deseas pagar todo ahora?\" para abonar el 100%. En caso contrario, se cobrará el depósito del 10% y el resto se paga el día del servicio.",
+    processing: "Procesando..."
   };
 
   const methods = [
@@ -135,18 +163,18 @@ export function StepPayment({ onBack, onConfirm, isProcessing, deposit, total }:
             onChange={(e) => setPayFullAmount(e.target.checked)}
           />
           <label htmlFor="payFull" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-            ¿Deseas pagar todo ahora?
+            {texts.payFullQuestion}
           </label>
         </div>
 
         <div className="text-sm space-y-2">
            <div className="flex justify-between">
-              <span>Total a pagar ahora ({payFullAmount ? '100%' : 'depósito 10%'})</span>
+              <span>{texts.totalToPayNow} ({payFullAmount ? '100%' : texts.deposit10})</span>
               <span className="font-bold">{payFullAmount ? total : deposit}€</span>
            </div>
            {!payFullAmount && (
              <div className="flex justify-between text-muted-foreground">
-                <span>Saldo el día del servicio</span>
+                <span>{texts.balanceOnServiceDay}</span>
                 <span>{total - deposit}€</span>
              </div>
            )}
@@ -154,13 +182,12 @@ export function StepPayment({ onBack, onConfirm, isProcessing, deposit, total }:
 
         <div className="bg-[#4A0E0E]/5 p-4 rounded-xl border border-[#4A0E0E]/10">
           <p className="text-xs text-muted-foreground">
-            * Recargo nocturno (21:00 - 06:00): +5€. Equipaje voluminoso (más de 3 maletas de 23Kg): +10€.
-            Se aplicarán automáticamente a tu reserva si corresponde.
+            {texts.surchargeNotes}
           </p>
         </div>
 
         <p className="text-xs text-muted-foreground mt-4">
-          Puedes pagar con tarjeta o PayPal de forma segura. Si prefieres, marca "¿Deseas pagar todo ahora?" para abonar el 100%. En caso contrario, se cobrará el depósito del 10% y el resto se paga el día del servicio.
+          {texts.paymentExplanation}
         </p>
 
         <div className="flex items-center gap-3 text-[#4A0E0E] mt-4 pt-4 border-t border-[#4A0E0E]/10">
@@ -193,7 +220,7 @@ export function StepPayment({ onBack, onConfirm, isProcessing, deposit, total }:
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Procesando...
+              {texts.processing}
             </span>
           ) : (
             <div className="flex flex-col items-center leading-tight py-1">

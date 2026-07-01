@@ -7,16 +7,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Map, MapPin, Plane, Users, Calendar, Clock, Car } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { buildTransfersIndexes, getOriginLabel, getDestinationLabel } from "@/sanity/lib/transfers";
-import type { TransferDoc } from "@/sanity/lib/transfers";
+import { buildTransfersIndexes, getOriginLabel, getDestinationLabel, getAvailableDestinations } from "@/sanity/lib/transfers";
+import type { TransferDoc, TransfersIndexes } from "@/sanity/lib/transfers";
 
 type AddServiceModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (item: any) => void;
+  currentItems?: any[];
 };
 
-export function AddServiceModal({ isOpen, onClose, onAdd }: AddServiceModalProps) {
+export function AddServiceModal({ isOpen, onClose, onAdd, currentItems = [] }: AddServiceModalProps) {
   const [step, setStep] = useState<"type" | "details">("type");
   const [serviceType, setServiceType] = useState<"tour" | "traslado" | "evento" | null>(null);
   
@@ -27,7 +28,7 @@ export function AddServiceModal({ isOpen, onClose, onAdd }: AddServiceModalProps
   // Transfer specific state
   const [origen, setOrigen] = useState("");
   const [destino, setDestino] = useState("");
-  const [transfersIndexes, setTransfersIndexes] = useState<{ originKeys: string[]; destinationsByOrigin: Record<string, string[]> }>({ originKeys: [], destinationsByOrigin: {} });
+  const [transfersIndexes, setTransfersIndexes] = useState<TransfersIndexes>({ byOrigin: {}, byPair: {}, originKeys: [] });
 
   // Common state
   const [fecha, setFecha] = useState("");
@@ -120,12 +121,14 @@ export function AddServiceModal({ isOpen, onClose, onAdd }: AddServiceModalProps
       <DialogContent className="sm:max-w-[600px] bg-white/95 backdrop-blur-md border-[#4A0E0E]/20">
         <DialogHeader>
           <DialogTitle className="text-2xl font-display text-[#4A0E0E] text-center">
-            {step === "type" ? "Añadir Nuevo Servicio" : 
-             serviceType === "traslado" ? "Detalles del Traslado" : 
+            {step === "type" ? "Añadir Nuevo Servicio" :
+             serviceType === "traslado" ? "Detalles del Traslado" :
              serviceType === "tour" ? "Detalles del Tour" : "Detalles del Evento"}
           </DialogTitle>
           <DialogDescription className="text-center text-[#4A0E0E]/70">
-            {step === "type" ? "Selecciona el tipo de servicio que deseas añadir a tu cotización." : "Completa la información básica."}
+            {step === "type"
+              ? `Añade un nuevo servicio a tu compra${currentItems.length > 0 ? ` (ya tienes ${currentItems.length} servicio${currentItems.length > 1 ? 's' : ''})` : ""}.`
+              : "Completa la información básica."}
           </DialogDescription>
         </DialogHeader>
 
@@ -178,7 +181,7 @@ export function AddServiceModal({ isOpen, onClose, onAdd }: AddServiceModalProps
                       </SelectTrigger>
                       <SelectContent>
                         {transfersIndexes.originKeys.map(k => (
-                          <SelectItem key={k} value={k}>{getOriginLabel(k)}</SelectItem>
+                          <SelectItem key={k} value={k}>{getOriginLabel(transfersIndexes, k)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -190,9 +193,9 @@ export function AddServiceModal({ isOpen, onClose, onAdd }: AddServiceModalProps
                         <SelectValue placeholder="Selecciona destino" />
                       </SelectTrigger>
                       <SelectContent>
-                        {origen && transfersIndexes.destinationsByOrigin[origen]?.map(d => (
-                          <SelectItem key={d} value={d}>{getDestinationLabel(d)}</SelectItem>
-                        ))}
+                        {origen && getAvailableDestinations(transfersIndexes, origen).map(d => (
+                           <SelectItem key={d} value={d}>{getDestinationLabel(transfersIndexes, origen, d)}</SelectItem>
+                         ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -263,8 +266,8 @@ export function AddServiceModal({ isOpen, onClose, onAdd }: AddServiceModalProps
               <Button variant="outline" onClick={() => setStep("type")} className="border-[#4A0E0E]/20 text-[#4A0E0E]">
                 Volver
               </Button>
-              <Button onClick={handleAdd} className="bg-[#4A0E0E] hover:bg-[#3A0B0B] text-[#D4C483]">
-                Añadir al Carrito
+              <Button onClick={handleAdd} className="bg-[#4A0E0E] hover:bg-[#3A0B0B] text-[#D4C483] font-bold">
+                Añadir a la Reserva
               </Button>
             </>
           ) : (

@@ -136,6 +136,7 @@ export default defineType({
           }),
 
           defineField({ name: 'isNightTime', title: 'Recargo nocturno', type: 'boolean' }),
+          defineField({ name: 'isReturn', title: 'Es traslado de regreso', type: 'boolean', description: 'Indica si este servicio es el traslado de vuelta' }),
           defineField({ name: 'totalPrice', title: 'Total calculado', type: 'number' }),
 
           defineField({

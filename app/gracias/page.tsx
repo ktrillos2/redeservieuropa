@@ -662,7 +662,7 @@ export default function GraciasPage() {
                         </div>
 
                         {/* Optional Info */}
-                        {(service.flightNumber || service.luggage23kg > 0 || service.luggage10kg > 0 || service.notes) && (
+                        {(service.flightNumber || (service.luggage23kg ?? 0) > 0 || (service.luggage10kg ?? 0) > 0 || service.notes) && (
                           <div className="grid grid-cols-2 gap-6 border-t border-gray-100 pt-6 mt-2">
                             {service.flightNumber && (
                               <div>
@@ -670,15 +670,15 @@ export default function GraciasPage() {
                                 <p className="font-semibold text-gray-800">{service.flightNumber}</p>
                               </div>
                             )}
-                            {(service.luggage23kg > 0 || service.luggage10kg > 0) && (
+                            {((service.luggage23kg ?? 0) > 0 || (service.luggage10kg ?? 0) > 0) && (
                               <div className="flex gap-6">
-                                {service.luggage23kg > 0 && (
+                                {(service.luggage23kg ?? 0) > 0 && (
                                   <div>
                                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.luggage23}</p>
                                     <p className="font-semibold text-gray-800">{service.luggage23kg}</p>
                                   </div>
                                 )}
-                                {service.luggage10kg > 0 && (
+                                {(service.luggage10kg ?? 0) > 0 && (
                                   <div>
                                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">{tr.fields.luggage10}</p>
                                     <p className="font-semibold text-gray-800">{service.luggage10kg}</p>

@@ -238,28 +238,37 @@ export async function POST(req: Request) {
     }
 
     if (contact?.phone) {
-      let smsMessage = `¡Hola! Tu reserva ha sido confirmada exitosamente. Cualquier duda, por favor contáctanos al número de nuestra web. ¡Te esperamos!`;
-      if (locale === 'en') smsMessage = `Hello! Your reservation has been successfully confirmed. If you have any questions, please contact us at the number on our website. We look forward to seeing you!`;
-      if (locale === 'fr') smsMessage = `Bonjour ! Votre réservation a été confirmée avec succès. Si vous avez des questions, veuillez nous contacter au numéro indiqué sur notre site web. Au plaisir de vous voir !`;
-      if (locale === 'de') smsMessage = `Hallo! Ihre Reservierung wurde erfolgreich bestätigt. Bei Fragen kontaktieren Sie uns bitte unter der Nummer auf unserer Website. Wir freuen uns auf Sie!`;
+      // Build a rich SMS with service details (first 2 services to avoid length issues)
+      const smsServices = services.slice(0, 2).map(s => {
+        const date = s.date || ''
+        const pickup = s.pickupAddress ? s.pickupAddress.split(',')[0] : ''
+        return date ? `${date}${pickup ? ` | ${pickup}` : ''}` : s.title || ''
+      }).filter(Boolean).join(' / ')
+      
+      let smsMessage = `¡Hola${contact.name ? ' ' + contact.name : ''}! Tu reserva en Redeservi Europa ha sido confirmada. ${smsServices ? `Servicio: ${smsServices}. ` : ''}¿Preguntas? Escríbenos en nuestra web.`
+      if (locale === 'en') smsMessage = `Hello${contact.name ? ' ' + contact.name : ''}! Your Redeservi Europa booking is confirmed. ${smsServices ? `Service: ${smsServices}. ` : ''}Questions? Contact us on our website.`
+      if (locale === 'fr') smsMessage = `Bonjour${contact.name ? ' ' + contact.name : ''} ! Votre réservation Redeservi Europa est confirmée. ${smsServices ? `Service : ${smsServices}. ` : ''}Questions ? Contactez-nous sur notre site.`
+      if (locale === 'de') smsMessage = `Hallo${contact.name ? ' ' + contact.name : ''}! Ihre Redeservi Europa-Reservierung ist bestätigt. ${smsServices ? `Service: ${smsServices}. ` : ''}Fragen? Kontaktieren Sie uns auf unserer Website.`
 
-      await sendSms(contact.phone, smsMessage).catch(err => {
+      await sendSms(contact.phone, smsMessage.slice(0, 160)).catch(err => {
         console.error('[webhook] error sending sms to client', err);
       });
     }
 
     // Notificación por SMS al administrador
     const adminPhone = '+33778706325';
+    const totalServicesCount = services.length;
     const firstServiceDate = services[0]?.date || 'Pendiente';
+    const totalAmountStr = totalAmount > 0 ? ` | Total: ${totalAmount.toFixed(0)}€ (Depósito: ${paidAmount.toFixed(0)}€)` : '';
     const adminUrl = 'https://redeservieuropa.com/admin';
     
     let addonsText = '';
     const boatTickets = orders[0]?.addons?.boatTickets;
     if (boatTickets && boatTickets > 0) {
-      addonsText = ` + Adicional (${boatTickets} boletas barco)`;
+      addonsText = ` + (${boatTickets} boletas barco)`;
     }
 
-    const adminSmsMessage = `¡Nueva Reserva Confirmada! Cliente: ${contact?.name || 'Desconocido'}. Fecha: ${firstServiceDate}${addonsText}. Revisa en: ${adminUrl}`;
+    const adminSmsMessage = `Nueva Reserva! Cliente: ${contact?.name || 'Desconocido'}. ${totalServicesCount > 1 ? `${totalServicesCount} servicios. ` : ''}Fecha: ${firstServiceDate}${addonsText}${totalAmountStr}. Ver: ${adminUrl}`.slice(0, 160);
     await sendSms(adminPhone, adminSmsMessage).catch(err => {
       console.error('[webhook] error sending sms to admin', err);
     });

@@ -277,30 +277,49 @@
     const locale = params.locale || 'es'
     const texts = emailTexts[locale]
     const services = params.services || []
-    const itemsHtml = services.map(s => {
+    const itemsHtml = services.map((s, idx) => {
       const total = Number(s.totalPrice || 0)
       const percent = depositPercentFor(s.type, s.payFullNow, s.depositPercent ?? null)
       const paidNow = round1(total * (percent / 100))
       const tag = tagServicio(s.type, locale)
+      const isMultiple = services.length > 1
+      // ✈️ Vuelo
+      const flightLine = (s as any).flightNumber
+        ? `<b>${texts.flight}:</b> ${escapeHtml((s as any).flightNumber)}<br/>`
+        : ''
+      // 🧳 Maletas
+      const lug23 = Number((s as any).luggage23kg || 0)
+      const lug10 = Number((s as any).luggage10kg || 0)
+      const luggageLine = (lug23 > 0 || lug10 > 0)
+        ? `<b>${texts.luggage23kg}:</b> ${lug23}&nbsp;&nbsp;<b>${texts.luggage10kg}:</b> ${lug10}<br/>`
+        : ''
+      // 📝 Solicitudes
+      const notesLine = (s as any).notes
+        ? `<b>Solicitudes:</b> ${escapeHtml((s as any).notes)}<br/>`
+        : ''
 
       return `
         <li style="margin-bottom: 20px; list-style:none; padding: 15px; background: #fafafa; border-radius: 8px; border: 1px solid #eee;">
+          ${isMultiple ? `<b style="display:block; margin-bottom:5px; color:#b68c5a;">${texts.serviceNumber(idx + 1)}</b>` : ''}
           <b style="color:#0e2a36; font-size: 16px;">[${tag}]</b> ${escapeHtml(s.title || 'Reserva')}<br/>
           <div style="margin-top: 8px; line-height: 1.6;">
             <b>${texts.date}:</b> ${escapeHtml(s.date || '\u2014')}<br/>
             <b>${texts.time}:</b> ${escapeHtml(s.time || '\u2014')}<br/>
             <b>${texts.pickup}:</b> ${escapeHtml(s.pickupAddress || '\u2014')}<br/>
             <b>${texts.destination}:</b> ${escapeHtml(s.dropoffAddress || '\u2014')}<br/>
+            ${flightLine}
+            ${luggageLine}
             <b>${texts.passengers}:</b> ${typeof s.passengers === 'number' ? s.passengers : '\u2014'}<br/>
             ${typeof s.ninos === 'number' && s.ninos > 0 ? `<b>${texts.children}:</b> ${s.ninos}<br/>` : ''}
             ${s.ninosMenores9 ? `<b>${texts.childrenAges}:</b> ${escapeHtml(s.ninosMenores9)}<br/>` : ''}
-            <b>${texts.total}:</b> ${total.toFixed(2)} €<br/>
-            <b>${percent === 100 ? texts.paid : `${texts.paid} (${percent}%)`}:</b> ${paidNow.toFixed(1)} €
+            ${notesLine}
+            <b>${texts.total}:</b> ${total.toFixed(2)} &#8364;<br/>
+            <b>${percent === 100 ? texts.paid : `${texts.paid} (${percent}%)`}:</b> ${paidNow.toFixed(1)} &#8364;
           </div>
           ${s.calendarLink ? `
             <div style="margin-top: 12px;">
               <a href="${s.calendarLink}" target="_blank" style="display:inline-block; background:#0e2a36; color:#ffffff; text-decoration:none; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600;">
-                📅 ${texts.addToCalendar}
+                &#x1F4C5; ${texts.addToCalendar}
               </a>
             </div>
           ` : ''}
@@ -313,12 +332,14 @@
       <p>${texts.thanksMessage}</p>
       <p>${texts.paymentReceived}</p>
       <h3>${texts.contractedServices}</h3>
+      <ul style="padding:0; margin:0;">
+        ${itemsHtml}
       </ul>
       
       ${params.addons?.boatTickets ? `
         <h3 style="color:#b68c5a; margin-top:20px;">Adicionales Adquiridos</h3>
         <div style="background:#fffaf0; border:1px solid #e5ddd0; padding:15px; border-radius:8px; margin-bottom:20px;">
-          <b>🎟️ ${params.addons.boatTickets} x Boletas de barquito por el Sena</b><br/>
+          <b>&#x1F3AB; ${params.addons.boatTickets} x Boletas de barquito por el Sena</b><br/>
           <p style="margin:8px 0; font-size:14px; color:#5f7b87;">
             Tienen una expiración de 1 año y se pueden usar a cualquier hora entre las 9:00 am y las 22:30. Tú eliges cuándo usarlas.<br/>
             Pronto nos comunicaremos para gestionar el envío de las mismas.
@@ -351,7 +372,9 @@
       totalPrice?: number; pickupAddress?: string; dropoffAddress?: string;
       flightNumber?: string;
       luggage23kg?: number; luggage10kg?: number;
-      passengers?: number; ninos?: number; ninosMenores9?: string; payFullNow?: boolean; depositPercent?: number | null
+      passengers?: number; ninos?: number; ninosMenores9?: string; payFullNow?: boolean; depositPercent?: number | null;
+      calendarLink?: string;
+      notes?: string;
     }>
     addons?: { boatTickets?: number; boatTicketsPrice?: number }
     locale?: Locale

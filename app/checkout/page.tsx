@@ -10,8 +10,8 @@ import { AddServiceModal } from "@/components/checkout/add-service-modal";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/i18n-context";
-import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Check } from "lucide-react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Metadata } from "next";
 
@@ -102,12 +102,53 @@ export default function CheckoutPage() {
   };
 
   const handleAddQuote = (newItem: any) => {
-    setCarritoState(prev => [...prev, newItem]);
-    setActiveItemIndex(carritoState.length); // switch to the new item
-    toast({
-      title: locale === "es" ? "Cotización Añadida" : locale === "en" ? "Quote Added" : "Devis Ajouté",
-      description: locale === "es" ? "Se ha añadido un nuevo servicio." : locale === "en" ? "A new service has been added." : "Un nouveau service a été ajouté.",
+    setCarritoState(prev => {
+      const next = [...prev, newItem];
+      setActiveItemIndex(next.length - 1);
+      return next;
     });
+    toast({
+      title: locale === "es" ? "Servicio Añadido" : locale === "en" ? "Service Added" : "Service Ajouté",
+      description: locale === "es" ? "Se ha añadido un nuevo servicio a tu reserva." : locale === "en" ? "A new service has been added to your booking." : "Un nouveau service a été ajouté à votre réservation.",
+    });
+  };
+
+  const handleRemoveItem = (id: number) => {
+    setCarritoState(prev => {
+      const next = prev.filter(item => item.id !== id);
+      // Adjust active index if needed
+      if (activeItemIndex >= next.length) {
+        setActiveItemIndex(Math.max(0, next.length - 1));
+      }
+      return next;
+    });
+    toast({
+      title: locale === "es" ? "Servicio Eliminado" : locale === "en" ? "Service Removed" : "Service Supprimé",
+      description: locale === "es" ? "El servicio ha sido eliminado de tu reserva." : locale === "en" ? "The service has been removed from your booking." : "Le service a été supprimé de votre réservation.",
+    });
+  };
+
+  // Pre-configures a return transfer by inverting origin/destination
+  const handleAddReturn = (sourceItem: any) => {
+    const returnItem = {
+      ...sourceItem,
+      id: Date.now(),
+      origen: sourceItem.destino,
+      destino: sourceItem.origen,
+      pickupAddress: sourceItem.dropoffAddress || "",
+      dropoffAddress: sourceItem.pickupAddress || "",
+      date: "",
+      time: "",
+      flightNumber: "",
+      specialRequests: "",
+      serviceLabel: sourceItem.serviceLabel
+        ? `${locale === "es" ? "Regreso" : locale === "en" ? "Return" : "Retour"}: ${sourceItem.serviceLabel}`
+        : (locale === "es" ? "Traslado de Regreso" : locale === "en" ? "Return Transfer" : "Transfert Retour"),
+      serviceSubLabel: locale === "es" ? "Traslado de Regreso" : locale === "en" ? "Return Transfer" : "Transfert Retour",
+      isReturn: true,
+    };
+    handleAddQuote(returnItem);
+    setIsAddModalOpen(false);
   };
 
   const validateStep = (s: number) => {
@@ -191,21 +232,44 @@ export default function CheckoutPage() {
   const handleConfirm = async (method: string, payFull: boolean) => {
     setIsProcessing(true);
     try {
-      // Build payload similar to pago/page.tsx
+      // Build a rich Mollie description from all services
+      const serviceNames = items.map(it => {
+        const label = it.serviceSubLabel || it.serviceLabel || it.tourTitle || it.tourDoc?.title;
+        const date = it.date ? ` (${it.date})` : "";
+        return label ? `${label}${date}` : it.tipo === "tour" ? `Tour${date}` : `Traslado${date}`;
+      });
+      const mollieDescription = serviceNames.length > 1
+        ? `Redeservi Europa: ${serviceNames.join(" | ")}`
+        : `Redeservi Europa: ${serviceNames[0] || "Reserva"}`;
+
       const payload = {
         amount: payFull ? totals.total : totals.deposit,
-        description: `Pago reserva (${items.length} servicios)`,
+        description: mollieDescription.slice(0, 255), // Mollie max 255 chars
         carrito: items,
         contact: {
           name: bookingData?.contactName,
           phone: bookingData?.contactPhone,
           email: bookingData?.contactEmail,
+          referralSource: bookingData?.referralSource || "",
         },
         referralSource: bookingData?.referralSource || "",
         method: method,
         payFullNow: payFull,
         locale: locale || "es",
       };
+
+      // Save payload to localStorage for the gracias page fallback
+      try {
+        localStorage.setItem("lastCheckoutPayload", JSON.stringify({
+          items,
+          contact: payload.contact,
+          amountNow: payload.amount,
+          payFullNow: payFull,
+          paymentMethod: method,
+          locale: locale || "es",
+        }));
+      } catch {}
+
 
       const res = await fetch("/api/mollie/create", {
         method: "POST",
@@ -276,14 +340,11 @@ export default function CheckoutPage() {
             {/* Form Card */}
             <Card className="border-none shadow-xl overflow-hidden bg-white/90 backdrop-blur-sm min-h-[500px]">
               <CardContent className="p-8 md:p-12">
-                <AnimatePresence mode="wait">
+                <>
                   {step === 1 && (
-                    <motion.div
+                    <div
                       key="step1"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
+                      className="animate-in fade-in slide-in-from-left-4 duration-300"
                     >
                       <StepContact 
                         data={bookingData || {}} 
@@ -291,15 +352,12 @@ export default function CheckoutPage() {
                         onNext={handleNext}
                         errors={errors}
                       />
-                    </motion.div>
+                    </div>
                   )}
                   {step === 2 && (
-                    <motion.div
+                    <div
                       key="step2"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
+                      className="animate-in fade-in slide-in-from-right-4 duration-300"
                     >
                       <StepServiceDetails 
                         items={items} 
@@ -310,16 +368,16 @@ export default function CheckoutPage() {
                         errors={errors}
                         activeItemIndex={activeItemIndex}
                         setActiveItemIndex={setActiveItemIndex}
+                        onRemoveItem={handleRemoveItem}
+                        onAddService={() => setIsAddModalOpen(true)}
+                        onAddReturn={handleAddReturn}
                       />
-                    </motion.div>
+                    </div>
                   )}
                   {step === 3 && (
-                    <motion.div
+                    <div
                       key="step3"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
+                      className="animate-in fade-in slide-in-from-right-4 duration-300"
                     >
                       <StepPayment 
                         onBack={handleBack} 
@@ -328,9 +386,9 @@ export default function CheckoutPage() {
                         deposit={totals.deposit}
                         total={totals.total}
                       />
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
+                </>
               </CardContent>
             </Card>
           </div>
@@ -345,6 +403,8 @@ export default function CheckoutPage() {
                 activeItemIndex={activeItemIndex}
                 setActiveItemIndex={setActiveItemIndex} 
                 onAddQuote={() => setIsAddModalOpen(true)}
+                onRemoveItem={handleRemoveItem}
+                onAddReturn={handleAddReturn}
               />
             </div>
           </aside>
@@ -355,7 +415,8 @@ export default function CheckoutPage() {
       <AddServiceModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
-        onAdd={handleAddQuote} 
+        onAdd={handleAddQuote}
+        currentItems={items}
       />
     </div>
   );

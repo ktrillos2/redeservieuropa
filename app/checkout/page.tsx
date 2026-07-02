@@ -19,8 +19,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Metadata } from "next";
 
 // This is a client component, so we can't export Metadata directly if it was a server component, 
-// but since it's "use client", we should handle the title via useEffect or separate layout.
 // For now, I'll add the H1 clearly in the component.
+
+function computeFromTransferDoc(pax: number, doc: any) {
+  const n = Math.max(1, Math.floor(Number(pax) || 1));
+  const p4 = Number(doc?.priceP4 || 0);
+  const p5 = Number(doc?.priceP5 || p4);
+  const p6 = Number(doc?.priceP6 || p5);
+  const p7 = Number(doc?.priceP7 || p6);
+  const p8 = Number(doc?.priceP8 || p7);
+
+  if (n <= 4) return p4;
+  if (n === 5) return p5;
+  if (n === 6) return p6;
+  if (n === 7) return p7;
+  if (n === 8) return p8;
+
+  const extra = Math.max(0, n - 8) * 20;
+  return p8 + extra;
+}
 
 export default function CheckoutPage() {
   const [step, setStep] = useState(1);
@@ -74,7 +91,9 @@ export default function CheckoutPage() {
       const pax = Number(item.passengers || 1);
       
       if (item.tipo === "tour" || item.isTourQuick || item.isEvent) {
-        if (item.tourDoc) {
+        if (item.isEvent && typeof item.pricePerPerson === "number") {
+          base = item.pricePerPerson * pax;
+        } else if (item.tourDoc) {
           base = computePriceForPax(pax, item.tourDoc) || Number(item.basePrice || item.totalPrice || 0);
         } else if (item.tourData) { // from bookingData structure
           base = computePriceForPax(pax, item.tourData) || Number(item.basePrice || item.totalPrice || 0);
@@ -84,7 +103,9 @@ export default function CheckoutPage() {
       } else {
         const from = item.origen;
         const to = item.destino;
-        if (from && to) {
+        if (item.transferDoc) {
+          base = computeFromTransferDoc(pax, item.transferDoc);
+        } else if (from && to) {
           const tPrice = calcBaseTransferPrice(from, to, pax);
           if (typeof tPrice === "number") base = tPrice;
           else base = Number(item.basePrice || item.totalPrice || 0);

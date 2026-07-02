@@ -95,11 +95,13 @@ export function AddServiceModal({ isOpen, onClose, onAdd, currentItems = [] }: A
 
     if (serviceType === "traslado") {
       if (!origen || !destino) return;
+      const transferDoc = transfersIndexes.byPair[`${origen}__${destino}`];
       newItem = {
         ...newItem,
         tipoReserva: "traslado",
         origen,
         destino,
+        transferDoc,
       };
     } else {
       if (!selectedTourSlug) return;
@@ -110,6 +112,9 @@ export function AddServiceModal({ isOpen, onClose, onAdd, currentItems = [] }: A
         selectedTourSlug,
         tourDoc,
       };
+      if (serviceType === "evento") {
+        newItem.pricePerPerson = tourDoc?.pricePerPerson || tourDoc?.booking?.startingPriceEUR || 0;
+      }
     }
 
     onAdd(newItem);

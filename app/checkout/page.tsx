@@ -12,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/contexts/i18n-context";
 import { ChevronRight, Check } from "lucide-react";
 
+import { calcBaseTransferPrice, isNightTime } from "@/lib/pricing";
+import { computePriceForPax } from "@/sanity/lib/price";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Metadata } from "next";
 
@@ -61,7 +64,52 @@ export default function CheckoutPage() {
         tipo: bookingData.isEvent || bookingData.tourId || bookingData.tourDoc ? "tour" : "traslado",
       });
     }
-    return list;
+    
+    // Recalculate price dynamically for each item to handle passenger count changes
+    return list.map(item => {
+      let base = 0;
+      let nightCharge = 0;
+      let bulkyLuggageSurcharge = 0;
+
+      const pax = Number(item.passengers || 1);
+      
+      if (item.tipo === "tour" || item.isTourQuick || item.isEvent) {
+        if (item.tourDoc) {
+          base = computePriceForPax(pax, item.tourDoc) || Number(item.basePrice || item.totalPrice || 0);
+        } else if (item.tourData) { // from bookingData structure
+          base = computePriceForPax(pax, item.tourData) || Number(item.basePrice || item.totalPrice || 0);
+        } else {
+          base = Number(item.basePrice || item.totalPrice || 0); // fallback
+        }
+      } else {
+        const from = item.origen;
+        const to = item.destino;
+        if (from && to) {
+          const tPrice = calcBaseTransferPrice(from, to, pax);
+          if (typeof tPrice === "number") base = tPrice;
+          else base = Number(item.basePrice || item.totalPrice || 0);
+        } else {
+          base = Number(item.basePrice || item.totalPrice || 0);
+        }
+      }
+
+      if (isNightTime(item.time)) {
+        nightCharge = 5;
+      }
+      
+      if (Number(item.luggage23kg || 0) > 3) {
+        bulkyLuggageSurcharge = 10;
+      }
+
+      const total = base + nightCharge + bulkyLuggageSurcharge;
+      
+      return {
+        ...item,
+        totalPrice: total > 0 ? total : item.totalPrice,
+        nightCharge,
+        bulkyLuggageSurcharge
+      };
+    });
   }, [carritoState, bookingData]);
 
   // Pricing calculation logic (simplified or extracted from pago/page.tsx)

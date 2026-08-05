@@ -457,14 +457,22 @@ export function Header({
             </Link>
           </nav>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`md:hidden transition-colors hover:bg-muted drop-shadow-lg ${useDarkText ? "text-black" : "text-white"}`}
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <XIcon /> : <MenuIcon />}
-          </Button>
+          <div className="flex items-center gap-2 md:hidden">
+            <Link
+              href="/checkout"
+              className={`p-2.5 rounded-full transition-all duration-300 hover:bg-white/20 hover:backdrop-blur-md ${useDarkText ? "text-gray-900 hover:bg-black/5" : "!text-white drop-shadow-md"}`}
+            >
+              <ShoppingCart className="w-[22px] h-[22px]" />
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`transition-colors hover:bg-muted drop-shadow-lg ${useDarkText ? "text-black" : "text-white"}`}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <XIcon /> : <MenuIcon />}
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Menu */}

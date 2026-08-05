@@ -1583,6 +1583,8 @@ export default function PaymentPage() {
         ? "tour"
         : bookingData?.tipoReserva || "traslado";
 
+    const lastQuote = carritoState.length > 0 ? carritoState[carritoState.length - 1] : bookingData;
+
     setModalForm({
       tipo: defaultTipo,
       // 💡 SIEMPRE vacíos al crear NUEVA cotización (requisito)
@@ -1598,25 +1600,25 @@ export default function PaymentPage() {
         Math.max(
           1,
           Math.min(
-            56,
-            Number(bookingData?.passengers || bookingData?.pasajeros || 1)
+            8,
+            Number(lastQuote?.passengers || lastQuote?.pasajeros || 1)
           )
         )
       ),
-      ninos: 0,
-      vehicle: bookingData?.vehicle || bookingData?.vehiculo || "coche",
+      ninos: Number(lastQuote?.ninos || 0),
+      vehicle: lastQuote?.vehicle || lastQuote?.vehiculo || "coche",
 
       // Si era tour, dejamos el slug si existía (para que siga siendo tour), PERO no autoconvertimos por direcciones
-      selectedTourSlug: bookingData?.selectedTourSlug || "",
-      categoriaTour: bookingData?.categoriaTour || "",
-      subtipoTour: bookingData?.subtipoTour || "",
+      selectedTourSlug: lastQuote?.selectedTourSlug || "",
+      categoriaTour: lastQuote?.categoriaTour || "",
+      subtipoTour: lastQuote?.subtipoTour || "",
 
       // 💡 Vuelo SIEMPRE vacío al crear nueva cotización
       flightNumber: "",
 
-      // 💡 Equipaje SIEMPRE en cero al crear nueva cotización
-      luggage23kg: 0,
-      luggage10kg: 0,
+      // 💡 Equipaje se mantiene del último
+      luggage23kg: Number(lastQuote?.luggage23kg || 0),
+      luggage10kg: Number(lastQuote?.luggage10kg || 0),
 
       specialRequests: "",
       totalPrice: 0,
@@ -1655,41 +1657,43 @@ export default function PaymentPage() {
         ? "tour"
         : bookingData?.tipoReserva || "traslado";
 
+    const lastQuote = carritoState.length > 0 ? carritoState[carritoState.length - 1] : bookingData;
+
     const invertedData = {
       tipo: defaultTipo,
-      origen: "",
-      destino: "",
-      // 💡 Direcciones VACÍAS (es nueva cotización)
-      pickupAddress: "",
-      dropoffAddress: "",
+      origen: currentDestination,
+      destino: currentOrigin,
+      // 💡 Direcciones invertidas (ida y vuelta)
+      pickupAddress: bookingData?.dropoffAddress || "",
+      dropoffAddress: bookingData?.pickupAddress || "",
       date: "",
       time: "",
       passengers: String(
         Math.max(
           1,
           Math.min(
-            56,
-            Number(bookingData?.passengers || bookingData?.pasajeros || 1)
+            8,
+            Number(lastQuote?.passengers || lastQuote?.pasajeros || 1)
           )
         )
       ),
-      ninos: 0,
+      ninos: Number(lastQuote?.ninos || 0),
       vehicle:
-        bookingData?.vehicle ||
-        bookingData?.vehiculo ||
-        bookingData?.vehicleType ||
+        lastQuote?.vehicle ||
+        lastQuote?.vehiculo ||
+        lastQuote?.vehicleType ||
         "coche",
 
-      selectedTourSlug: bookingData?.selectedTourSlug || "",
-      categoriaTour: bookingData?.categoriaTour || "",
-      subtipoTour: bookingData?.subtipoTour || "",
+      selectedTourSlug: lastQuote?.selectedTourSlug || "",
+      categoriaTour: lastQuote?.categoriaTour || "",
+      subtipoTour: lastQuote?.subtipoTour || "",
 
       // 💡 Vuelo VACÍO
       flightNumber: "",
 
-      // 💡 Equipaje en cero
-      luggage23kg: 0,
-      luggage10kg: 0,
+      // 💡 Equipaje se mantiene del último
+      luggage23kg: Number(lastQuote?.luggage23kg || 0),
+      luggage10kg: Number(lastQuote?.luggage10kg || 0),
 
       specialRequests: "",
       totalPrice: 0,
@@ -5940,38 +5944,43 @@ export default function PaymentPage() {
                           <Users className="w-4 h-4 text-accent" />
                           {pageTexts.passengers}
                         </label>
-                        <Select
-                          value={String(modalForm.passengers)}
-                          onValueChange={(value) =>
-                            setModalForm({
-                              ...modalForm,
-                              passengers: String(value),
-                            })
-                          }
-                        >
-                          <SelectTrigger
-                            data-modal-field="passengers"
-                            className={
-                              "cursor-pointer " +
-                              (modalFieldErrors.passengers
-                                ? "border-destructive focus-visible:ring-destructive"
-                                : "")
+                        <div className="flex flex-col space-y-2">
+                          <Select
+                            value={String(modalForm.passengers)}
+                            onValueChange={(value) =>
+                              setModalForm({
+                                ...modalForm,
+                                passengers: String(value),
+                              })
                             }
                           >
-                            <SelectValue
-                              placeholder={pageTexts.modalPassengersMax}
-                            />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            {Array.from({ length: 56 }, (_, i) => i + 1).map(
-                              (n) => (
-                                <SelectItem key={n} value={String(n)}>
-                                  {n} {n === 1 ? pageTexts.passenger : pageTexts.passengers}
-                                </SelectItem>
-                              )
-                            )}
-                          </SelectContent>
-                        </Select>
+                            <SelectTrigger
+                              data-modal-field="passengers"
+                              className={
+                                "cursor-pointer " +
+                                (modalFieldErrors.passengers
+                                  ? "border-destructive focus-visible:ring-destructive"
+                                  : "")
+                              }
+                            >
+                              <SelectValue
+                                placeholder={pageTexts.modalPassengersMax}
+                              />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {Array.from({ length: 8 }, (_, i) => i + 1).map(
+                                (n) => (
+                                  <SelectItem key={n} value={String(n)}>
+                                    {n} {n === 1 ? pageTexts.passenger : pageTexts.passengers}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-xs text-muted-foreground">
+                            Si son más de 8 pasajeros, contactar al WhatsApp.
+                          </span>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
@@ -6241,36 +6250,41 @@ export default function PaymentPage() {
                             <Users className="w-4 h-4 text-accent" />
                             {pageTexts.passengers}
                           </label>
-                          <Select
-                            value={String(modalForm.passengers)}
-                            onValueChange={(value) =>
-                              setModalForm({ ...modalForm, passengers: value })
-                            }
-                          >
-                            <SelectTrigger
-                              data-modal-field="passengers"
-                              className={
-                                "cursor-pointer " +
-                                (modalFieldErrors.passengers
-                                  ? "border-destructive focus-visible:ring-destructive"
-                                  : "")
+                          <div className="flex flex-col space-y-2">
+                            <Select
+                              value={String(modalForm.passengers)}
+                              onValueChange={(value) =>
+                                setModalForm({ ...modalForm, passengers: value })
                               }
                             >
-                              <SelectValue placeholder={pageTexts.modalPassengersMax} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-72">
-                              {Array.from({ length: 56 }, (_, i) => i + 1).map(
-                                (n) => (
-                                  <SelectItem key={n} value={String(n)}>
-                                    {n}{" "}
-                                    {n === 1
-                                      ? pageTexts.passenger
-                                      : pageTexts.passengers}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
+                              <SelectTrigger
+                                data-modal-field="passengers"
+                                className={
+                                  "cursor-pointer " +
+                                  (modalFieldErrors.passengers
+                                    ? "border-destructive focus-visible:ring-destructive"
+                                    : "")
+                                }
+                              >
+                                <SelectValue placeholder={pageTexts.modalPassengersMax} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-72">
+                                {Array.from({ length: 8 }, (_, i) => i + 1).map(
+                                  (n) => (
+                                    <SelectItem key={n} value={String(n)}>
+                                      {n}{" "}
+                                      {n === 1
+                                        ? pageTexts.passenger
+                                        : pageTexts.passengers}
+                                    </SelectItem>
+                                  )
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              Si son más de 8 pasajeros, contactar al WhatsApp.
+                            </span>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-2">

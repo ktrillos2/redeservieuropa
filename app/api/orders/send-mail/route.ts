@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     }
 
     // Construir datos de servicios desde el array
-    const services = (order.services || []).map((s: any) => ({
+    const services = (order.services || []).map((s: any, idx: number) => ({
       type: s?.type,
       title: s?.title,
       date: s?.date,

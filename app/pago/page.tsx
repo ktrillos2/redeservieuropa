@@ -3917,7 +3917,7 @@ export default function PaymentPage() {
                               {pageTexts.luggage}
                             </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                               <label className="text-xs text-muted-foreground">
                                 {pageTexts.suitcases23kg}
@@ -4004,7 +4004,7 @@ export default function PaymentPage() {
                               }
                             />
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-2">
                               <label className="text-xs font-medium">
                                 {pageTexts.phone}
@@ -4116,7 +4116,7 @@ export default function PaymentPage() {
                                 }
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div className="space-y-2">
                                 <label className="text-xs font-medium">
                                   {pageTexts.phone}
@@ -4674,7 +4674,7 @@ export default function PaymentPage() {
                             }
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <label className="text-xs font-medium">
                               {pageTexts.phone}
@@ -6185,7 +6185,7 @@ export default function PaymentPage() {
                           </div>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-2">
                             <Calendar className="w-4 h-4 text-accent" />
@@ -6244,7 +6244,7 @@ export default function PaymentPage() {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-2">
                             <Users className="w-4 h-4 text-accent" />
@@ -6481,7 +6481,7 @@ export default function PaymentPage() {
                       </p>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs">{pageTexts.modalSuitcases23}</label>
                       <Input

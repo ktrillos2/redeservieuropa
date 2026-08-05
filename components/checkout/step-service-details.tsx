@@ -409,7 +409,7 @@ export function StepServiceDetails({
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-[#4A0E0E] uppercase">{texts.passengers}</Label>
                     <Input
@@ -460,7 +460,7 @@ export function StepServiceDetails({
               )}
 
               {/* Date + Time */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-[#4A0E0E] uppercase">{texts.date} *</Label>
                   <Input
@@ -492,7 +492,7 @@ export function StepServiceDetails({
               </div>
 
               {/* Luggage */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-xs font-bold text-[#4A0E0E] uppercase">
                     <Luggage className="w-3.5 h-3.5" />

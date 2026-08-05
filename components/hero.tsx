@@ -1342,7 +1342,7 @@ if (bookingData.tipoReserva === "traslado") {
                       <div className="space-y-4">
                         {/* Campos para traslado */}
                         {bookingData.tipoReserva === "traslado" && (
-                          <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Origen */}
 <div className="space-y-2">
   <label className="text-sm font-medium flex items-center gap-2">
@@ -1770,7 +1770,7 @@ if (bookingData.tipoReserva === "traslado") {
                                 )}
                             </div>
                             {/* Fecha, hora, pasajeros, vehículo */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Calendar className="w-4 h-4 text-accent" />
@@ -1852,7 +1852,7 @@ if (bookingData.tipoReserva === "traslado") {
                                 )}
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <label className="text-sm font-medium flex items-center gap-2">
                                   <Users className="w-4 h-4 text-accent" />

@@ -377,9 +377,9 @@ export default function CheckoutPage() {
       <h1 className="sr-only">Checkout - Confirmación de Reserva | REDESERVI PARIS</h1>
 
       <main className="flex-grow pt-40 pb-12 lg:pt-48 container mx-auto px-4 max-w-7xl">
-        <div className="flex flex-col lg:flex-row gap-8 h-full items-start">
+        <div className="flex flex-col lg:flex-row gap-8 h-full items-start w-full">
           {/* Left Column: Steps and Form */}
-          <div className="flex-grow lg:w-2/3 space-y-8">
+          <div className="flex-grow w-full lg:w-2/3 space-y-8">
             {/* Step Indicator */}
             <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-[#4A0E0E]/10">
               {steps.map((s, idx) => (
@@ -463,7 +463,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right Column: Summary (Sticky) */}
-          <aside className="lg:w-1/3">
+          <aside className="w-full lg:w-1/3">
             <div className="sticky top-32">
               <CheckoutSummary 
                 items={items} 

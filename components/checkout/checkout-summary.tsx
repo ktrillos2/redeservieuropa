@@ -219,7 +219,7 @@ export function CheckoutSummary({
                           </span>
                         )}
                       </p>
-                      <h3 className="font-bold text-[#4A0E0E] text-base leading-tight uppercase font-serif truncate">
+                      <h3 className="font-bold text-[#4A0E0E] text-base leading-tight uppercase font-serif line-clamp-3 break-words whitespace-normal">
                         {item.serviceSubLabel || item.tourTitle || item.tourDoc?.title ||
                           [item.originLabel || item.origen, item.destinationLabel || item.destino]
                             .filter(v => v && String(v).toLowerCase() !== "undefined")
